@@ -85,4 +85,4 @@ src/
 Quando você for configurar o Prisma, o seu arquivo `.env` dentro de `BackEndTorv` deve conter a variável com uma sintaxe parecida com esta (convertendo os caracteres especiais se necessário, dependendo de como a biblioteca ler a contrabarra):
 
 ```env
-DATABASE_URL="sqlserver://DESKTOP-GKF0OQB\SQLEXPRESS;database=torv;integratedSecurity=true;trust
+DATABASE_URL="sqlserver://localhost:1433;database=nome_do_seu_banco;user=LeoTorv;password=12345;encrypt=false;trustServerCertificate=true;"

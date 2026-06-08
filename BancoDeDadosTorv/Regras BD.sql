@@ -98,23 +98,67 @@ BEGIN
     END CATCH
 END;
 
---Insert calorias e retorna restante
+--Insert food log and return macro balance
 CREATE PROCEDURE sp_LogFoodAndReturnRemaining
     @UserId UNIQUEIDENTIFIER,
     @FoodName NVARCHAR(255),
     @Calories INT,
+    @MacrosJson NVARCHAR(MAX),
     @Date DATE
 AS
 BEGIN
-    
-    INSERT INTO food_logs (user_id, food_name, calories, logged_date)
-    VALUES (@UserId, @FoodName, @Calories, @Date);
+    INSERT INTO food_logs (user_id, food_name, calories, macros_json, logged_date)
+    VALUES (@UserId, @FoodName, @Calories, @MacrosJson, @Date);
 
-    DECLARE @Goal INT = (SELECT daily_calories FROM nutrition_targets WHERE user_id = @UserId);
-    DECLARE @Consumed INT = dbo.fn_GetConsumedCalories(@UserId, @Date); -- Usando a UDF criada!
-
-    SELECT @Goal AS GoalCalories, @Consumed AS ConsumedCalories, (@Goal - @Consumed) AS RemainingCalories;
+    -- Reuse the summary SP to return the single source of truth balance
+    EXEC sp_GetDietSummary @UserId, @Date;
 END;
+GO
+    
+
+--Get full macro summary for a specific day
+CREATE PROCEDURE sp_GetDietSummary
+    @UserId UNIQUEIDENTIFIER,
+    @Date DATE
+AS
+BEGIN
+    DECLARE @GoalCalories INT = 2000, @GoalProtein INT = 150, @GoalCarbs INT = 250, @GoalFat INT = 65;
+    
+    SELECT 
+        @GoalCalories = ISNULL(daily_calories, 2000),
+        @GoalProtein = ISNULL(protein_g, 150),
+        @GoalCarbs = ISNULL(carbs_g, 250),
+        @GoalFat = ISNULL(fat_g, 65)
+    FROM nutrition_targets WHERE user_id = @UserId;
+
+    DECLARE @ConsumedCalories INT = 0, @ConsumedProtein INT = 0, @ConsumedCarbs INT = 0, @ConsumedFat INT = 0;
+
+    SELECT 
+        @ConsumedCalories = ISNULL(SUM(calories), 0),
+        @ConsumedProtein = ISNULL(SUM(CAST(JSON_VALUE(macros_json, '$.protein') AS INT)), 0),
+        @ConsumedCarbs = ISNULL(SUM(CAST(JSON_VALUE(macros_json, '$.carbs') AS INT)), 0),
+        @ConsumedFat = ISNULL(SUM(CAST(JSON_VALUE(macros_json, '$.fat') AS INT)), 0)
+    FROM food_logs
+    WHERE user_id = @UserId AND logged_date = @Date;
+
+    SELECT 
+        @GoalCalories AS GoalCalories, 
+        @ConsumedCalories AS ConsumedCalories, 
+        (@GoalCalories - @ConsumedCalories) AS RemainingCalories,
+        
+        @GoalProtein AS GoalProtein, 
+        @ConsumedProtein AS ConsumedProtein, 
+        (@GoalProtein - @ConsumedProtein) AS RemainingProtein,
+        
+        @GoalCarbs AS GoalCarbs, 
+        @ConsumedCarbs AS ConsumedCarbs, 
+        (@GoalCarbs - @ConsumedCarbs) AS RemainingCarbs,
+        
+        @GoalFat AS GoalFat, 
+        @ConsumedFat AS ConsumedFat, 
+        (@GoalFat - @ConsumedFat) AS RemainingFat;
+END;
+GO
 
 
 

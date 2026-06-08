@@ -1,0 +1,22 @@
+# Environments
+.env
+BackEndTorv/.env
+FrontEndTorv/.env
+
+# Node modules
+node_modules/
+BackEndTorv/node_modules/
+FrontEndTorv/node_modules/
+
+# Logs and databases
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.sqlite
+*.db
+
+# Build and OS files
+.DS_Store
+dist/
+build/
+.expo/

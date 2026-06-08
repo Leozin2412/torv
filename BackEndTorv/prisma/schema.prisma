@@ -1,0 +1,174 @@
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model users {
+  id                String              @id @default(dbgenerated("NEWID()")) @db.UniqueIdentifier
+  email             String              @unique @db.NVarChar(255)
+  password_hash     String              @db.NVarChar(255)
+  auth_provider     String?             @db.NVarChar(50)
+  created_at        DateTime?           @default(dbgenerated("GETDATE()")) @db.DateTime2
+  
+  user_profiles     user_profiles?
+  user_measurements user_measurements[]
+  user_streaks      user_streaks?
+  activities        activities[]
+  workout_routines  workout_routines[]
+  nutrition_targets nutrition_targets?
+  food_logs         food_logs[]
+  
+  followers         follows[]           @relation("followed")
+  following         follows[]           @relation("follower")
+  group_members     group_members[]
+  group_rankings    group_rankings[]
+}
+
+model user_profiles {
+  user_id       String    @id @db.UniqueIdentifier
+  username      String    @unique @db.NVarChar(100)
+  name          String    @db.NVarChar(100)
+  fitness_level String?   @db.NVarChar(50)
+  goal          String?   @db.NVarChar(100)
+  photo_url     String?   @db.NVarChar(500)
+  birth_date    DateTime? @db.Date
+  gender        String?   @db.NVarChar(50)
+  
+  user          users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model user_measurements {
+  id          String    @id @default(dbgenerated("NEWID()")) @db.UniqueIdentifier
+  user_id     String    @db.UniqueIdentifier
+  weight_kg   Decimal?  @db.Decimal(5, 2)
+  height_cm   Int?
+  recorded_at DateTime? @default(dbgenerated("GETDATE()")) @db.DateTime2
+  
+  user        users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model user_streaks {
+  user_id         String    @id @db.UniqueIdentifier
+  current_streak  Int?      @default(0)
+  longest_streak  Int?      @default(0)
+  last_activity   DateTime? @db.Date
+  
+  user            users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model follows {
+  follower_id String    @db.UniqueIdentifier
+  followed_id String    @db.UniqueIdentifier
+  created_at  DateTime? @default(dbgenerated("GETDATE()")) @db.DateTime2
+  
+  follower    users     @relation("follower", fields: [follower_id], references: [id], onUpdate: NoAction)
+  followed    users     @relation("followed", fields: [followed_id], references: [id], onUpdate: NoAction)
+
+  @@id([follower_id, followed_id])
+}
+
+model groups {
+  id             String           @id @default(dbgenerated("NEWID()")) @db.UniqueIdentifier
+  name           String           @db.NVarChar(100)
+  period_type    String?          @db.NVarChar(50)
+  group_members  group_members[]
+  group_rankings group_rankings[]
+}
+
+model group_members {
+  group_id   String    @db.UniqueIdentifier
+  user_id    String    @db.UniqueIdentifier
+  joined_at  DateTime? @default(dbgenerated("GETDATE()")) @db.DateTime2
+  
+  group      groups    @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  user       users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([group_id, user_id])
+}
+
+model group_rankings {
+  group_id         String @db.UniqueIdentifier
+  user_id          String @db.UniqueIdentifier
+  total_points     Int?   @default(0)
+  activities_count Int?   @default(0)
+  
+  group            groups @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  user             users  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([group_id, user_id])
+}
+
+model activities {
+  id                String             @id @default(dbgenerated("NEWID()")) @db.UniqueIdentifier
+  user_id           String             @db.UniqueIdentifier
+  activity_type     String             @db.NVarChar(50)
+  title             String?            @db.NVarChar(255)
+  start_time        DateTime?          @db.DateTime2
+  duration_sec      Int?
+  calories          Int?
+  distance_m        Decimal?           @db.Decimal(10, 2)
+  
+  user              users              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  activity_gps_data activity_gps_data?
+}
+
+model activity_gps_data {
+  activity_id String     @id @db.UniqueIdentifier
+  route_json  String?    @db.NVarChar(Max)
+  
+  activity    activities @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+}
+
+model workout_routines {
+  id                String              @id @default(dbgenerated("NEWID()")) @db.UniqueIdentifier
+  user_id           String              @db.UniqueIdentifier
+  name              String              @db.NVarChar(100)
+  day_of_week       String?             @db.NVarChar(50)
+  
+  user              users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  routine_exercises routine_exercises[]
+}
+
+model exercises {
+  id                String              @id @default(dbgenerated("NEWID()")) @db.UniqueIdentifier
+  name              String              @db.NVarChar(100)
+  muscle_group      String?             @db.NVarChar(100)
+  
+  routine_exercises routine_exercises[]
+}
+
+model routine_exercises {
+  id          String           @id @default(dbgenerated("NEWID()")) @db.UniqueIdentifier
+  routine_id  String           @db.UniqueIdentifier
+  exercise_id String           @db.UniqueIdentifier
+  sets        Int?
+  reps        Int?
+  
+  routine     workout_routines @relation(fields: [routine_id], references: [id], onDelete: Cascade)
+  exercise    exercises        @relation(fields: [exercise_id], references: [id], onDelete: Cascade)
+}
+
+model nutrition_targets {
+  user_id        String @id @db.UniqueIdentifier
+  daily_calories Int?
+  protein_g      Int?
+  carbs_g        Int?
+  fat_g          Int?
+  
+  user           users  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model food_logs {
+  id          String   @id @default(dbgenerated("NEWID()")) @db.UniqueIdentifier
+  user_id     String   @db.UniqueIdentifier
+  food_name   String   @db.NVarChar(255)
+  calories    Int
+  macros_json String?  @db.NVarChar(Max)
+  logged_date DateTime @db.Date
+  
+  user        users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}

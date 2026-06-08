@@ -1,0 +1,42 @@
+{
+  "Register Payload (POST /auth/register)": {
+    "email": "test@example.com",
+    "password": "mySecurePassword123",
+    "name": "Test User",
+    "birth_date": "1995-05-15",
+    "weight": 75.5,
+    "height": 180,
+    "gender": "male",
+    "fitness_level": "int",
+    "goal": "Gain Muscle"
+  },
+
+  "Login Payload (POST /auth/login)": {
+    "email": "test@example.com",
+    "password": "mySecurePassword123"
+  },
+
+  "Get Profile (GET /profile)": {
+    "Headers": {
+      "Authorization": "Bearer <YOUR_JWT_TOKEN>"
+    }
+  },
+
+  "Get Diet (GET /diet?date=2026-06-05)": {
+    "Headers": {
+      "Authorization": "Bearer <YOUR_JWT_TOKEN>"
+    }
+  },
+
+  "Add Food Log (POST /diet)": {
+    "Headers": {
+      "Authorization": "Bearer <YOUR_JWT_TOKEN>"
+    },
+    "Body": {
+      "food_name": "Chicken Breast (150g)",
+      "calories": 248,
+      "macros_json": "{\"proteins\": 46, \"carbs\": 0, \"fats\": 5}",
+      "logged_date": "2026-06-05"
+    }
+  }
+}
