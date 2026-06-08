@@ -50,8 +50,8 @@ Dentro da pasta `BackEndTorv`, crie um arquivo chamado `.env` (este arquivo já 
 JWT_SECRET="sua_chave_secreta_super_segura"
 
 # URL de Conexão com o SQL Server para o Prisma ORM
-# Ajuste conforme a autenticação do seu servidor local:
-DATABASE_URL="sqlserver://localhost:1433;database=torv;integratedSecurity=true;trustServerCertificate=true;"
+# Utilize o usuário 'TorvAPI_User' configurado nos scripts de segurança do banco:
+DATABASE_URL="sqlserver://localhost:1433;database=torv;user=TorvAPI_User;password=StrongPassword123!;encrypt=false;trustServerCertificate=true;"
 ```
 
 ### 3. Executando o Projeto
