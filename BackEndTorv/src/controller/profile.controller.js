@@ -47,7 +47,9 @@ class ProfileController {
   }
   async uploadPhoto(req, res) {
   try {
-    const { userId } = req.user;
+    console.log('=== UPLOAD PHOTO CHAMADO ===');
+    console.log('USER:', req.user);
+    console.log('FILE:', req.file);
 
     if (!req.file) {
       return res.status(400).json({

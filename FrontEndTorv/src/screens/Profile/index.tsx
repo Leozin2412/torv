@@ -88,37 +88,35 @@ export default function Profile() {
   };
 
   const uploadAvatar = async (uri: string) => {
-    setLoadingAvatar(true);
-    try {
-      const formData = new FormData();
-      const filename = uri.split('/').pop() || 'avatar.jpg';
-      
-      formData.append('photo', {
-        uri,
-        name: filename,
-        type: 'image/jpeg',
-      } as any);
+  setLoadingAvatar(true);
+  try {
+    const formData = new FormData();
+    const filename = uri.split('/').pop() || 'avatar.jpg';
 
-      const response = await api.post('/profile/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+    formData.append('photo', {
+      uri,
+      name: filename,
+      type: 'image/jpeg',
+    } as any);
 
-      if (response.data.photo_url) {
-        setAvatarUri(response.data.photo_url);
-      } else {
-        // Fallback for UI if backend isn't ready
-        setAvatarUri(uri);
-      }
-    } catch (error) {
-      console.log('Avatar upload error', error);
-      // Temporarily set it so UI reflects changes even if API fails during MVP
+    const response = await api.post('/profile/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    if (response.data.photo_url) {
+      setAvatarUri(response.data.photo_url);
+    } else {
       setAvatarUri(uri);
-    } finally {
-      setLoadingAvatar(false);
     }
-  };
+  } catch (error) {
+    console.log('Avatar upload error', error);
+    setAvatarUri(uri);
+  } finally {
+    setLoadingAvatar(false);
+  }
+};
 
   const handleOpenUsernameEdit = () => {
     setEditUsername(profileData?.username || user?.username || '');
