@@ -1,5 +1,5 @@
 const profileRepository = require('../repository/profile.repository');
-
+const { containerClient } = require('../services/azureStorage');
 class ProfileController {
   async getProfile(req, res) {
     try {
@@ -21,9 +21,7 @@ class ProfileController {
       // Calculate photo absolute URL
       const host = req.get('host');
       const protocol = req.protocol;
-      const photoUrl = profile.photo_url 
-        ? `${protocol}://${host}/uploads/${profile.photo_url}`
-        : null;
+      const photoUrl = profile.photo_url || null;
 
       res.status(200).json({
         id: user.id,
@@ -48,34 +46,50 @@ class ProfileController {
     }
   }
   async uploadPhoto(req, res) {
-    try {
-      console.log('--- [DEBUG] POST /profile/upload ---');
-      const { userId } = req.user;
+  try {
+    const { userId } = req.user;
 
-      if (!req.file) {
-        console.error('--- [DEBUG] Error: No file uploaded ---');
-        return res.status(400).json({ error: 'No image file provided' });
-      }
-
-      const fileName = req.file.filename;
-
-      // Update database
-      await profileRepository.updatePhotoUrl(userId, fileName);
-
-      // Generate full URL
-      const host = req.get('host');
-      const protocol = req.protocol;
-      const photoUrl = `${protocol}://${host}/uploads/${fileName}`;
-
-      res.status(200).json({
-        message: 'Profile photo updated successfully',
-        photo_url: photoUrl,
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'No image file provided'
       });
-    } catch (error) {
-      console.error('Upload Photo Error:', error);
-      res.status(500).json({ error: 'Internal server error uploading photo' });
     }
+
+    const blobName =
+      `profile-${userId}-${Date.now()}`;
+
+    const blockBlobClient =
+      containerClient.getBlockBlobClient(blobName);
+
+    await blockBlobClient.uploadData(
+      req.file.buffer,
+      {
+        blobHTTPHeaders: {
+          blobContentType: req.file.mimetype
+        }
+      }
+    );
+
+    const photoUrl = blockBlobClient.url;
+
+    await profileRepository.updatePhotoUrl(
+      userId,
+      photoUrl
+    );
+
+    res.status(200).json({
+      message: 'Profile photo updated successfully',
+      photo_url: photoUrl
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: 'Internal server error uploading photo'
+    });
   }
+}
 
   async updateProfile(req, res) {
     try {
