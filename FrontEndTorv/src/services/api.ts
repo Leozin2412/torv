@@ -9,7 +9,8 @@ import axios from 'axios';
 // const baseURL = 'http://10.0.2.2:3000';
 
 // 3. Se estiver testando no CELULAR FÍSICO (Expo Go na mesma rede Wi-Fi):
-const baseURL = 'http://10.0.2.2:3000';
+const baseURL =
+  'https://torv-api-e2h0hbbjaqcuaveq.brazilsouth-01.azurewebsites.net';
 
 const api = axios.create({
   baseURL,
