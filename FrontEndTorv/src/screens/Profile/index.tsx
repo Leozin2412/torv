@@ -89,6 +89,7 @@ export default function Profile() {
 
   const uploadAvatar = async (uri: string) => {
   setLoadingAvatar(true);
+
   try {
     const formData = new FormData();
     const filename = uri.split('/').pop() || 'avatar.jpg';
@@ -110,9 +111,15 @@ export default function Profile() {
     } else {
       setAvatarUri(uri);
     }
-  } catch (error) {
+
+  } catch (error: any) {
     console.log('Avatar upload error', error);
-    setAvatarUri(uri);
+
+    Alert.alert(
+      'Erro',
+      'Não foi possível atualizar a foto de perfil.'
+    );
+
   } finally {
     setLoadingAvatar(false);
   }
