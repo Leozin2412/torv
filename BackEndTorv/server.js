@@ -17,6 +17,13 @@ app.use(express.json());
 // Serve static files from profilePhotos folder (MVP for photo uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'profilePhotos')));
 
+
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    message: 'Torv API funcionando'
+  });
+});
 // Routes
 app.use('/auth', authRoutes);
 app.use('/profile', profileRoutes);

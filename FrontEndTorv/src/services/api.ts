@@ -9,7 +9,7 @@ import axios from 'axios';
 // const baseURL = 'http://10.0.2.2:3000';
 
 // 3. Se estiver testando no CELULAR FÍSICO (Expo Go na mesma rede Wi-Fi):
-const baseURL = 'http://192.168.84.1:3000';
+const baseURL = 'http://10.0.2.2:3000';
 
 const api = axios.create({
   baseURL,
