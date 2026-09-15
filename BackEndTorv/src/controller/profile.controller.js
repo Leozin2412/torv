@@ -1,31 +1,26 @@
+const path = require('path');
+const fs = require('fs');
+const { pipeline } = require('stream/promises');
 const profileRepository = require('../repository/profile.repository');
 
 class ProfileController {
-  async getProfile(req, res) {
+  async getProfile(request, reply) {
     try {
-      console.log('--- [DEBUG] GET /profile ---');
-      console.log('Authenticated User:', req.user);
-
-      const { userId } = req.user;
-
+      const { userId } = request.user;
       const user = await profileRepository.getUserProfile(userId);
 
       if (!user) {
-        console.error('--- [DEBUG] Error: User profile not found ---');
-        return res.status(404).json({ error: 'User profile not found' });
+        return reply.status(404).send({ error: 'User profile not found' });
       }
 
       const profile = user.user_profiles || {};
       const streaks = user.user_streaks || {};
 
-      // Calculate photo absolute URL
-      const host = req.get('host');
-      const protocol = req.protocol;
-      const photoUrl = profile.photo_url 
-        ? `${protocol}://${host}/uploads/${profile.photo_url}`
+      const photoUrl = profile.photo_url
+        ? `${request.protocol}://${request.headers.host}/uploads/${profile.photo_url}`
         : null;
 
-      res.status(200).json({
+      reply.status(200).send({
         id: user.id,
         email: user.email,
         username: profile.username,
@@ -37,55 +32,53 @@ class ProfileController {
         gender: profile.gender,
         streak: streaks.current_streak || 0,
         longest_streak: streaks.longest_streak || 0,
-        workouts_in_month: 0, // MVP static
-        followers: 0,         // MVP static
-        following: 0,         // MVP static
-        total_workouts: 0,    // MVP static
+        workouts_in_month: 0,
+        followers: 0,
+        following: 0,
+        total_workouts: 0,
       });
     } catch (error) {
-      console.error('Get Profile Error:', error);
-      res.status(500).json({ error: 'Internal server error fetching profile' });
+      request.log.error(error);
+      reply.status(500).send({ error: 'Internal server error fetching profile' });
     }
   }
-  async uploadPhoto(req, res) {
-    try {
-      console.log('--- [DEBUG] POST /profile/upload ---');
-      const { userId } = req.user;
 
-      if (!req.file) {
-        console.error('--- [DEBUG] Error: No file uploaded ---');
-        return res.status(400).json({ error: 'No image file provided' });
+  async uploadPhoto(request, reply) {
+    try {
+      const { userId } = request.user;
+      const data = await request.file();
+
+      if (!data) {
+        return reply.status(400).send({ error: 'No image file provided' });
       }
 
-      const fileName = req.file.filename;
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      const fileName = `profile-${userId}-${uniqueSuffix}${path.extname(data.filename)}`;
+      const destPath = path.join(__dirname, '../../profilePhotos', fileName);
 
-      // Update database
+      await pipeline(data.file, fs.createWriteStream(destPath));
+
       await profileRepository.updatePhotoUrl(userId, fileName);
 
-      // Generate full URL
-      const host = req.get('host');
-      const protocol = req.protocol;
-      const photoUrl = `${protocol}://${host}/uploads/${fileName}`;
+      const photoUrl = `${request.protocol}://${request.headers.host}/uploads/${fileName}`;
 
-      res.status(200).json({
+      reply.status(200).send({
         message: 'Profile photo updated successfully',
         photo_url: photoUrl,
       });
     } catch (error) {
-      console.error('Upload Photo Error:', error);
-      res.status(500).json({ error: 'Internal server error uploading photo' });
+      request.log.error(error);
+      reply.status(500).send({ error: 'Internal server error uploading photo' });
     }
   }
 
-  async updateProfile(req, res) {
+  async updateProfile(request, reply) {
     try {
-      console.log('--- [DEBUG] PUT /profile ---');
-      const { userId } = req.user;
-      const { username, goal } = req.body;
+      const { userId } = request.user;
+      const { username, goal } = request.body;
 
       if (!username && !goal) {
-        console.error('--- [DEBUG] Error: No fields to update ---');
-        return res.status(400).json({ error: 'No fields provided for update' });
+        return reply.status(400).send({ error: 'No fields provided for update' });
       }
 
       const dataToUpdate = {};
@@ -94,16 +87,16 @@ class ProfileController {
 
       const updatedProfile = await profileRepository.updateProfile(userId, dataToUpdate);
 
-      res.status(200).json({
+      reply.status(200).send({
         message: 'Profile updated successfully',
         profile: updatedProfile,
       });
     } catch (error) {
-      console.error('Update Profile Error:', error);
+      request.log.error(error);
       if (error.code === 'P2002') {
-        return res.status(409).json({ error: 'Username is already taken' });
+        return reply.status(409).send({ error: 'Username is already taken' });
       }
-      res.status(500).json({ error: 'Internal server error updating profile' });
+      reply.status(500).send({ error: 'Internal server error updating profile' });
     }
   }
 }
