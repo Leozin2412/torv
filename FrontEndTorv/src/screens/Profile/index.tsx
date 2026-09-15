@@ -80,24 +80,28 @@ export default function Profile() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
-        uploadAvatar(uri);
+        uploadAvatar(uri, result.assets[0].file);
       }
     } catch (error) {
       console.log('Image picker error', error);
     }
   };
 
-  const uploadAvatar = async (uri: string) => {
+  const uploadAvatar = async (uri: string, webFile?: File) => {
     setLoadingAvatar(true);
     try {
       const formData = new FormData();
-      const filename = uri.split('/').pop() || 'avatar.jpg';
-      
-      formData.append('photo', {
-        uri,
-        name: filename,
-        type: 'image/jpeg',
-      } as any);
+
+      if (webFile) {
+        formData.append('photo', webFile, webFile.name);
+      } else {
+        const filename = uri.split('/').pop() || 'avatar.jpg';
+        formData.append('photo', {
+          uri,
+          name: filename,
+          type: 'image/jpeg',
+        } as any);
+      }
 
       const response = await api.post('/profile/upload', formData);
 
