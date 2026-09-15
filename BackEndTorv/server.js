@@ -2,6 +2,11 @@ require('dotenv').config();
 const path = require('path');
 const fastify = require('fastify')({ logger: true });
 
+fastify.addHook('onResponse', (request, reply, done) => {
+  console.log(`${request.method} ${request.url} -> ${reply.statusCode} (${reply.elapsedTime.toFixed(1)}ms)`);
+  done();
+});
+
 fastify.register(require('@fastify/cors'), {});
 fastify.register(require('@fastify/multipart'));
 fastify.register(require('@fastify/static'), {
