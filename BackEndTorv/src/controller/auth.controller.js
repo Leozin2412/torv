@@ -70,7 +70,7 @@ class AuthController {
       );
 
       const photoUrl = user.user_profiles?.photo_url
-        ? `${request.protocol}://${request.hostname}/uploads/${user.user_profiles.photo_url}`
+        ? `${request.protocol}://${request.headers.host}/uploads/${user.user_profiles.photo_url}`
         : null;
 
       reply.status(200).send({
