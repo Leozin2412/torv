@@ -12,7 +12,9 @@ fastify.addHook('onResponse', (request, reply, done) => {
   done();
 });
 
-fastify.register(require('@fastify/cors'), {});
+fastify.register(require('@fastify/cors'), {
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+});
 fastify.register(require('@fastify/multipart'));
 fastify.register(require('@fastify/static'), {
   root: path.join(__dirname, 'profilePhotos'),
