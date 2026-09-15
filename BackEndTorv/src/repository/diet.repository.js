@@ -28,8 +28,8 @@ class DietRepository {
   }
 
   async getDietSummaryByDate(userId, targetDate) {
-    // Call the Stored Procedure for the exact summary
-    const result = await prisma.$queryRaw`EXEC sp_GetDietSummary @UserId=${userId}, @Date=${targetDate}`;
+    // Call the Postgres function for the exact summary
+    const result = await prisma.$queryRaw`SELECT * FROM fn_get_diet_summary(${userId}::uuid, ${targetDate}::date)`;
     return result[0]; // Assuming it returns a single row
   }
 
@@ -37,16 +37,16 @@ class DietRepository {
     const targetDate = data.logged_date ? new Date(data.logged_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
     const macrosJsonStr = typeof data.macros_json === 'string' ? data.macros_json : JSON.stringify(data.macros_json || { proteins: 0, carbs: 0, fats: 0 });
 
-    // Execute the updated Stored Procedure and capture the new summary balance
+    // Execute the Postgres function and capture the new summary balance
+    // Explicit ::integer cast on calories: Prisma's $queryRaw infers JS numbers as
+    // bigint, which doesn't match the function's `integer` parameter and Postgres
+    // won't implicitly cast bigint->integer for overload resolution.
     const result = await prisma.$queryRaw`
-      EXEC sp_LogFoodAndReturnRemaining 
-      @UserId=${userId}, 
-      @FoodName=${data.food_name}, 
-      @Calories=${data.calories}, 
-      @MacrosJson=${macrosJsonStr}, 
-      @Date=${targetDate}
+      SELECT * FROM fn_log_food_and_return_remaining(
+        ${userId}::uuid, ${data.food_name}, ${data.calories}::integer, ${macrosJsonStr}, ${targetDate}::date
+      )
     `;
-    
+
     return result[0];
   }
 
