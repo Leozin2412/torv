@@ -209,3 +209,54 @@ ALTER TABLE "nutrition_targets" ADD CONSTRAINT "nutrition_targets_user_id_fkey" 
 
 -- AddForeignKey
 ALTER TABLE "food_logs" ADD CONSTRAINT "food_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- UDFs
+
+CREATE OR REPLACE FUNCTION fn_get_consumed_calories(p_user_id uuid, p_target_date date)
+RETURNS int
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_total int;
+BEGIN
+  SELECT COALESCE(SUM(calories), 0) INTO v_total
+  FROM food_logs WHERE user_id = p_user_id AND logged_date = p_target_date;
+  RETURN v_total;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION fn_calculate_age(p_birth_date date)
+RETURNS int
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN DATE_PART('year', AGE(CURRENT_DATE, p_birth_date));
+END;
+$$;
+
+-- Views
+
+CREATE VIEW vw_dashboard_user_stats AS
+SELECT
+  u.id AS user_id,
+  p.name,
+  p.username,
+  p.photo_url,
+  s.current_streak,
+  s.longest_streak,
+  nt.daily_calories AS goal_calories
+FROM users u
+INNER JOIN user_profiles p ON u.id = p.user_id
+LEFT JOIN user_streaks s ON u.id = s.user_id
+LEFT JOIN nutrition_targets nt ON u.id = nt.user_id;
+
+CREATE VIEW vw_group_leaderboard AS
+SELECT
+  g.id AS group_id,
+  g.name AS group_name,
+  gr.total_points,
+  p.name AS user_name,
+  p.photo_url
+FROM group_rankings gr
+INNER JOIN groups g ON gr.group_id = g.id
+INNER JOIN user_profiles p ON gr.user_id = p.user_id;
