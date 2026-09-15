@@ -3,35 +3,21 @@ const jwt = require('jsonwebtoken');
 const authRepository = require('../repository/auth.repository');
 
 class AuthController {
-  async register(req, res) {
+  async register(request, reply) {
     try {
-      console.log('--- [DEBUG] POST /auth/register ---');
-      console.log('Request Body:', req.body);
-      
-      const typesReceived = Object.keys(req.body).reduce((acc, key) => {
-        acc[key] = typeof req.body[key];
-        return acc;
-      }, {});
-      console.log('Data Types Received:', typesReceived);
-
-      const { email, password, name, birth_date, weight, height, gender, fitness_level, goal } = req.body;
+      const { email, password, name, birth_date, weight, height, gender, fitness_level, goal } = request.body;
 
       if (!email || !password || !name) {
-        console.error('--- [DEBUG] Error: Missing required fields ---');
-        return res.status(400).json({ error: 'Missing required fields' });
+        return reply.status(400).send({ error: 'Missing required fields' });
       }
 
-      // Check if user already exists
       const existingUser = await authRepository.findUserByEmail(email);
       if (existingUser) {
-        console.error('--- [DEBUG] Error: User already exists with this email ---');
-        return res.status(409).json({ error: 'User already exists with this email' });
+        return reply.status(409).send({ error: 'User already exists with this email' });
       }
 
-      // Convert birth_date to Date object
       let parsedBirthDate = null;
       if (birth_date) {
-        // Convert "DD/MM/YYYY" to "YYYY-MM-DD" for correct parsing
         if (birth_date.includes('/')) {
           const [day, month, year] = birth_date.split('/');
           parsedBirthDate = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
@@ -40,58 +26,41 @@ class AuthController {
         }
 
         if (isNaN(parsedBirthDate.getTime())) {
-          console.error('--- [DEBUG] Error: Invalid birth_date format ---', birth_date);
-          return res.status(400).json({ error: 'Invalid birth_date format' });
+          return reply.status(400).send({ error: 'Invalid birth_date format' });
         }
       }
 
-      // Encrypt password
       const password_hash = await bcrypt.hash(password, 10);
-      const username = email.split('@')[0] + Math.floor(Math.random() * 1000); // Simple username generator
+      const username = email.split('@')[0] + Math.floor(Math.random() * 1000);
 
-      // Save to database
       const user = await authRepository.createUser({
-        email,
-        password_hash,
-        username,
-        name,
-        birth_date: parsedBirthDate,
-        weight,
-        height,
-        gender,
-        fitness_level,
-        goal,
+        email, password_hash, username, name,
+        birth_date: parsedBirthDate, weight, height, gender, fitness_level, goal,
       });
 
-      res.status(201).json({ message: 'User registered successfully', userId: user.id });
+      reply.status(201).send({ message: 'User registered successfully', userId: user.id });
     } catch (error) {
-      console.error('Registration Error:', error);
-      res.status(500).json({ error: 'Internal server error during registration' });
+      request.log.error(error);
+      reply.status(500).send({ error: 'Internal server error during registration' });
     }
   }
 
-  async login(req, res) {
+  async login(request, reply) {
     try {
-      console.log('--- [DEBUG] POST /auth/login ---');
-      console.log('Request Body (excluding password):', { email: req.body.email });
-
-      const { email, password } = req.body;
+      const { email, password } = request.body;
 
       if (!email || !password) {
-        console.error('--- [DEBUG] Error: Missing email or password ---');
-        return res.status(400).json({ error: 'Missing email or password' });
+        return reply.status(400).send({ error: 'Missing email or password' });
       }
 
       const user = await authRepository.findUserByEmail(email);
       if (!user) {
-        console.error('--- [DEBUG] Error: Invalid credentials (user not found) ---');
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return reply.status(401).send({ error: 'Invalid credentials' });
       }
 
       const isPasswordValid = await bcrypt.compare(password, user.password_hash);
       if (!isPasswordValid) {
-        console.error('--- [DEBUG] Error: Invalid credentials (wrong password) ---');
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return reply.status(401).send({ error: 'Invalid credentials' });
       }
 
       const token = jwt.sign(
@@ -100,13 +69,11 @@ class AuthController {
         { expiresIn: '7d' }
       );
 
-      const host = req.get('host');
-      const protocol = req.protocol;
-      const photoUrl = user.user_profiles?.photo_url 
-        ? `${protocol}://${host}/uploads/${user.user_profiles.photo_url}`
+      const photoUrl = user.user_profiles?.photo_url
+        ? `${request.protocol}://${request.headers.host}/uploads/${user.user_profiles.photo_url}`
         : null;
 
-      res.status(200).json({
+      reply.status(200).send({
         message: 'Login successful',
         token,
         user: {
@@ -119,8 +86,8 @@ class AuthController {
         },
       });
     } catch (error) {
-      console.error('Login Error:', error);
-      res.status(500).json({ error: 'Internal server error during login' });
+      request.log.error(error);
+      reply.status(500).send({ error: 'Internal server error during login' });
     }
   }
 }

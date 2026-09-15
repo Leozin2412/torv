@@ -1,46 +1,41 @@
 -- =======================================================================
 -- ARQUIVO: Gestão de Usuários e Controle de Performance
 -- OBJETIVO: Demonstrar os entregáveis acadêmicos aplicados ao escopo atual
+-- Postgres (Supabase) — documentation copy of what's actually deployed.
+-- Source of truth: BackEndTorv/prisma/migrations/20260915170948_init_postgres/migration.sql
+-- This file has no runtime effect; it exists for readability/presentation only.
 -- =======================================================================
-
-USE TorvDB;
-GO
 
 -- =======================================================================
 -- 1. GESTÃO DE USUÁRIOS DO BANCO DE DADOS
 -- =======================================================================
 -- Explicação para a apresentação:
 -- Mesmo o projeto estando no início, a arquitetura de segurança já foi desenhada.
--- Não utilizaremos o usuário 'sa' (System Admin) na conexão da API por motivos de segurança.
--- Criamos usuários com o Princípio do Menor Privilégio.
+-- Não utilizaremos o usuário 'postgres' (superuser) na conexão da API por motivos
+-- de segurança. Criamos roles com o Princípio do Menor Privilégio.
+--
+-- Postgres não separa LOGIN e USER como o SQL Server: uma ROLE com a opção LOGIN
+-- já cumpre os dois papéis.
+--
+-- NUNCA escreva a senha real neste arquivo — este é um documento versionado no
+-- git. As senhas reais existem apenas em BackEndTorv/.env (gitignored) e na nota
+-- Maestri de credenciais; aqui aparecem como placeholder.
 
--- Passo 1.1: Criar os Logins no SQL Server (Nível de Servidor)
--- Nota: Caso já existam, você pode ignorar ou apagar antes
-CREATE LOGIN TorvAPI_User WITH PASSWORD = 'StrongPassword123!';
-CREATE LOGIN TorvAnalyst_User WITH PASSWORD = 'StrongPassword123!';
-GO
+-- Passo 1.1: Criar a role da API (usada pelo Prisma via DATABASE_URL)
+-- Precisa ler, escrever e executar as functions/triggers da aplicação.
+CREATE ROLE torv_api LOGIN PASSWORD '<set-at-deploy-time>';
+GRANT USAGE ON SCHEMA public TO torv_api;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO torv_api;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO torv_api;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO torv_api;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO torv_api;
 
--- Passo 1.2: Criar os Usuários mapeados no banco TorvDB
-CREATE USER TorvAPI_User FOR LOGIN TorvAPI_User;
-CREATE USER TorvAnalyst_User FOR LOGIN TorvAnalyst_User;
-GO
-
--- Passo 1.3: Atribuição de Permissões (Roles)
--- O usuário da API (que o Prisma ORM usará no .env) precisa ler, escrever e deletar.
-ALTER ROLE db_datareader ADD MEMBER TorvAPI_User;
-ALTER ROLE db_datawriter ADD MEMBER TorvAPI_User;
-ALTER ROLE db_ddladmin ADD MEMBER TorvAPI_User; -- Necessário apenas se o Prisma for rodar migrations
-
--- Permissão explícita para a API conseguir rodar nossas Stored Procedures e Functions
-GRANT EXECUTE TO TorvAPI_User;
-
--- O usuário Analista (que poderia conectar um PowerBI no futuro) só pode LER dados,
--- e o ideal é que leia apenas as Views, protegendo os dados sensíveis (senhas).
-ALTER ROLE db_datareader ADD MEMBER TorvAnalyst_User;
--- Para um nível mais avançado na apresentação:
--- DENY SELECT ON users TO TorvAnalyst_User; 
--- GRANT SELECT ON vw_Dashboard_User_Stats TO TorvAnalyst_User;
-GO
+-- Passo 1.2: Criar a role do Analista (poderia conectar um PowerBI no futuro)
+-- Só pode LER, e apenas pelas Views — nunca tabelas diretamente, protegendo
+-- dados sensíveis (senhas, e-mails).
+CREATE ROLE torv_analyst LOGIN PASSWORD '<set-at-deploy-time>';
+GRANT USAGE ON SCHEMA public TO torv_analyst;
+GRANT SELECT ON vw_dashboard_user_stats, vw_group_leaderboard TO torv_analyst;
 
 
 -- =======================================================================
@@ -49,40 +44,29 @@ GO
 -- Explicação para a apresentação:
 -- Como a regra de negócio central (cálculo de calorias) roda todo dia e consulta
 -- a tabela 'food_logs' filtrando por 'user_id' e 'logged_date', essa tabela sofreria
--- problemas de lentidão quando a base crescesse (Table Scan).
--- Para prevenir isso, aplicamos controle de performance através de Índices e da 
--- própria utilização de Stored Procedures (que pré-compilam o plano de execução).
+-- problemas de lentidão quando a base crescesse (Sequential Scan).
+-- Para prevenir isso, aplicamos controle de performance através de Índices.
 
--- Passo 2.1: Criar Índice Composto (Non-Clustered) para a tabela de Consumo (food_logs)
--- Este índice cobre exatamente o filtro usado na nossa Stored Procedure 'sp_GetDietSummary'
--- e na function 'fn_GetConsumedCalories'.
-CREATE NONCLUSTERED INDEX IX_FoodLogs_UserId_Date 
+-- Passo 2.1: Criar Índice Composto para a tabela de Consumo (food_logs)
+-- Este índice cobre exatamente o filtro usado em 'fn_get_diet_summary'
+-- e na function 'fn_get_consumed_calories'.
+CREATE INDEX ix_food_logs_user_id_date
 ON food_logs (user_id, logged_date)
-INCLUDE (calories); -- O 'INCLUDE' melhora muito a performance pois evita buscar na tabela física (Key Lookup)
-GO
+INCLUDE (calories); -- O 'INCLUDE' evita ir até a tabela física (equivalente ao Key Lookup do SQL Server)
 
 -- Passo 2.2: Criar Índice nas Chaves Estrangeiras (Foreign Keys)
--- O SQL Server não cria índices automaticamente para chaves estrangeiras.
--- Criá-los melhora drasticamente a performance dos JOINs (por exemplo, na view 'vw_Dashboard_User_Stats')
-CREATE NONCLUSTERED INDEX IX_UserProfiles_UserId 
+-- O Postgres, assim como o SQL Server, não cria índices automaticamente para
+-- chaves estrangeiras. Criá-los melhora drasticamente a performance dos JOINs
+-- (por exemplo, na view 'vw_dashboard_user_stats').
+CREATE INDEX ix_user_profiles_user_id
 ON user_profiles (user_id);
-GO
 
-CREATE NONCLUSTERED INDEX IX_Activities_UserId 
+CREATE INDEX ix_activities_user_id
 ON activities (user_id);
-GO
 
 -- =======================================================================
 -- 3. GESTÃO DE ARMAZENAMENTO FÍSICO (MANUTENÇÃO)
 -- =======================================================================
--- Explicação para a apresentação:
--- Quando os usuários deletarem refeições antigas ou contas, o SQL Server não
--- diminui o tamanho do arquivo no disco automaticamente (o espaço fica vazio).
--- A função SHRINKDATABASE serve para recuperar esse espaço físico perdido.
--- Em produção, isso rodaria em um "Job" automático (ex: 1 vez por semana de madrugada).
-
--- Recupera o espaço físico em disco não utilizado do banco de dados
-DBCC SHRINKDATABASE (TorvDB);
-GO
+-- Physical storage reclamation (VACUUM FULL) is out of scope for this migration; Supabase-managed Postgres handles autovacuum automatically.
 
 -- FIM DO SCRIPT

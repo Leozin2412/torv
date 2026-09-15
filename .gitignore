@@ -20,3 +20,6 @@ yarn-error.log*
 dist/
 build/
 .expo/
+
+# Superpowers scratch workspaces (per-plan ledgers/briefs/reports)
+.superpowers/

@@ -1,13 +1,15 @@
-const express = require('express');
-const router = express.Router();
 const dietController = require('../controller/diet.controller');
 const authenticateToken = require('../middlewares/auth.middleware');
 
-router.get('/summary', authenticateToken, dietController.getDietSummary);
-router.get('/', authenticateToken, dietController.getDiet);
-router.post('/', authenticateToken, dietController.addFoodLog);
-router.put('/targets', authenticateToken, dietController.updateNutritionTargets);
-router.put('/:logId', authenticateToken, dietController.updateFoodLog);
-router.delete('/:logId', authenticateToken, dietController.deleteFoodLog);
+async function dietRoutes(fastify) {
+  fastify.addHook('preHandler', authenticateToken);
 
-module.exports = router;
+  fastify.get('/summary', dietController.getDietSummary);
+  fastify.get('/', dietController.getDiet.bind(dietController));
+  fastify.post('/', dietController.addFoodLog);
+  fastify.put('/targets', dietController.updateNutritionTargets);
+  fastify.put('/:logId', dietController.updateFoodLog);
+  fastify.delete('/:logId', dietController.deleteFoodLog);
+}
+
+module.exports = dietRoutes;
