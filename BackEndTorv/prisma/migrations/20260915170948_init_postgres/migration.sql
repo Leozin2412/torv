@@ -260,3 +260,98 @@ SELECT
 FROM group_rankings gr
 INNER JOIN groups g ON gr.group_id = g.id
 INNER JOIN user_profiles p ON gr.user_id = p.user_id;
+
+-- Diet summary (replaces sp_GetDietSummary)
+-- Note: preserves the original T-SQL's JSON_VALUE('$.protein')/('$.fat') key names
+-- (singular) exactly, even though other parts of the app default macros_json to
+-- {proteins, carbs, fats} (plural) — this is pre-existing behavior, not something
+-- this migration fixes.
+
+CREATE OR REPLACE FUNCTION fn_get_diet_summary(p_user_id uuid, p_date date)
+RETURNS TABLE(
+  "GoalCalories" int, "ConsumedCalories" int, "RemainingCalories" int,
+  "GoalProtein" int, "ConsumedProtein" int, "RemainingProtein" int,
+  "GoalCarbs" int, "ConsumedCarbs" int, "RemainingCarbs" int,
+  "GoalFat" int, "ConsumedFat" int, "RemainingFat" int
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_goal_calories int := 2000;
+  v_goal_protein int := 150;
+  v_goal_carbs int := 250;
+  v_goal_fat int := 65;
+  v_consumed_calories int := 0;
+  v_consumed_protein int := 0;
+  v_consumed_carbs int := 0;
+  v_consumed_fat int := 0;
+BEGIN
+  SELECT COALESCE(nt.daily_calories, 2000), COALESCE(nt.protein_g, 150),
+         COALESCE(nt.carbs_g, 250), COALESCE(nt.fat_g, 65)
+  INTO v_goal_calories, v_goal_protein, v_goal_carbs, v_goal_fat
+  FROM nutrition_targets nt WHERE nt.user_id = p_user_id;
+
+  SELECT
+    COALESCE(SUM(fl.calories), 0),
+    COALESCE(SUM((fl.macros_json::json->>'protein')::int), 0),
+    COALESCE(SUM((fl.macros_json::json->>'carbs')::int), 0),
+    COALESCE(SUM((fl.macros_json::json->>'fat')::int), 0)
+  INTO v_consumed_calories, v_consumed_protein, v_consumed_carbs, v_consumed_fat
+  FROM food_logs fl
+  WHERE fl.user_id = p_user_id AND fl.logged_date = p_date;
+
+  RETURN QUERY SELECT
+    v_goal_calories, v_consumed_calories, (v_goal_calories - v_consumed_calories),
+    v_goal_protein, v_consumed_protein, (v_goal_protein - v_consumed_protein),
+    v_goal_carbs, v_consumed_carbs, (v_goal_carbs - v_consumed_carbs),
+    v_goal_fat, v_consumed_fat, (v_goal_fat - v_consumed_fat);
+END;
+$$;
+
+-- Log food + return remaining (replaces sp_LogFoodAndReturnRemaining)
+
+CREATE OR REPLACE FUNCTION fn_log_food_and_return_remaining(
+  p_user_id uuid, p_food_name varchar(255), p_calories int, p_macros_json text, p_date date
+)
+RETURNS TABLE(
+  "GoalCalories" int, "ConsumedCalories" int, "RemainingCalories" int,
+  "GoalProtein" int, "ConsumedProtein" int, "RemainingProtein" int,
+  "GoalCarbs" int, "ConsumedCarbs" int, "RemainingCarbs" int,
+  "GoalFat" int, "ConsumedFat" int, "RemainingFat" int
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  INSERT INTO food_logs (user_id, food_name, calories, macros_json, logged_date)
+  VALUES (p_user_id, p_food_name, p_calories, p_macros_json, p_date);
+
+  RETURN QUERY SELECT * FROM fn_get_diet_summary(p_user_id, p_date);
+END;
+$$;
+
+-- Register new user (replaces sp_RegisterNewUser)
+-- Ported for BancoDeDadosTorv documentation parity only. auth.repository.js keeps
+-- using Prisma's nested `create` (already transactional) — this function is not
+-- called from BackEndTorv/src.
+
+CREATE OR REPLACE FUNCTION fn_register_new_user(
+  p_email varchar(255), p_password_hash varchar(255), p_username varchar(100), p_name varchar(100)
+)
+RETURNS uuid
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_new_user_id uuid := gen_random_uuid();
+BEGIN
+  INSERT INTO users (id, email, password_hash, auth_provider)
+  VALUES (v_new_user_id, p_email, p_password_hash, 'email');
+
+  INSERT INTO user_profiles (user_id, username, name)
+  VALUES (v_new_user_id, p_username, p_name);
+
+  INSERT INTO user_streaks (user_id, current_streak, longest_streak)
+  VALUES (v_new_user_id, 0, 0);
+
+  RETURN v_new_user_id;
+END;
+$$;
