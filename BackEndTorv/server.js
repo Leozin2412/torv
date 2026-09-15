@@ -1,6 +1,6 @@
 require('dotenv').config();
 const path = require('path');
-const fastify = require('fastify')({ logger: true });
+const fastify = require('fastify')({ logger: true, disableRequestLogging: true });
 
 fastify.addHook('onResponse', (request, reply, done) => {
   console.log(`${request.method} ${request.url} -> ${reply.statusCode} (${reply.elapsedTime.toFixed(1)}ms)`);
