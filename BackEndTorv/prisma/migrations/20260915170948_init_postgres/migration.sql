@@ -431,3 +431,23 @@ EXECUTE FUNCTION trg_fn_add_points_to_group_ranking();
 CREATE INDEX ix_food_logs_user_id_date ON food_logs (user_id, logged_date) INCLUDE (calories);
 CREATE INDEX ix_user_profiles_user_id ON user_profiles (user_id);
 CREATE INDEX ix_activities_user_id ON activities (user_id);
+
+-- Roles (least privilege)
+-- NOTE: passwords below are placeholders, not the real generated values (Global
+-- Constraint: never commit real secrets). The live database already has these
+-- roles created with real, randomly generated passwords stored only in
+-- BackEndTorv/.env (gitignored) and the Maestri credentials note. A fresh
+-- environment applying this migration from scratch must run
+-- ALTER ROLE torv_api PASSWORD '...' / ALTER ROLE torv_analyst PASSWORD '...'
+-- with real generated passwords afterward.
+
+CREATE ROLE torv_api LOGIN PASSWORD '<REDACTED_SET_VIA_ENV>';
+GRANT USAGE ON SCHEMA public TO torv_api;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO torv_api;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO torv_api;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO torv_api;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO torv_api;
+
+CREATE ROLE torv_analyst LOGIN PASSWORD '<REDACTED_SET_VIA_ENV>';
+GRANT USAGE ON SCHEMA public TO torv_analyst;
+GRANT SELECT ON vw_dashboard_user_stats, vw_group_leaderboard TO torv_analyst;
