@@ -286,10 +286,18 @@ DECLARE
   v_consumed_carbs int := 0;
   v_consumed_fat int := 0;
 BEGIN
-  SELECT COALESCE(nt.daily_calories, 2000), COALESCE(nt.protein_g, 150),
-         COALESCE(nt.carbs_g, 250), COALESCE(nt.fat_g, 65)
-  INTO v_goal_calories, v_goal_protein, v_goal_carbs, v_goal_fat
-  FROM nutrition_targets nt WHERE nt.user_id = p_user_id;
+  -- Fix (Task 6 review): T-SQL's `SELECT @var = expr FROM ... WHERE ...` leaves @var
+  -- unchanged on zero matching rows, but PL/pgSQL's non-aggregate `SELECT ... INTO`
+  -- sets the target to NULL on zero rows, silently defeating the COALESCE fallback
+  -- and the declared defaults above. Scalar subqueries always evaluate to exactly
+  -- one value (NULL on no match), so COALESCE works here the same way it already
+  -- does for the aggregate-based consumed-totals query below.
+  SELECT
+    COALESCE((SELECT nt.daily_calories FROM nutrition_targets nt WHERE nt.user_id = p_user_id), 2000),
+    COALESCE((SELECT nt.protein_g FROM nutrition_targets nt WHERE nt.user_id = p_user_id), 150),
+    COALESCE((SELECT nt.carbs_g FROM nutrition_targets nt WHERE nt.user_id = p_user_id), 250),
+    COALESCE((SELECT nt.fat_g FROM nutrition_targets nt WHERE nt.user_id = p_user_id), 65)
+  INTO v_goal_calories, v_goal_protein, v_goal_carbs, v_goal_fat;
 
   SELECT
     COALESCE(SUM(fl.calories), 0),
