@@ -99,11 +99,7 @@ export default function Profile() {
         type: 'image/jpeg',
       } as any);
 
-      const response = await api.post('/profile/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post('/profile/upload', formData);
 
       if (response.data.photo_url) {
         setAvatarUri(response.data.photo_url);
@@ -113,8 +109,7 @@ export default function Profile() {
       }
     } catch (error) {
       console.log('Avatar upload error', error);
-      // Temporarily set it so UI reflects changes even if API fails during MVP
-      setAvatarUri(uri);
+      Alert.alert('Erro', 'Não foi possível atualizar a foto de perfil.');
     } finally {
       setLoadingAvatar(false);
     }
