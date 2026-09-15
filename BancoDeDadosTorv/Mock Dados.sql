@@ -1,7 +1,12 @@
-use TorvDB;
+-- Postgres (Supabase) — documentation copy of sample seed data, translated from
+-- the original SQL Server mock data script. No runtime effect on its own; meant
+-- to be run manually against a fresh environment for demos/testing.
 -- =================================================================================
 -- 1. CARGA DE MOCK DE DADOS (5 LINHAS POR TABELA)
 -- =================================================================================
+-- Nota: não é necessário nenhum equivalente a SET IDENTITY_INSERT — as colunas de
+-- id usam UUID com DEFAULT gen_random_uuid(), e informar o valor explicitamente
+-- (como abaixo) simplesmente sobrescreve o default, sem exigir nenhum passo extra.
 
 -- 1.1 Módulo de Autenticação e Perfil
 INSERT INTO users (id, email, password_hash, auth_provider) VALUES
@@ -27,11 +32,11 @@ INSERT INTO user_measurements (user_id, weight_kg, height_cm) VALUES
 
 -- 1.2 Módulo de Gamificação e Social
 INSERT INTO user_streaks (user_id, current_streak, longest_streak, last_activity) VALUES
-('A1000000-0000-0000-0000-000000000001', 12, 21, DATEADD(day, -1, GETDATE())), -- Treinou ontem
-('A1000000-0000-0000-0000-000000000002', 5, 15, DATEADD(day, -1, GETDATE())),
-('A1000000-0000-0000-0000-000000000003', 0, 45, DATEADD(day, -5, GETDATE())), -- Ofensiva quebrada
-('A1000000-0000-0000-0000-000000000004', 2, 2, DATEADD(day, -1, GETDATE())),
-('A1000000-0000-0000-0000-000000000005', 1, 10, GETDATE()); -- Treinou hoje
+('A1000000-0000-0000-0000-000000000001', 12, 21, now() - interval '1 day'), -- Treinou ontem
+('A1000000-0000-0000-0000-000000000002', 5, 15, now() - interval '1 day'),
+('A1000000-0000-0000-0000-000000000003', 0, 45, now() - interval '5 days'), -- Ofensiva quebrada
+('A1000000-0000-0000-0000-000000000004', 2, 2, now() - interval '1 day'),
+('A1000000-0000-0000-0000-000000000005', 1, 10, now()); -- Treinou hoje
 
 INSERT INTO follows (follower_id, followed_id) VALUES
 ('A1000000-0000-0000-0000-000000000001', 'A1000000-0000-0000-0000-000000000002'),
@@ -92,16 +97,16 @@ INSERT INTO nutrition_targets (user_id, daily_calories, protein_g, carbs_g, fat_
 ('A1000000-0000-0000-0000-000000000005', 2200, 140, 220, 70);
 
 INSERT INTO food_logs (user_id, food_name, calories, logged_date, macros_json) VALUES
-('A1000000-0000-0000-0000-000000000001', 'Ovos Mexidos (3 und)', 210, GETDATE(), '{"protein":18,"carbs":2,"fat":15}'),
-('A1000000-0000-0000-0000-000000000001', 'Aveia c/ Banana', 350, GETDATE(), '{"protein":8,"carbs":60,"fat":5}'),
-('A1000000-0000-0000-0000-000000000002', 'Salada de Frango', 400, GETDATE(), '{"protein":35,"carbs":10,"fat":20}'),
-('A1000000-0000-0000-0000-000000000003', 'Whey Protein', 120, GETDATE(), '{"protein":24,"carbs":3,"fat":1}'),
-('A1000000-0000-0000-0000-000000000004', 'Maçã', 80, GETDATE(), '{"protein":0,"carbs":20,"fat":0}');
+('A1000000-0000-0000-0000-000000000001', 'Ovos Mexidos (3 und)', 210, now(), '{"protein":18,"carbs":2,"fat":15}'),
+('A1000000-0000-0000-0000-000000000001', 'Aveia c/ Banana', 350, now(), '{"protein":8,"carbs":60,"fat":5}'),
+('A1000000-0000-0000-0000-000000000002', 'Salada de Frango', 400, now(), '{"protein":35,"carbs":10,"fat":20}'),
+('A1000000-0000-0000-0000-000000000003', 'Whey Protein', 120, now(), '{"protein":24,"carbs":3,"fat":1}'),
+('A1000000-0000-0000-0000-000000000004', 'Maçã', 80, now(), '{"protein":0,"carbs":20,"fat":0}');
 
 -- Inserindo algumas atividades passadas (para não engatilhar as triggers de teste ainda)
 INSERT INTO activities (id, user_id, activity_type, title, start_time, duration_sec, calories, distance_m) VALUES
-(NEWID(), 'A1000000-0000-0000-0000-000000000001', 'Caminhada', 'Caminhada Matinal', DATEADD(day, -1, GETDATE()), 1920, 180, 3200),
-(NEWID(), 'A1000000-0000-0000-0000-000000000002', 'Corrida', 'Corrida ao ar livre', DATEADD(day, -1, GETDATE()), 1692, 312, 5400),
-(NEWID(), 'A1000000-0000-0000-0000-000000000003', 'Musculação', 'Supino Reto - PR', DATEADD(day, -5, GETDATE()), 3600, 480, NULL),
-(NEWID(), 'A1000000-0000-0000-0000-000000000004', 'Yoga', 'Yoga Flow', DATEADD(day, -1, GETDATE()), 1800, 150, NULL),
-(NEWID(), 'A1000000-0000-0000-0000-000000000005', 'Ciclismo', 'Pedalada noturna', GETDATE(), 3600, 500, 15000);
+(gen_random_uuid(), 'A1000000-0000-0000-0000-000000000001', 'Caminhada', 'Caminhada Matinal', now() - interval '1 day', 1920, 180, 3200),
+(gen_random_uuid(), 'A1000000-0000-0000-0000-000000000002', 'Corrida', 'Corrida ao ar livre', now() - interval '1 day', 1692, 312, 5400),
+(gen_random_uuid(), 'A1000000-0000-0000-0000-000000000003', 'Musculação', 'Supino Reto - PR', now() - interval '5 days', 3600, 480, NULL),
+(gen_random_uuid(), 'A1000000-0000-0000-0000-000000000004', 'Yoga', 'Yoga Flow', now() - interval '1 day', 1800, 150, NULL),
+(gen_random_uuid(), 'A1000000-0000-0000-0000-000000000005', 'Ciclismo', 'Pedalada noturna', now(), 3600, 500, 15000);
