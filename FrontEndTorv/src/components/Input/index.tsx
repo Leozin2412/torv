@@ -31,7 +31,7 @@ export const Input: React.FC<InputProps> = ({ label, error, style, ...rest }) =>
         }}
         {...rest}
       />
-      {error && <Text style={styles.error}>{error}</Text>}
+      {!!error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
 };
