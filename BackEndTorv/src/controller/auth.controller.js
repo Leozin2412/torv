@@ -41,6 +41,7 @@ class AuthController {
       reply.status(201).send({ message: 'User registered successfully', userId: user.id });
     } catch (error) {
       request.log.error(error);
+      console.error(error);
       reply.status(500).send({ error: 'Internal server error during registration' });
     }
   }
@@ -87,6 +88,7 @@ class AuthController {
       });
     } catch (error) {
       request.log.error(error);
+      console.error(error);
       reply.status(500).send({ error: 'Internal server error during login' });
     }
   }

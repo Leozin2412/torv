@@ -55,6 +55,7 @@ class DietController {
       reply.status(200).send(finalResponse);
     } catch (error) {
       request.log.error(error);
+      console.error(error);
       reply.status(500).send({ error: 'Internal server error fetching diet summary' });
     }
   }
@@ -83,6 +84,7 @@ class DietController {
       reply.status(201).send(formatDietSummaryResponse(date, spResult, foodLogs || []));
     } catch (error) {
       request.log.error(error);
+      console.error(error);
       reply.status(500).send({ error: 'Internal server error creating food log' });
     }
   }
@@ -111,6 +113,7 @@ class DietController {
       reply.status(200).send(formatDietSummaryResponse(date, spResult, foodLogs || []));
     } catch (error) {
       request.log.error(error);
+      console.error(error);
       reply.status(500).send({ error: 'Internal server error updating food log' });
     }
   }
@@ -138,6 +141,7 @@ class DietController {
       reply.status(200).send(formatDietSummaryResponse(date, spResult, foodLogs || []));
     } catch (error) {
       request.log.error(error);
+      console.error(error);
       reply.status(500).send({ error: 'Internal server error deleting food log' });
     }
   }
@@ -162,6 +166,7 @@ class DietController {
       reply.status(200).send(formatDietSummaryResponse(date, spResult, foodLogs || []));
     } catch (error) {
       request.log.error(error);
+      console.error(error);
       reply.status(500).send({ error: 'Internal server error updating targets' });
     }
   }

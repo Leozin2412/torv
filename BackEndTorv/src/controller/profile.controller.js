@@ -39,6 +39,7 @@ class ProfileController {
       });
     } catch (error) {
       request.log.error(error);
+      console.error(error);
       reply.status(500).send({ error: 'Internal server error fetching profile' });
     }
   }
@@ -68,6 +69,7 @@ class ProfileController {
       });
     } catch (error) {
       request.log.error(error);
+      console.error(error);
       reply.status(500).send({ error: 'Internal server error uploading photo' });
     }
   }
@@ -93,6 +95,7 @@ class ProfileController {
       });
     } catch (error) {
       request.log.error(error);
+      console.error(error);
       if (error.code === 'P2002') {
         return reply.status(409).send({ error: 'Username is already taken' });
       }
