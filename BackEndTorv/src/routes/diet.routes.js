@@ -5,7 +5,7 @@ async function dietRoutes(fastify) {
   fastify.addHook('preHandler', authenticateToken);
 
   fastify.get('/summary', dietController.getDietSummary);
-  fastify.get('/', dietController.getDiet);
+  fastify.get('/', dietController.getDiet.bind(dietController));
   fastify.post('/', dietController.addFoodLog);
   fastify.put('/targets', dietController.updateNutritionTargets);
   fastify.put('/:logId', dietController.updateFoodLog);
