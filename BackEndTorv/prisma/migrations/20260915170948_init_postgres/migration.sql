@@ -363,3 +363,71 @@ BEGIN
   RETURN v_new_user_id;
 END;
 $$;
+
+-- Triggers
+
+CREATE OR REPLACE FUNCTION trg_fn_update_streak_on_activity()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_activity_date date;
+  v_last_activity date;
+  v_current_streak int;
+  v_longest_streak int;
+BEGIN
+  v_activity_date := (NEW.start_time)::date;
+
+  SELECT last_activity, current_streak, longest_streak
+  INTO v_last_activity, v_current_streak, v_longest_streak
+  FROM user_streaks WHERE user_id = NEW.user_id;
+
+  IF v_last_activity IS NULL OR (v_activity_date - v_last_activity) = 1 THEN
+    v_current_streak := COALESCE(v_current_streak, 0) + 1;
+  ELSIF (v_activity_date - v_last_activity) > 1 THEN
+    v_current_streak := 1;
+  END IF;
+
+  IF v_current_streak > v_longest_streak THEN
+    v_longest_streak := v_current_streak;
+  END IF;
+
+  UPDATE user_streaks
+  SET current_streak = v_current_streak,
+      longest_streak = v_longest_streak,
+      last_activity = v_activity_date
+  WHERE user_id = NEW.user_id;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_update_streak_on_activity
+AFTER INSERT ON activities
+FOR EACH ROW
+EXECUTE FUNCTION trg_fn_update_streak_on_activity();
+
+CREATE OR REPLACE FUNCTION trg_fn_add_points_to_group_ranking()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  UPDATE group_rankings
+  SET total_points = total_points + 10,
+      activities_count = activities_count + 1
+  WHERE user_id = NEW.user_id;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_add_points_to_group_ranking
+AFTER INSERT ON activities
+FOR EACH ROW
+EXECUTE FUNCTION trg_fn_add_points_to_group_ranking();
+
+-- Indexes
+
+CREATE INDEX ix_food_logs_user_id_date ON food_logs (user_id, logged_date) INCLUDE (calories);
+CREATE INDEX ix_user_profiles_user_id ON user_profiles (user_id);
+CREATE INDEX ix_activities_user_id ON activities (user_id);
