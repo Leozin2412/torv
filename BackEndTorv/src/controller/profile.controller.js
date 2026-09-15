@@ -48,6 +48,7 @@ class ProfileController {
     try {
       const { userId } = request.user;
       const data = await request.file();
+      console.log('[uploadPhoto] received file:', data ? data.filename : 'NONE');
 
       if (!data) {
         return reply.status(400).send({ error: 'No image file provided' });
@@ -56,10 +57,13 @@ class ProfileController {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       const fileName = `profile-${userId}-${uniqueSuffix}${path.extname(data.filename)}`;
       const destPath = path.join(__dirname, '../../profilePhotos', fileName);
+      console.log('[uploadPhoto] writing to:', destPath);
 
       await pipeline(data.file, fs.createWriteStream(destPath));
+      console.log('[uploadPhoto] file written, exists on disk:', fs.existsSync(destPath));
 
       await profileRepository.updatePhotoUrl(userId, fileName);
+      console.log('[uploadPhoto] DB updated with fileName:', fileName);
 
       const photoUrl = `${request.protocol}://${request.headers.host}/uploads/${fileName}`;
 
@@ -78,6 +82,7 @@ class ProfileController {
     try {
       const { userId } = request.user;
       const { username, goal } = request.body;
+      console.log('[updateProfile] userId:', userId, 'requested username:', username, 'goal:', goal);
 
       if (!username && !goal) {
         return reply.status(400).send({ error: 'No fields provided for update' });
@@ -86,8 +91,10 @@ class ProfileController {
       const dataToUpdate = {};
       if (username) dataToUpdate.username = username;
       if (goal) dataToUpdate.goal = goal;
+      console.log('[updateProfile] dataToUpdate:', dataToUpdate);
 
       const updatedProfile = await profileRepository.updateProfile(userId, dataToUpdate);
+      console.log('[updateProfile] DB result:', updatedProfile);
 
       reply.status(200).send({
         message: 'Profile updated successfully',
