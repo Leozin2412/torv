@@ -33,6 +33,7 @@ export default function MyDiet() {
   const [mealProtein, setMealProtein] = useState('');
   const [mealCarbs, setMealCarbs] = useState('');
   const [mealFat, setMealFat] = useState('');
+  const [mealFormError, setMealFormError] = useState('');
 
   // CRUD States
   const [selectedMealId, setSelectedMealId] = useState<string | null>(null);
@@ -120,8 +121,11 @@ export default function MyDiet() {
   }, [selectedDate]);
 
   const handleAddMeal = async () => {
-    if (!mealName || !mealCalories) {
-      Alert.alert('Erro', 'Nome e calorias são obrigatórios.');
+    if (loading) return;
+    setMealFormError('');
+
+    if (!mealName.trim() || !mealCalories) {
+      setMealFormError('Nome e calorias são obrigatórios.');
       return;
     }
 
@@ -138,11 +142,11 @@ export default function MyDiet() {
       } else {
         await api.post('/diet', payload);
       }
-      
+
       await loadDataForDate(selectedDate);
       setModalVisible(false);
     } catch (error) {
-      Alert.alert('Erro', 'Falha ao salvar refeição.');
+      setMealFormError('Falha ao salvar refeição.');
     } finally {
       setLoading(false);
     }
@@ -183,6 +187,7 @@ export default function MyDiet() {
     setMealProtein('');
     setMealCarbs('');
     setMealFat('');
+    setMealFormError('');
     setModalVisible(true);
   };
 
@@ -193,6 +198,7 @@ export default function MyDiet() {
     setMealProtein(String(meal.protein));
     setMealCarbs(String(meal.carbs));
     setMealFat(String(meal.fat));
+    setMealFormError('');
     setModalVisible(true);
   };
 
@@ -337,6 +343,10 @@ export default function MyDiet() {
                   <Input label="Gordura (g)" placeholder="0" value={mealFat} onChangeText={setMealFat} keyboardType="numeric" />
                 </View>
               </View>
+
+              {mealFormError ? (
+                <Text style={{ color: '#FF3B30', textAlign: 'center', marginBottom: 12 }}>{mealFormError}</Text>
+              ) : null}
 
               <Button title="Salvar" onPress={handleAddMeal} loading={loading} />
             </ScrollView>

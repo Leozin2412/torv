@@ -30,6 +30,7 @@ export default function Register() {
   const [goals, setGoals] = useState<string[]>([]);
 
   // Errors
+  const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [nameError, setNameError] = useState('');
   const [registerError, setRegisterError] = useState('');
@@ -43,8 +44,12 @@ export default function Register() {
 
   const validateStep0 = () => {
     let valid = true;
+    setEmailError('');
     setPasswordError('');
-    if (!email) valid = false;
+    if (!email.trim()) {
+      setEmailError('Informe seu e-mail.');
+      valid = false;
+    }
     if (password.length < 6) {
       setPasswordError('A senha deve ter pelo menos 6 caracteres.');
       valid = false;
@@ -86,7 +91,7 @@ export default function Register() {
   };
 
   const handleRegister = async () => {
-    if (goals.length === 0) return;
+    if (loading || goals.length === 0) return;
 
     setLoading(true);
     setRegisterError('');
@@ -132,7 +137,7 @@ export default function Register() {
           <>
             <Text style={styles.title}>Registre-se</Text>
             <View style={{ marginTop: 24 }}>
-              <Input label="E-mail" placeholder="Seu e-mail" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+              <Input label="E-mail" placeholder="Seu e-mail" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" error={emailError} />
               <Input label="Senha" placeholder="Sua senha" value={password} onChangeText={setPassword} secureTextEntry />
               <Input label="Confirme a senha" placeholder="Confirme a senha" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry error={passwordError} />
             </View>

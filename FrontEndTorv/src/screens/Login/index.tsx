@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, Alert, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -23,12 +23,16 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [loginError, setLoginError] = useState('');
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const { login } = useContext(AuthContext);
 
   const handleLogin = async () => {
+    if (loading) return;
+    setLoginError('');
+
     if (!email || !password) {
-      Alert.alert('Erro', 'Preencha todos os campos.');
+      setLoginError('Preencha todos os campos.');
       return;
     }
 
@@ -36,11 +40,15 @@ export default function Login() {
     try {
       const response = await api.post('/auth/login', { email, password });
       const { token, user } = response.data;
-      
+
       login(token, user);
-    } catch (error) {
+    } catch (error: any) {
       console.log(error);
-      Alert.alert('Erro', 'Falha ao realizar login. Verifique suas credenciais.');
+      if (error?.response?.status === 401) {
+        setLoginError('Email ou senha incorretos.');
+      } else {
+        setLoginError('Falha ao realizar login. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -94,6 +102,10 @@ export default function Login() {
         onChangeText={setPassword}
         secureTextEntry
       />
+
+      {loginError ? (
+        <Text style={{ color: '#FF3B30', textAlign: 'center', marginBottom: 12 }}>{loginError}</Text>
+      ) : null}
 
       <Button
         title="Entrar"
