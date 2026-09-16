@@ -94,6 +94,8 @@ DATABASE_URL="sqlserver://localhost:1433;database=nome_do_seu_banco;user=LeoTorv
 
 TORV development is orchestrated through Maestri canvas recruits, not ad-hoc subagents. Each recruit's full role prompt lives in `.maestri/roles/<uuid>/role.json` — this table is only an index for picking the right one.
 
+Every recruit runs as a live Maestri canvas terminal (`maestri recruit`), never as an internal Agent-tool subagent — this keeps the whole flow visible to the user on the canvas.
+
 | Recruit | Use for |
 |---|---|
 | Torv Backend | Routes, controllers, middlewares, repository code calling Prisma, Express→Fastify migration |
@@ -103,6 +105,8 @@ TORV development is orchestrated through Maestri canvas recruits, not ad-hoc sub
 | Torv Review and Tests | After implementation finishes — multi-lens review + test coverage |
 | Torv Security | After Review and Tests pass 100% — OWASP Top 10 review of the diff |
 
+Torv Frontend Image Gen is always connected in the canvas only to Torv Frontend, as its subagent — never directly to the Maestro or the other recruits.
+
 Run `maestri list` to see the current team and connections before delegating.
 
 ## 5. Development Cycle
@@ -110,7 +114,7 @@ Run `maestri list` to see the current team and connections before delegating.
 Every new feature follows this cycle, tracked feature-wide (not per layer):
 
 1. **Edit** — identify which layers (backend/frontend/database) the feature needs and delegate to the matching recruit(s), in parallel or in sequence depending on real contract dependencies.
-2. **Test** — Torv Review and Tests runs against the full feature diff (all layers together). Each round produces a new report file in `docs/` (never overwrite a previous round — follow the existing naming pattern, e.g. `qa-<topic>-YYYY-MM-DD[-roundN].md`).
+2. **Test** — Torv Review and Tests runs against the full feature diff (all layers together). If the feature touches `FrontEndTorv`, this step also includes a usability pass (real user flow, via agent-browser/claude-in-chrome) — not just correctness/security checks. Each round produces a new report file in `docs/` (never overwrite a previous round — follow the existing naming pattern, e.g. `qa-<topic>-YYYY-MM-DD[-roundN].md`).
 3. If any test fails: the report records the failure, the cycle does not advance to Security. Rework goes back to step 1, scoped to the layer(s) responsible for the failure.
 4. Repeat 2-3 until every test passes.
 5. **Security** — only runs once tests are 100% green. Torv Security reviews the full diff.
