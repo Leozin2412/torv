@@ -55,3 +55,17 @@ Severity order: **Crash/500** > **Silent failure (no user feedback)** > **Cosmet
 - **Round-1 fixed:** 13 / 14 fully fixed, 1 partially fixed (#7)
 - **Round-1 regressed:** 0
 - **New findings:** 2 (1 silent-failure/security gap, 1 cosmetic)
+
+---
+
+## Round 3 — focused retest (fix commit `d1c94ce`)
+
+### #15 profile-photo magic-byte check — Fixed
+Spoofed upload (plain-text content, `.jpg` name, `Content-Type: image/jpeg`) now rejected: `400 {"error":"File content does not match a JPEG, PNG, or WebP image"}`.
+Regression check: a minimal valid JPEG (real `\xFF\xD8\xFF...\xFF\xD9` magic bytes) still uploads fine: `200`, file written and served.
+
+### #16 future-date cap on `/diet` — Fixed
+`logged_date: "3000-01-01"` now rejected: `400 {"error":"logged_date cannot be more than 1 day in the future"}`.
+Regression check: today's date → `201`; a date ~18h ahead (timezone tolerance) → `201`. Both still accepted.
+
+**Round 3 regressed:** 0. Both findings closed.
