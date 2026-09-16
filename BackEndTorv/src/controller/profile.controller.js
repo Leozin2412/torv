@@ -3,6 +3,12 @@ const fs = require('fs');
 const { pipeline } = require('stream/promises');
 const profileRepository = require('../repository/profile.repository');
 
+const ALLOWED_IMAGE_TYPES = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
+
 class ProfileController {
   async getProfile(request, reply) {
     try {
@@ -54,12 +60,13 @@ class ProfileController {
         return reply.status(400).send({ error: 'No image file provided' });
       }
 
-      if (!data.mimetype || !data.mimetype.startsWith('image/')) {
-        return reply.status(400).send({ error: 'File must be an image' });
+      const ext = ALLOWED_IMAGE_TYPES[data.mimetype];
+      if (!ext) {
+        return reply.status(400).send({ error: 'File must be a JPEG, PNG, or WebP image' });
       }
 
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const fileName = `profile-${userId}-${uniqueSuffix}${path.extname(data.filename)}`;
+      const fileName = `profile-${userId}-${uniqueSuffix}${ext}`;
       const destPath = path.join(__dirname, '../../profilePhotos', fileName);
       console.log('[uploadPhoto] writing to:', destPath);
 

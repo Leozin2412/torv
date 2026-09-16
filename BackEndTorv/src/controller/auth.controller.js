@@ -20,12 +20,12 @@ class AuthController {
         return reply.status(400).send({ error: 'Invalid email format' });
       }
 
-      if (weight !== undefined && weight !== null && (weight < 20 || weight > 300)) {
-        return reply.status(400).send({ error: 'Weight must be between 20 and 300 kg' });
+      if (weight !== undefined && weight !== null && (typeof weight !== 'number' || !Number.isFinite(weight) || weight < 20 || weight > 300)) {
+        return reply.status(400).send({ error: 'Weight must be a number between 20 and 300 kg' });
       }
 
-      if (height !== undefined && height !== null && (height < 50 || height > 250)) {
-        return reply.status(400).send({ error: 'Height must be between 50 and 250 cm' });
+      if (height !== undefined && height !== null && (typeof height !== 'number' || !Number.isFinite(height) || height < 50 || height > 250)) {
+        return reply.status(400).send({ error: 'Height must be a number between 50 and 250 cm' });
       }
 
       const existingUser = await authRepository.findUserByEmail(email);
