@@ -54,6 +54,10 @@ class ProfileController {
         return reply.status(400).send({ error: 'No image file provided' });
       }
 
+      if (!data.mimetype || !data.mimetype.startsWith('image/')) {
+        return reply.status(400).send({ error: 'File must be an image' });
+      }
+
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       const fileName = `profile-${userId}-${uniqueSuffix}${path.extname(data.filename)}`;
       const destPath = path.join(__dirname, '../../profilePhotos', fileName);

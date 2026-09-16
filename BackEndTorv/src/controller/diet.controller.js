@@ -73,6 +73,18 @@ class DietController {
         return reply.status(400).send({ error: 'Missing required fields' });
       }
 
+      if (food_name.length > 255) {
+        return reply.status(400).send({ error: 'food_name must be at most 255 characters' });
+      }
+
+      if (!Number.isInteger(calories) || calories < 0 || calories > 10000) {
+        return reply.status(400).send({ error: 'calories must be an integer between 0 and 10000' });
+      }
+
+      if (logged_date && isNaN(new Date(logged_date).getTime())) {
+        return reply.status(400).send({ error: 'Invalid logged_date' });
+      }
+
       const date = logged_date || new Date().toISOString().split('T')[0];
 
       const spResult = await dietRepository.createFoodLog(userId, {

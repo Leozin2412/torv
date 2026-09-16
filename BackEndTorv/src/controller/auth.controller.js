@@ -6,9 +6,26 @@ class AuthController {
   async register(request, reply) {
     try {
       const { email, password, name, birth_date, weight, height, gender, fitness_level, goal } = request.body;
+      let { username } = request.body;
 
       if (!email || !password || !name) {
         return reply.status(400).send({ error: 'Missing required fields' });
+      }
+
+      if (name.length > 100) {
+        return reply.status(400).send({ error: 'Name must be at most 100 characters' });
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return reply.status(400).send({ error: 'Invalid email format' });
+      }
+
+      if (weight !== undefined && weight !== null && (weight < 20 || weight > 300)) {
+        return reply.status(400).send({ error: 'Weight must be between 20 and 300 kg' });
+      }
+
+      if (height !== undefined && height !== null && (height < 50 || height > 250)) {
+        return reply.status(400).send({ error: 'Height must be between 50 and 250 cm' });
       }
 
       const existingUser = await authRepository.findUserByEmail(email);
@@ -31,12 +48,24 @@ class AuthController {
       }
 
       const password_hash = await bcrypt.hash(password, 10);
-      const username = email.split('@')[0] + Math.floor(Math.random() * 1000);
+      username = username && username.trim() ? username.trim().slice(0, 100) : email.split('@')[0] + Math.floor(Math.random() * 1000);
 
-      const user = await authRepository.createUser({
-        email, password_hash, username, name,
+      const buildUserData = (uname) => ({
+        email, password_hash, username: uname, name,
         birth_date: parsedBirthDate, weight, height, gender, fitness_level, goal,
       });
+
+      let user;
+      try {
+        user = await authRepository.createUser(buildUserData(username));
+      } catch (err) {
+        if (err.code === 'P2002' && err.meta?.target?.includes('username')) {
+          username = email.split('@')[0] + Math.floor(Math.random() * 1000);
+          user = await authRepository.createUser(buildUserData(username));
+        } else {
+          throw err;
+        }
+      }
 
       reply.status(201).send({ message: 'User registered successfully', userId: user.id });
     } catch (error) {
