@@ -1,6 +1,5 @@
 const path = require('path');
 const fs = require('fs');
-const { pipeline } = require('stream/promises');
 const profileRepository = require('../repository/profile.repository');
 
 const ALLOWED_IMAGE_TYPES = {
@@ -8,6 +7,19 @@ const ALLOWED_IMAGE_TYPES = {
   'image/png': '.png',
   'image/webp': '.webp',
 };
+
+function hasValidImageSignature(buffer, mimetype) {
+  if (mimetype === 'image/jpeg') {
+    return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  }
+  if (mimetype === 'image/png') {
+    return buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+  }
+  if (mimetype === 'image/webp') {
+    return buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
+  }
+  return false;
+}
 
 class ProfileController {
   async getProfile(request, reply) {
@@ -65,12 +77,17 @@ class ProfileController {
         return reply.status(400).send({ error: 'File must be a JPEG, PNG, or WebP image' });
       }
 
+      const buffer = await data.toBuffer();
+      if (!hasValidImageSignature(buffer, data.mimetype)) {
+        return reply.status(400).send({ error: 'File content does not match a JPEG, PNG, or WebP image' });
+      }
+
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       const fileName = `profile-${userId}-${uniqueSuffix}${ext}`;
       const destPath = path.join(__dirname, '../../profilePhotos', fileName);
       console.log('[uploadPhoto] writing to:', destPath);
 
-      await pipeline(data.file, fs.createWriteStream(destPath));
+      await fs.promises.writeFile(destPath, buffer);
       console.log('[uploadPhoto] file written, exists on disk:', fs.existsSync(destPath));
 
       await profileRepository.updatePhotoUrl(userId, fileName);

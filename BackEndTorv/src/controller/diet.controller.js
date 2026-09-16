@@ -81,8 +81,14 @@ class DietController {
         return reply.status(400).send({ error: 'calories must be an integer between 0 and 10000' });
       }
 
-      if (logged_date && isNaN(new Date(logged_date).getTime())) {
-        return reply.status(400).send({ error: 'Invalid logged_date' });
+      if (logged_date) {
+        const parsedDate = new Date(logged_date);
+        if (isNaN(parsedDate.getTime())) {
+          return reply.status(400).send({ error: 'Invalid logged_date' });
+        }
+        if (parsedDate.getTime() > Date.now() + 24 * 60 * 60 * 1000) {
+          return reply.status(400).send({ error: 'logged_date cannot be more than 1 day in the future' });
+        }
       }
 
       const date = logged_date || new Date().toISOString().split('T')[0];
