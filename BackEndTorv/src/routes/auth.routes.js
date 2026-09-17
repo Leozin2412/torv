@@ -31,7 +31,18 @@ async function authRoutes(fastify) {
       goal: Type.Optional(Type.String()),
     }),
     response: {
-      201: Type.Object({ message: Type.String(), userId: Type.String() }),
+      201: Type.Object({
+        message: Type.String(),
+        token: Type.String(),
+        user: Type.Object({
+          id: Type.String(),
+          email: Type.String(),
+          name: Type.Union([Type.String(), Type.Null()]),
+          username: Type.Union([Type.String(), Type.Null()]),
+          photo_url: Type.Union([Type.String(), Type.Null()]),
+          profile: userProfileSchema,
+        }),
+      }),
       400: Type.Object({ error: Type.String() }),
       409: Type.Object({ error: Type.String() }),
       500: Type.Object({ error: Type.String() }),

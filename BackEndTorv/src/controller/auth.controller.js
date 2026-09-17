@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const authRepository = require('../repository/auth.repository');
+const JWT_SECRET = require('../lib/jwt-secret');
 
 class AuthController {
   async register(request, reply) {
@@ -67,7 +68,28 @@ class AuthController {
         }
       }
 
-      reply.status(201).send({ message: 'User registered successfully', userId: user.id });
+      const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      const photoUrl = user.user_profiles?.photo_url
+        ? `${request.protocol}://${request.headers.host}/uploads/${user.user_profiles.photo_url}`
+        : null;
+
+      reply.status(201).send({
+        message: 'User registered successfully',
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.user_profiles ? user.user_profiles.name : null,
+          username: user.user_profiles ? user.user_profiles.username : null,
+          photo_url: photoUrl,
+          profile: user.user_profiles,
+        },
+      });
     } catch (error) {
       request.log.error(error);
       console.error(error);
@@ -95,7 +117,7 @@ class AuthController {
 
       const token = jwt.sign(
         { userId: user.id, email: user.email },
-        process.env.JWT_SECRET || 'uma_frase_longa_com_letras_numeros_e_simbolos_bem_aleatorios',
+        JWT_SECRET,
         { expiresIn: '7d' }
       );
 

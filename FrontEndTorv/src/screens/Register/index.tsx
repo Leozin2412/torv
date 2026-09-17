@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, Text, Alert, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { SelectCard } from '../../components/SelectCard';
+import { AuthContext } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import { colors } from '../../theme/tokens';
 import { styles } from './styles';
@@ -20,6 +21,7 @@ const FITNESS_LEVELS = [
 
 export default function Register() {
   const navigation = useNavigation();
+  const { login } = useContext(AuthContext);
   const [step, setStep] = useState(0); // 0 to 5
   const [loading, setLoading] = useState(false);
 
@@ -103,7 +105,7 @@ export default function Register() {
     setLoading(true);
     setRegisterError('');
     try {
-      await api.post('/auth/register', {
+      const response = await api.post('/auth/register', {
         email,
         password,
         name,
@@ -115,8 +117,8 @@ export default function Register() {
         fitness_level: fitnessLevel,
         goal: goals.join(', '),
       });
-      
-      navigation.goBack();
+
+      login(response.data.token, response.data.user);
     } catch (error) {
       console.log(error);
       setRegisterError('Falha ao criar conta. Tente novamente.');
