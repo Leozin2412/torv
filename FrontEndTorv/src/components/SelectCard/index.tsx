@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, TouchableOpacityProps, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { colors } from '../../theme/tokens';
 import { styles } from './styles';
 
 interface SelectCardProps extends TouchableOpacityProps {
@@ -20,7 +21,7 @@ export const SelectCard: React.FC<SelectCardProps> = ({ title, description, sele
     >
       {useGradient && (
         <LinearGradient
-          colors={['#1F3A15', '#121212']} // Slightly darker green to black
+          colors={['#1F3A15', colors.background]} // Slightly darker green to black
           style={StyleSheet.absoluteFill}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}

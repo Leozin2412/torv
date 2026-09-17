@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Home, ClipboardList, User } from 'lucide-react-native';
 
 import { AuthContext } from '../contexts/AuthContext';
+import { colors } from '../theme/tokens';
 
 // Screens
 import LoginScreen from '../screens/Login';
@@ -40,10 +41,10 @@ const TabIcon = ({ focused, icon: Icon, label, photoUrl }: any) => {
           }} 
         />
       ) : (
-        <Icon color={focused ? '#8CC63F' : '#8E8E93'} size={24} />
+        <Icon color={focused ? colors.brand : colors.textSecondary} size={24} />
       )}
       <Text style={{
-        color: focused ? '#8CC63F' : '#8E8E93',
+        color: focused ? colors.brand : colors.textSecondary,
         fontSize: 10,
         marginTop: 4,
         fontWeight: focused ? 'bold' : '500'

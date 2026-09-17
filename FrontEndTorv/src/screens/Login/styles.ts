@@ -1,22 +1,28 @@
 import { StyleSheet } from 'react-native';
+import { colors, fontFamily } from '../../theme/tokens';
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     padding: 24,
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#8E8E93',
+    color: colors.textSecondary,
     marginBottom: 32,
+  },
+  errorText: {
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   registerContainer: {
     flexDirection: 'row',
@@ -24,17 +30,17 @@ export const styles = StyleSheet.create({
     marginTop: 24,
   },
   registerText: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
   },
   registerLink: {
-    color: '#8CC63F',
-    fontWeight: 'bold',
+    color: colors.brand,
+    fontFamily: fontFamily.semiBold,
     marginLeft: 4,
   },
   // Landing Layout
   landingContainer: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background,
   },
   imageWrapper: {
     flex: 1.5,
@@ -52,16 +58,13 @@ export const styles = StyleSheet.create({
   },
   landingTitle: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
     marginBottom: 8,
-  },
-  landingTitleHighlight: {
-    color: '#8CC63F',
   },
   landingSubtitle: {
     fontSize: 16,
-    color: '#8E8E93',
+    color: colors.textSecondary,
     marginBottom: 40,
   },
   backButton: {
@@ -69,8 +72,8 @@ export const styles = StyleSheet.create({
     marginTop: 16,
   },
   backButtonText: {
-    color: '#8CC63F',
+    color: colors.brand,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
   },
 });

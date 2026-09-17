@@ -1,10 +1,11 @@
 import { StyleSheet } from 'react-native';
+import { colors, radius, fontFamily } from '../../theme/tokens';
 
 export const styles = StyleSheet.create({
   button: {
-    backgroundColor: '#8CC63F',
+    backgroundColor: colors.brand,
     height: 50,
-    borderRadius: 25,
+    borderRadius: radius.pill,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
@@ -14,14 +15,26 @@ export const styles = StyleSheet.create({
   buttonOutline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#8CC63F',
+    borderColor: colors.brand,
+  },
+  buttonOutlineDanger: {
+    borderColor: colors.error,
+  },
+  buttonSolidDanger: {
+    backgroundColor: colors.error,
   },
   text: {
-    color: '#121212',
+    color: colors.background,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
   },
   textOutline: {
-    color: '#8CC63F',
+    color: colors.brand,
+  },
+  textOutlineDanger: {
+    color: colors.error,
+  },
+  textSolidDanger: {
+    color: colors.text,
   },
 });

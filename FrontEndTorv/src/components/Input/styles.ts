@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { colors, radius, fontFamily } from '../../theme/tokens';
 
 export const styles = StyleSheet.create({
   container: {
@@ -6,26 +7,27 @@ export const styles = StyleSheet.create({
     width: '100%',
   },
   label: {
-    color: '#E0E0E0',
+    color: colors.textMuted,
     marginBottom: 8,
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: fontFamily.semiBold,
   },
   input: {
-    backgroundColor: '#1C1C1E',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#2C2C2E',
-    borderRadius: 12,
-    color: '#FFF',
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    color: colors.text,
     paddingHorizontal: 16,
     height: 50,
     fontSize: 16,
+    fontFamily: fontFamily.regular,
   },
   inputFocused: {
-    borderColor: '#8CC63F',
+    borderColor: colors.brand,
   },
   error: {
-    color: '#FF453A',
+    color: colors.error,
     fontSize: 12,
     marginTop: 4,
   },

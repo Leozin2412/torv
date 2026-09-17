@@ -1,14 +1,15 @@
 import { StyleSheet } from 'react-native';
+import { colors, radius, fontFamily } from '../../theme/tokens';
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
     paddingTop: 48,
   },
   scrollContainer: {
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   // Header
   header: {
@@ -20,13 +21,13 @@ export const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
   },
   menuButton: {
     padding: 10,
-    backgroundColor: '#1C1C1E',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
   },
   // Profile Section
   profileSection: {
@@ -41,12 +42,12 @@ export const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#2C2C2E',
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
     borderWidth: 3,
-    borderColor: '#8CC63F',
+    borderColor: colors.brand,
   },
   avatar: {
     width: '100%',
@@ -56,24 +57,31 @@ export const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#8CC63F',
+    backgroundColor: colors.brand,
     width: 32,
     height: 32,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#121212',
+    borderColor: colors.background,
   },
   name: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
+  },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
   },
   username: {
     fontSize: 16,
-    color: '#8E8E93',
-    marginTop: 2,
+    color: colors.textSecondary,
+  },
+  usernameEditButton: {
+    marginLeft: 8,
   },
   // Modals (Futuristic Design)
   modalContainer: {
@@ -83,16 +91,30 @@ export const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    borderRadius: 24,
+    borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: '#8CC63F',
-    shadowColor: '#8CC63F',
+    borderColor: colors.brand,
+    shadowColor: colors.brand,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 15,
     elevation: 10,
     padding: 24,
     overflow: 'hidden',
+  },
+  goalModalContent: {
+    paddingHorizontal: 0,
+    paddingBottom: 0,
+  },
+  goalModalPadded: {
+    paddingHorizontal: 24,
+  },
+  goalScrollView: {
+    maxHeight: 450,
+    paddingHorizontal: 24,
+  },
+  goalSelectCard: {
+    marginBottom: 12,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -102,13 +124,13 @@ export const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 22,
-    fontWeight: '900',
-    color: '#FFF',
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
     letterSpacing: 0.5,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: colors.textSecondary,
     marginBottom: 24,
     lineHeight: 20,
   },
@@ -120,8 +142,8 @@ export const styles = StyleSheet.create({
   },
   futuristicButton: {
     marginTop: 16,
-    borderRadius: 12,
-    shadowColor: '#8CC63F',
+    borderRadius: radius.sm,
+    shadowColor: colors.brand,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -129,12 +151,12 @@ export const styles = StyleSheet.create({
   },
   futuristicButtonGradient: {
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: radius.sm,
     alignItems: 'center',
   },
   futuristicButtonText: {
-    color: '#121212',
-    fontWeight: '900',
+    color: colors.background,
+    fontFamily: fontFamily.extraBold,
     fontSize: 15,
     letterSpacing: 1,
   },
@@ -150,12 +172,12 @@ export const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
   },
   statLabel: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   // Grid Cards
@@ -166,80 +188,111 @@ export const styles = StyleSheet.create({
   },
   gridCard: {
     flex: 1,
-    backgroundColor: '#1C1C1E',
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: radius.lg,
+  },
+  gridCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
   },
   gridCardTitle: {
-    fontSize: 12,
-    color: '#8E8E93',
-    textTransform: 'uppercase',
-    fontWeight: 'bold',
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontFamily: fontFamily.semiBold,
     marginBottom: 8,
   },
   gridCardValue: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
     marginBottom: 4,
   },
   gridCardSubtitle: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: colors.textSecondary,
   },
   gridCardHighlight: {
     fontSize: 14,
-    color: '#8CC63F',
-    fontWeight: 'bold',
+    color: colors.brand,
+    fontFamily: fontFamily.semiBold,
     marginTop: 4,
   },
   // Sections
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
     marginBottom: 12,
     marginTop: 8,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitleInline: {
+    fontSize: 18,
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
+  },
+  editLink: {
+    color: colors.brand,
+    fontFamily: fontFamily.semiBold,
+  },
   // List Cards (Objetivo, Relógio, Histórico)
   listCard: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: radius.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
   listCardIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 16,
-    backgroundColor: '#2C2C2E',
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-  },
-  listCardIconText: {
-    fontSize: 24,
   },
   listCardContent: {
     flex: 1,
   },
   listCardTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: fontFamily.semiBold,
+    color: colors.text,
     marginBottom: 4,
   },
   listCardSubtitle: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: colors.textSecondary,
   },
   listCardRight: {
     marginLeft: 16,
   },
   connectedText: {
     fontSize: 14,
-    color: '#8CC63F',
+    color: colors.brand,
+  },
+  addMealButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.brand,
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    padding: 16,
+    marginBottom: 12,
+  },
+  addMealIcon: {
+    marginRight: 8,
+  },
+  addMealText: {
+    color: colors.brand,
+    fontFamily: fontFamily.semiBold,
+    fontSize: 16,
   },
 });

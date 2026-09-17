@@ -1,10 +1,15 @@
 import { StyleSheet } from 'react-native';
+import { colors, radius, fontFamily } from '../../theme/tokens';
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background,
     padding: 24,
+  },
+  closeButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 24,
   },
   // Progress Bar
   progressContainer: {
@@ -17,26 +22,31 @@ export const styles = StyleSheet.create({
   progressSegment: {
     height: 4,
     flex: 1,
-    backgroundColor: '#2C2C2E',
+    backgroundColor: colors.border,
     marginHorizontal: 4,
     borderRadius: 2,
   },
   progressSegmentActive: {
-    backgroundColor: '#8CC63F',
+    backgroundColor: colors.brand,
   },
   // Header Text
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#8E8E93',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 32,
+  },
+  errorText: {
+    color: colors.error,
+    textAlign: 'center',
+    marginTop: 16,
   },
   formContainer: {
     flex: 1,
@@ -51,25 +61,20 @@ export const styles = StyleSheet.create({
   genderButton: {
     width: 180,
     height: 180,
-    borderRadius: 90,
-    backgroundColor: '#1C1C1E',
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
   },
   genderButtonActiveMale: {
-    borderColor: '#8CC63F',
-    backgroundColor: '#1F2916',
+    borderColor: colors.brand,
+    backgroundColor: colors.brandTint,
   },
   genderButtonActiveFemale: {
-    borderColor: '#8CC63F',
-    backgroundColor: '#2A2A2A',
-  },
-  genderText: {
-    color: '#FFF',
-    fontSize: 90,
-    fontWeight: 'bold',
+    borderColor: colors.brand,
+    backgroundColor: colors.surfaceAlt,
   },
   // Footer
   footer: {

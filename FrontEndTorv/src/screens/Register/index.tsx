@@ -2,14 +2,21 @@ import React, { useState } from 'react';
 import { View, Text, Alert, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { X } from 'lucide-react-native'; // To use as the top right close button in step 0
+import { X, Mars, Venus } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { SelectCard } from '../../components/SelectCard';
 import api from '../../services/api';
+import { colors } from '../../theme/tokens';
 import { styles } from './styles';
+
+const FITNESS_LEVELS = [
+  { value: 'INICIANTE', label: 'Iniciante', color: colors.brand, description: 'Está começando agora ou treina raramente. Vamos construir sua base do zero.' },
+  { value: 'INTERMEDIÁRIO', label: 'Intermediário', color: colors.accentIntermediate, description: 'Treina com regularidade. Quer evoluir com mais inteligência e consistência.' },
+  { value: 'AVANÇADO', label: 'Avançado', color: colors.accentAdvanced, description: 'Treina pesado há muito tempo. Busca performance máxima e superação.' },
+];
 
 export default function Register() {
   const navigation = useNavigation();
@@ -127,8 +134,13 @@ export default function Register() {
           ))}
         </View>
       ) : (
-        <TouchableOpacity style={{ alignSelf: 'flex-end', marginBottom: 24 }} onPress={() => navigation.goBack()}>
-          <X color="#8E8E93" size={24} />
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Fechar cadastro"
+        >
+          <X color={colors.textSecondary} size={24} />
         </TouchableOpacity>
       )}
 
@@ -174,17 +186,21 @@ export default function Register() {
             <Text style={styles.title}>Sexo biológico</Text>
             <Text style={styles.subtitle}>Usamos essa informação para refinar seus cálculos metabólicos.</Text>
             <View style={styles.genderContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.genderButton, gender === 'Masculino' && styles.genderButtonActiveMale]}
                 onPress={() => setGender('Masculino')}
+                accessibilityRole="button"
+                accessibilityLabel="Selecionar sexo biológico masculino"
               >
-                <Text style={[styles.genderText, { color: '#0A84FF', marginLeft: -8, marginTop: -8 }]}>♂</Text>
+                <Mars color={colors.accentCarbs} size={64} strokeWidth={1.5} />
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.genderButton, gender === 'Feminino' && styles.genderButtonActiveFemale]}
                 onPress={() => setGender('Feminino')}
+                accessibilityRole="button"
+                accessibilityLabel="Selecionar sexo biológico feminino"
               >
-                <Text style={[styles.genderText, { color: '#FF2D55' }]}>♀</Text>
+                <Venus color={colors.accentFat} size={64} strokeWidth={1.5} />
               </TouchableOpacity>
             </View>
           </>
@@ -194,27 +210,16 @@ export default function Register() {
           <>
             <Text style={styles.title}>Nível físico</Text>
             <Text style={styles.subtitle}>Escolha a opção que melhor descreve sua rotina atual.</Text>
-            <SelectCard 
-              title="INICIANTE" 
-              titleColor="#8CC63F"
-              description="Está começando agora ou treina raramente. Vamos construir sua base do zero."
-              selected={fitnessLevel === 'INICIANTE'}
-              onPress={() => setFitnessLevel('INICIANTE')}
-            />
-            <SelectCard 
-              title="INTERMEDIÁRIO" 
-              titleColor="#FF9500"
-              description="Treina com regularidade. Quer evoluir com mais inteligência e consistência."
-              selected={fitnessLevel === 'INTERMEDIÁRIO'}
-              onPress={() => setFitnessLevel('INTERMEDIÁRIO')}
-            />
-            <SelectCard 
-              title="AVANÇADO" 
-              titleColor="#FF3B30"
-              description="Treina pesado há muito tempo. Busca performance máxima e superação."
-              selected={fitnessLevel === 'AVANÇADO'}
-              onPress={() => setFitnessLevel('AVANÇADO')}
-            />
+            {FITNESS_LEVELS.map((level) => (
+              <SelectCard
+                key={level.value}
+                title={level.label}
+                titleColor={level.color}
+                description={level.description}
+                selected={fitnessLevel === level.value}
+                onPress={() => setFitnessLevel(level.value)}
+              />
+            ))}
           </>
         )}
 
@@ -248,7 +253,7 @@ export default function Register() {
       </ScrollView>
 
       {registerError ? (
-        <Text style={{ color: '#FF3B30', textAlign: 'center', marginTop: 16 }}>{registerError}</Text>
+        <Text style={styles.errorText}>{registerError}</Text>
       ) : null}
 
       <View style={styles.footer}>

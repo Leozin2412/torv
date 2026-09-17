@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, TextInput, Text, TextInputProps } from 'react-native';
+import { colors } from '../../theme/tokens';
 import { styles } from './styles';
 
 interface InputProps extends TextInputProps {
@@ -17,10 +18,10 @@ export const Input: React.FC<InputProps> = ({ label, error, style, ...rest }) =>
         style={[
           styles.input,
           isFocused && styles.inputFocused,
-          error ? { borderColor: '#FF453A' } : null,
+          error ? { borderColor: colors.error } : null,
           style,
         ]}
-        placeholderTextColor="#8E8E93"
+        placeholderTextColor={colors.textSecondary}
         onFocus={(e) => {
           setIsFocused(true);
           rest.onFocus && rest.onFocus(e);

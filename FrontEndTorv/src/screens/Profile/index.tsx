@@ -2,15 +2,17 @@ import React, { useContext, useState, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { LogOut, Edit2, ChevronRight, User as UserIcon, Plus, X } from 'lucide-react-native';
+import { LogOut, Edit2, ChevronRight, User as UserIcon, Plus, X, Flame, Dumbbell, Watch, Footprints, UtensilsCrossed } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { SelectCard } from '../../components/SelectCard';
+import { Card } from '../../components/Card';
 import { AuthContext } from '../../contexts/AuthContext';
 import api from '../../services/api';
+import { colors } from '../../theme/tokens';
 import { styles } from './styles';
 
 export default function Profile() {
@@ -166,8 +168,8 @@ export default function Profile() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Perfil</Text>
-        <TouchableOpacity style={styles.menuButton} onPress={logout}>
-          <LogOut color="#FF3B30" size={24} />
+        <TouchableOpacity style={styles.menuButton} onPress={logout} accessibilityRole="button" accessibilityLabel="Sair da conta">
+          <LogOut color={colors.error} size={24} />
         </TouchableOpacity>
       </View>
 
@@ -179,18 +181,29 @@ export default function Profile() {
               {avatarUri ? (
                 <Image source={{ uri: avatarUri }} style={styles.avatar} />
               ) : (
-                <UserIcon color="#8E8E93" size={48} />
+                <UserIcon color={colors.textSecondary} size={48} />
               )}
             </View>
-            <TouchableOpacity style={styles.editBadge} onPress={handlePickImage} disabled={loadingAvatar}>
-              <Edit2 color="#121212" size={16} />
+            <TouchableOpacity
+              style={styles.editBadge}
+              onPress={handlePickImage}
+              disabled={loadingAvatar}
+              accessibilityRole="button"
+              accessibilityLabel="Alterar foto de perfil"
+            >
+              <Edit2 color={colors.background} size={16} />
             </TouchableOpacity>
           </View>
           <Text style={styles.name}>{profileData?.name || user?.name || 'Usuário'}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-            <Text style={[styles.username, { marginTop: 0 }]}>@{profileData?.username || user?.username || 'usuario'}</Text>
-            <TouchableOpacity onPress={handleOpenUsernameEdit} style={{ marginLeft: 8 }}>
-              <Edit2 color="#8E8E93" size={14} />
+          <View style={styles.usernameRow}>
+            <Text style={styles.username}>@{profileData?.username || user?.username || 'usuario'}</Text>
+            <TouchableOpacity
+              onPress={handleOpenUsernameEdit}
+              style={styles.usernameEditButton}
+              accessibilityRole="button"
+              accessibilityLabel="Editar nome de usuário"
+            >
+              <Edit2 color={colors.textSecondary} size={14} />
             </TouchableOpacity>
           </View>
         </View>
@@ -213,96 +226,103 @@ export default function Profile() {
 
         {/* Grid Cards */}
         <View style={styles.gridContainer}>
-          <View style={styles.gridCard}>
-            <Text style={styles.gridCardTitle}>STREAK🔥</Text>
+          <Card style={styles.gridCard}>
+            <View style={styles.gridCardTitleRow}>
+              <Flame color={colors.textSecondary} size={14} />
+              <Text style={styles.gridCardTitle}>Streak</Text>
+            </View>
             <Text style={styles.gridCardValue}>{profileData?.streak || 0}</Text>
             <Text style={styles.gridCardHighlight}>Recorde: {profileData?.longest_streak || 0} dias</Text>
-          </View>
-          <View style={styles.gridCard}>
-            <Text style={styles.gridCardTitle}>ESTE MÊS</Text>
+          </Card>
+          <Card style={styles.gridCard}>
+            <Text style={styles.gridCardTitle}>Este mês</Text>
             <Text style={styles.gridCardValue}>{profileData?.workouts_in_month || 0}</Text>
             <Text style={styles.gridCardSubtitle}>Treinos</Text>
             <Text style={styles.gridCardHighlight}>+0 vs mês passado</Text>
-          </View>
+          </Card>
         </View>
 
         {/* Objetivo */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Objetivo</Text>
-          <TouchableOpacity onPress={handleOpenGoalEdit}>
-             <Text style={{ color: '#8CC63F', fontWeight: 'bold' }}>Editar</Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitleInline}>Objetivo</Text>
+          <TouchableOpacity onPress={handleOpenGoalEdit} accessibilityRole="button" accessibilityLabel="Editar objetivo">
+             <Text style={styles.editLink}>Editar</Text>
           </TouchableOpacity>
         </View>
-        <View style={[styles.listCard, { marginTop: -8 }]}>
+        <Card style={styles.listCard}>
           <View style={styles.listCardIconContainer}>
-            <Text style={styles.listCardIconText}>💪</Text>
+            <Dumbbell color={colors.brand} size={22} />
           </View>
           <View style={styles.listCardContent}>
             <Text style={styles.listCardTitle}>{profileData?.goal || user?.goal || 'Ganhar Massa Muscular'}</Text>
             <Text style={styles.listCardSubtitle}>Definido no cadastro</Text>
           </View>
-        </View>
+        </Card>
 
         {/* Relógio conectado */}
         <Text style={styles.sectionTitle}>Relógio conectado</Text>
-        <TouchableOpacity style={styles.listCard} activeOpacity={0.8}>
-          <View style={styles.listCardIconContainer}>
-            <Text style={styles.listCardIconText}>⌚</Text>
-          </View>
-          <View style={styles.listCardContent}>
-            <Text style={styles.listCardTitle}>Apple Watch Series 9</Text>
-            <Text style={styles.connectedText}>🟢 Conectado</Text>
-          </View>
-          <ChevronRight color="#8E8E93" size={20} style={styles.listCardRight} />
+        <TouchableOpacity activeOpacity={0.8}>
+          <Card style={styles.listCard}>
+            <View style={styles.listCardIconContainer}>
+              <Watch color={colors.brand} size={22} />
+            </View>
+            <View style={styles.listCardContent}>
+              <Text style={styles.listCardTitle}>Apple Watch Series 9</Text>
+              <Text style={styles.connectedText}>Conectado</Text>
+            </View>
+            <ChevronRight color={colors.textSecondary} size={20} style={styles.listCardRight} />
+          </Card>
         </TouchableOpacity>
 
         {/* Histórico de hoje */}
         <Text style={styles.sectionTitle}>Atividade Física</Text>
-        
+
         {/* Mocked Activity */}
-        <View style={styles.listCard}>
+        <Card style={styles.listCard}>
           <View style={styles.listCardIconContainer}>
-            <Text style={styles.listCardIconText}>🚶‍♂️</Text>
+            <Footprints color={colors.brand} size={22} />
           </View>
           <View style={styles.listCardContent}>
             <Text style={styles.listCardTitle}>Caminhada</Text>
-            <Text style={styles.listCardSubtitle}>07:15 · 32 min · 180kcal · ⌚ via relógio</Text>
+            <Text style={styles.listCardSubtitle}>07:15 · 32 min · 180kcal · via relógio</Text>
           </View>
-        </View>
+        </Card>
 
         <Text style={styles.sectionTitle}>Alimentação</Text>
-        
+
         {/* Real Food Logs (Mapped) */}
         {foodLogs.length > 0 ? (
           foodLogs.map((log: any, index: number) => (
-            <View key={index} style={styles.listCard}>
+            <Card key={index} style={styles.listCard}>
               <View style={styles.listCardIconContainer}>
-                <Text style={styles.listCardIconText}>🍽️</Text>
+                <UtensilsCrossed color={colors.brand} size={20} />
               </View>
               <View style={styles.listCardContent}>
                 <Text style={styles.listCardTitle}>{log.name || 'Refeição'}</Text>
                 <Text style={styles.listCardSubtitle}>{log.calories || 0} kcal</Text>
               </View>
-            </View>
+            </Card>
           ))
         ) : (
-          <View style={styles.listCard}>
+          <Card style={styles.listCard}>
             <View style={styles.listCardIconContainer}>
-              <Text style={styles.listCardIconText}>🍽️</Text>
+              <UtensilsCrossed color={colors.textSecondary} size={20} />
             </View>
             <View style={styles.listCardContent}>
               <Text style={styles.listCardTitle}>Nenhuma refeição ainda</Text>
               <Text style={styles.listCardSubtitle}>Você ainda não registrou nada hoje.</Text>
             </View>
-          </View>
+          </Card>
         )}
 
-        <TouchableOpacity 
-          style={[styles.listCard, { justifyContent: 'center', backgroundColor: '#1C1C1E', borderColor: '#8CC63F', borderWidth: 1 }]} 
+        <TouchableOpacity
+          style={styles.addMealButton}
           onPress={() => navigation.navigate('MyDiet' as never)}
+          accessibilityRole="button"
+          accessibilityLabel="Adicionar refeição"
         >
-          <Plus color="#8CC63F" size={24} style={{ marginRight: 8 }} />
-          <Text style={{ color: '#8CC63F', fontWeight: 'bold', fontSize: 16 }}>Adicionar Refeição</Text>
+          <Plus color={colors.brand} size={24} style={styles.addMealIcon} />
+          <Text style={styles.addMealText}>Adicionar Refeição</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -311,15 +331,15 @@ export default function Profile() {
       <Modal visible={showUsernameModal} transparent animationType="slide">
         <View style={styles.modalContainer}>
           <LinearGradient
-            colors={['#1F2916', '#121212']}
+            colors={[colors.brandTint, colors.background]}
             style={styles.modalContent}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Meu Username</Text>
-              <TouchableOpacity onPress={() => setShowUsernameModal(false)}>
-                <X color="#8E8E93" size={24} />
+              <TouchableOpacity onPress={() => setShowUsernameModal(false)} accessibilityRole="button" accessibilityLabel="Fechar edição de username">
+                <X color={colors.textSecondary} size={24} />
               </TouchableOpacity>
             </View>
             <Text style={styles.modalSubtitle}>Escolha um nome de usuário único para o seu perfil.</Text>
@@ -334,7 +354,7 @@ export default function Profile() {
             
             <TouchableOpacity style={styles.futuristicButton} onPress={handleSaveUsername}>
               <LinearGradient
-                colors={['#8CC63F', '#5A9E1C']}
+                colors={[colors.brand, colors.brandDark]}
                 style={styles.futuristicButtonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -350,22 +370,22 @@ export default function Profile() {
       <Modal visible={showGoalModal} transparent animationType="slide">
         <View style={styles.modalContainer}>
           <LinearGradient
-            colors={['#1F2916', '#121212']}
-            style={[styles.modalContent, { paddingHorizontal: 0, paddingBottom: 0 }]}
+            colors={[colors.brandTint, colors.background]}
+            style={[styles.modalContent, styles.goalModalContent]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
           >
-            <View style={[styles.modalHeader, { paddingHorizontal: 24 }]}>
+            <View style={[styles.modalHeader, styles.goalModalPadded]}>
               <Text style={styles.modalTitle}>Meus Objetivos</Text>
-              <TouchableOpacity onPress={() => setShowGoalModal(false)}>
-                <X color="#8E8E93" size={24} />
+              <TouchableOpacity onPress={() => setShowGoalModal(false)} accessibilityRole="button" accessibilityLabel="Fechar edição de objetivos">
+                <X color={colors.textSecondary} size={24} />
               </TouchableOpacity>
             </View>
-            <Text style={[styles.modalSubtitle, { paddingHorizontal: 24 }]}>
+            <Text style={[styles.modalSubtitle, styles.goalModalPadded]}>
               Selecione o que você quer alcançar para ajustarmos seu plano.
             </Text>
 
-            <ScrollView style={{ maxHeight: 450, paddingHorizontal: 24 }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.goalScrollView} showsVerticalScrollIndicator={false}>
               {[
                 'Perder Peso',
                 'Ganhar Massa Muscular',
@@ -374,12 +394,12 @@ export default function Profile() {
                 'Criar uma Rotina',
                 'Saúde & Bem-estar'
               ].map((option) => (
-                <SelectCard 
+                <SelectCard
                   key={option}
-                  title={option} 
-                  selected={editGoals.includes(option)} 
+                  title={option}
+                  selected={editGoals.includes(option)}
                   onPress={() => handleToggleGoal(option)}
-                  style={{ marginBottom: 12 }}
+                  style={styles.goalSelectCard}
                 />
               ))}
             </ScrollView>
@@ -387,7 +407,7 @@ export default function Profile() {
             <View style={styles.modalFooter}>
               <TouchableOpacity style={styles.futuristicButton} onPress={handleSaveGoals}>
                 <LinearGradient
-                  colors={['#8CC63F', '#5A9E1C']}
+                  colors={[colors.brand, colors.brandDark]}
                   style={styles.futuristicButtonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}

@@ -1,11 +1,10 @@
-import { StyleSheet, Dimensions } from 'react-native';
-
-const { width } = Dimensions.get('window');
+import { StyleSheet } from 'react-native';
+import { colors, radius, fontFamily } from '../../theme/tokens';
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background,
   },
   scrollContainer: {
     paddingHorizontal: 20,
@@ -20,22 +19,32 @@ export const styles = StyleSheet.create({
     marginBottom: 24,
   },
   greetingText: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 16,
-    fontWeight: '500',
+    fontFamily: fontFamily.semiBold,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   nameText: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 32,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.extraBold,
   },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#2C2C2E',
+    backgroundColor: colors.surfaceAlt,
   },
-  
+  avatarIcon: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+  },
+
   // Top Grid
   gridRow: {
     flexDirection: 'row',
@@ -43,50 +52,44 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   streakCard: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 16,
-    padding: 16,
     width: '48%',
-    borderWidth: 1,
-    borderColor: '#2C2C2E',
+  },
+  streakTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
   },
   streakTitle: {
-    color: '#8E8E93',
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textTransform: 'uppercase',
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontFamily: fontFamily.semiBold,
   },
   streakValue: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.extraBold,
   },
   streakSub: {
-    color: '#8CC63F',
+    color: colors.brand,
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: fontFamily.semiBold,
     marginTop: 4,
   },
   workoutCard: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 16,
-    padding: 16,
     width: '48%',
-    borderWidth: 1,
-    borderColor: '#8CC63F',
+    borderColor: colors.brand,
   },
   workoutTitle: {
-    color: '#8CC63F',
-    fontSize: 12,
-    fontWeight: 'bold',
+    color: colors.brand,
+    fontSize: 13,
+    fontFamily: fontFamily.semiBold,
     marginBottom: 8,
-    textTransform: 'uppercase',
   },
   workoutValue: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
     marginBottom: 8,
   },
   workoutAction: {
@@ -94,22 +97,17 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
   workoutActionText: {
-    color: '#8CC63F',
+    color: colors.brand,
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: fontFamily.semiBold,
     marginLeft: 4,
   },
 
   // Walk Card
   walkCard: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 16,
-    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#2C2C2E',
   },
   walkIconBlock: {
     marginRight: 16,
@@ -118,9 +116,9 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   walkTitle: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
     marginBottom: 4,
   },
   walkStatsRow: {
@@ -128,31 +126,28 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   walkStat: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   watchButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2C2C2E',
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
   },
   watchText: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 12,
     marginLeft: 4,
   },
 
   // Main Calories Card
   caloriesSection: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 24,
+    borderRadius: radius.xl,
     padding: 20,
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#2C2C2E',
   },
   caloriesHeader: {
     flexDirection: 'row',
@@ -161,12 +156,12 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   caloriesTitle: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
   },
   caloriesLink: {
-    color: '#8CC63F',
+    color: colors.brand,
     fontSize: 12,
   },
   caloriesGrid: {
@@ -175,35 +170,51 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
   },
   calorieBox: {
-    backgroundColor: '#2C2C2E',
-    borderRadius: 16,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
     padding: 16,
     width: '48%',
   },
   calorieBoxTitle: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 14,
     marginBottom: 4,
   },
   calorieBoxValue: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.extraBold,
   },
   calorieBoxValueGreen: {
-    color: '#8CC63F',
+    color: colors.brand,
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.extraBold,
   },
   calorieBoxSub: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 12,
     marginTop: 4,
   },
   remainingText: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 12,
     marginTop: 12,
+  },
+  errorText: {
+    color: colors.error,
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+  },
+  retryText: {
+    color: colors.brand,
+    fontSize: 14,
+    fontFamily: fontFamily.semiBold,
   },
 
   // Feed Section
@@ -214,22 +225,17 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.extraBold,
   },
   sectionLink: {
-    color: '#8CC63F',
+    color: colors.brand,
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: fontFamily.semiBold,
   },
   feedCard: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 16,
-    padding: 16,
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#2C2C2E',
   },
   feedHeader: {
     flexDirection: 'row',
@@ -246,25 +252,25 @@ export const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#8CC63F',
+    borderColor: colors.brand,
     marginRight: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   feedName: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
   },
   feedTime: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   feedStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#2C2C2E',
-    borderRadius: 12,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
     padding: 12,
     marginBottom: 16,
   },
@@ -272,17 +278,22 @@ export const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     borderRightWidth: 1,
-    borderColor: '#1C1C1E',
+    borderColor: colors.surface,
   },
   feedStatText: {
-    color: '#8CC63F',
+    color: colors.brand,
     fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
+  },
+  feedContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
   },
   feedContent: {
-    color: '#E0E0E0',
+    color: colors.textMuted,
     fontSize: 14,
-    marginBottom: 16,
   },
   feedFooter: {
     flexDirection: 'row',
@@ -294,19 +305,15 @@ export const styles = StyleSheet.create({
     gap: 6,
   },
   feedActionText: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 12,
   },
 
   // Explorar Section
   exploreCard: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#2C2C2E',
     position: 'relative',
     overflow: 'hidden',
+    marginBottom: 16,
   },
   exploreFilters: {
     flexDirection: 'row',
@@ -316,64 +323,62 @@ export const styles = StyleSheet.create({
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#8CC63F',
+    backgroundColor: colors.brand,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: radius.pill,
   },
   filterPillDark: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2C2C2E',
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: radius.pill,
   },
   filterText: {
-    color: '#121212',
-    fontWeight: 'bold',
+    color: colors.background,
+    fontFamily: fontFamily.semiBold,
     fontSize: 12,
     marginLeft: 4,
   },
   filterTextDark: {
-    color: '#FFF',
-    fontWeight: '500',
+    color: colors.text,
+    fontFamily: fontFamily.semiBold,
     fontSize: 12,
     marginLeft: 4,
   },
   placeCard: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 12,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
     padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2C2C2E',
   },
   placeTitle: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
     marginBottom: 4,
   },
   placeSub: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   placeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderColor: '#8CC63F',
+    borderColor: colors.brand,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: radius.pill,
   },
   placeButtonText: {
-    color: '#8CC63F',
+    color: colors.brand,
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
     marginRight: 4,
   }
 });
