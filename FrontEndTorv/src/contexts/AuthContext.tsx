@@ -18,6 +18,7 @@ interface AuthContextData {
   signed: boolean;
   user: User | null;
   token: string | null;
+  loading: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
 }
@@ -27,6 +28,7 @@ export const AuthContext = createContext<AuthContextData>({} as AuthContextData)
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Keep useEffect as a fallback in case state triggers differently
   useEffect(() => {
@@ -40,11 +42,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Restore session on app start
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((stored) => {
-      if (!stored) return;
-      const { token: storedToken, user: storedUser } = JSON.parse(stored);
-      api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-      setToken(storedToken);
-      setUser(storedUser);
+      if (stored) {
+        const { token: storedToken, user: storedUser } = JSON.parse(stored);
+        api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        setToken(storedToken);
+        setUser(storedUser);
+      }
+      setLoading(false);
     });
   }, []);
 
@@ -64,7 +68,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ signed: !!token, user, token, login, logout }}>
+    <AuthContext.Provider value={{ signed: !!token, user, token, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
