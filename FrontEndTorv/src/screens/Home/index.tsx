@@ -1,19 +1,22 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useContext, useCallback } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Activity, Clock, ChevronRight, MoreHorizontal, Heart, MessageCircle, MapPin, User } from 'lucide-react-native';
+import { Play, Activity, Clock, ChevronRight, MoreHorizontal, Heart, MessageCircle, MapPin, User, Flame, RotateCcw, Hand, Dumbbell } from 'lucide-react-native';
 
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 import { ProgressBar } from '../../components/ProgressBar';
+import { Card } from '../../components/Card';
 import { AuthContext } from '../../contexts/AuthContext';
 import api from '../../services/api';
+import { colors } from '../../theme/tokens';
 import { styles } from './styles';
 
 export default function Home() {
   const navigation = useNavigation();
   const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [consumed, setConsumed] = useState(0);
   const [goal, setGoal] = useState(user?.goalCalories || 2400);
   const [remaining, setRemaining] = useState(0);
@@ -25,24 +28,24 @@ export default function Home() {
   );
 
   const loadDietSummary = async () => {
+    setLoading(true);
+    setLoadError(false);
     try {
       const today = new Date().toISOString().split('T')[0];
       const response = await api.get(`/diet/summary?date=${today}`);
       const consumedData = response.data.consumed || {};
       const targetsData = response.data.targets || {};
-      
+
       const totalConsumed = consumedData.calories || 0;
       const dailyGoal = targetsData.daily_calories || 2400;
       const rem = dailyGoal - totalConsumed;
-      
+
       setConsumed(totalConsumed);
       setGoal(dailyGoal);
       setRemaining(rem);
     } catch (error) {
       console.log('Failed to load diet summary', error);
-      setConsumed(1840); 
-      setGoal(2400);
-      setRemaining(560);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -65,39 +68,45 @@ export default function Home() {
         <View style={styles.headerContainer}>
           <View>
             <Text style={styles.greetingText}>{getGreeting()}</Text>
-            <Text style={styles.nameText}>{user?.name?.split(' ')[0] || 'Atleta'}👋</Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.nameText}>{user?.name?.split(' ')[0] || 'Atleta'}</Text>
+              <Hand color={colors.brand} size={22} />
+            </View>
           </View>
           {user?.photo_url ? (
             <Image source={{ uri: user.photo_url }} style={styles.avatar} />
           ) : (
             <View style={styles.avatar}>
-              <User color="#8CC63F" size={24} style={{ position: 'absolute', top: 12, left: 12 }} />
+              <User color={colors.brand} size={24} style={styles.avatarIcon} />
             </View>
           )}
         </View>
 
         {/* Top Grid Mocks */}
         <View style={styles.gridRow}>
-          <View style={styles.streakCard}>
-            <Text style={styles.streakTitle}>STREAK🔥</Text>
+          <Card style={styles.streakCard}>
+            <View style={styles.streakTitleRow}>
+              <Flame color={colors.textSecondary} size={14} />
+              <Text style={styles.streakTitle}>Streak</Text>
+            </View>
             <Text style={styles.streakValue}>12</Text>
             <Text style={styles.streakSub}>dias seguidos</Text>
-          </View>
+          </Card>
 
-          <View style={styles.workoutCard}>
-            <Text style={styles.workoutTitle}>TREINO DE HOJE</Text>
+          <Card style={styles.workoutCard}>
+            <Text style={styles.workoutTitle}>Treino de hoje</Text>
             <Text style={styles.workoutValue}>Peito & Tríceps</Text>
             <TouchableOpacity style={styles.workoutAction}>
-              <Play color="#8CC63F" size={14} fill="#8CC63F" />
+              <Play color={colors.brand} size={14} fill={colors.brand} />
               <Text style={styles.workoutActionText}>Iniciar</Text>
             </TouchableOpacity>
-          </View>
+          </Card>
         </View>
 
         {/* Morning Walk Mock */}
-        <View style={styles.walkCard}>
+        <Card style={styles.walkCard}>
           <View style={styles.walkIconBlock}>
-            <Activity color="#8CC63F" size={32} />
+            <Activity color={colors.brand} size={32} />
           </View>
           <View style={styles.walkInfo}>
             <Text style={styles.walkTitle}>Caminhada matinal</Text>
@@ -108,21 +117,35 @@ export default function Home() {
             </View>
           </View>
           <TouchableOpacity style={styles.watchButton}>
-            <Clock color="#8E8E93" size={14} />
+            <Clock color={colors.textSecondary} size={14} />
             <Text style={styles.watchText}>Relógio</Text>
           </TouchableOpacity>
-        </View>
+        </Card>
 
         {/* Main Nutrition Integration */}
         {loading ? (
-          <ActivityIndicator color="#8CC63F" style={{ marginBottom: 24 }} />
+          <ActivityIndicator color={colors.brand} style={{ marginBottom: 24 }} />
+        ) : loadError ? (
+          <Card style={styles.caloriesSection}>
+            <Text style={styles.caloriesTitle}>Calorias de hoje</Text>
+            <Text style={styles.errorText}>Não foi possível carregar suas calorias.</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={loadDietSummary}
+              accessibilityRole="button"
+              accessibilityLabel="Tentar carregar calorias novamente"
+            >
+              <RotateCcw color={colors.brand} size={14} />
+              <Text style={styles.retryText}>Tentar novamente</Text>
+            </TouchableOpacity>
+          </Card>
         ) : (
-          <View style={styles.caloriesSection}>
+          <Card style={styles.caloriesSection}>
             <TouchableOpacity onPress={() => navigation.navigate('MyDiet' as never)} style={styles.caloriesHeader}>
               <Text style={styles.caloriesTitle}>Calorias de hoje</Text>
               <Text style={styles.caloriesLink}>ver detalhes {'>'}</Text>
             </TouchableOpacity>
-            
+
             <View style={styles.caloriesGrid}>
               <View style={styles.calorieBox}>
                 <Text style={styles.calorieBoxTitle}>Consumidas</Text>
@@ -131,7 +154,7 @@ export default function Home() {
                 </Text>
                 <Text style={styles.calorieBoxSub}>kcal</Text>
               </View>
-              
+
               <View style={styles.calorieBox}>
                 <Text style={styles.calorieBoxTitle}>Gastas</Text>
                 <Text style={styles.calorieBoxValueGreen}>180</Text>
@@ -139,11 +162,11 @@ export default function Home() {
               </View>
             </View>
 
-            <ProgressBar progress={progress} color="#8CC63F" height={6} />
+            <ProgressBar progress={progress} color={colors.brand} style={{ height: 6 }} />
             <Text style={styles.remainingText}>
               {remaining > 0 ? `${remaining.toLocaleString('pt-BR')} kcal restantes para sua meta` : 'Meta atingida!'}
             </Text>
-          </View>
+          </Card>
         )}
 
         {/* Feed Mock */}
@@ -151,18 +174,20 @@ export default function Home() {
           <Text style={styles.sectionTitle}>Feed</Text>
           <Text style={styles.sectionLink}>Ver tudo</Text>
         </View>
-        <View style={styles.feedCard}>
+        <Card style={styles.feedCard}>
           <View style={styles.feedHeader}>
             <View style={styles.feedUser}>
               <View style={styles.feedAvatar}>
-                <User color="#8CC63F" size={20} />
+                <User color={colors.brand} size={20} />
               </View>
               <View>
                 <Text style={styles.feedName}>Marina Alves</Text>
-                <Text style={styles.feedTime}>há 23 min · Corrida🏃‍♂️</Text>
+                <Text style={styles.feedTime}>há 23 min · Corrida</Text>
               </View>
             </View>
-            <MoreHorizontal color="#8E8E93" size={20} />
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Mais opções da publicação">
+              <MoreHorizontal color={colors.textSecondary} size={20} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.feedStatsRow}>
@@ -177,39 +202,40 @@ export default function Home() {
             </View>
           </View>
 
-          <Text style={styles.feedContent}>
-            Corrida matinal feita! 💪 Cada km conta.
-          </Text>
+          <View style={styles.feedContentRow}>
+            <Dumbbell color={colors.textMuted} size={14} />
+            <Text style={styles.feedContent}>Corrida matinal feita! Cada km conta.</Text>
+          </View>
 
           <View style={styles.feedFooter}>
             <View style={styles.feedAction}>
-              <Heart color="#8E8E93" size={16} />
+              <Heart color={colors.textSecondary} size={16} />
               <Text style={styles.feedActionText}>47</Text>
             </View>
             <View style={styles.feedAction}>
-              <MessageCircle color="#8E8E93" size={16} />
+              <MessageCircle color={colors.textSecondary} size={16} />
               <Text style={styles.feedActionText}>12</Text>
             </View>
           </View>
-        </View>
+        </Card>
 
         {/* Explorar Mock */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Explorar</Text>
           <Text style={styles.sectionLink}>Ver mapa</Text>
         </View>
-        <View style={styles.exploreCard}>
+        <Card style={styles.exploreCard}>
           <View style={styles.exploreFilters}>
             <View style={styles.filterPill}>
-              <Activity color="#121212" size={14} />
+              <Activity color={colors.background} size={14} />
               <Text style={styles.filterText}>Academias</Text>
             </View>
             <View style={styles.filterPillDark}>
-              <MapPin color="#FFF" size={14} />
+              <MapPin color={colors.text} size={14} />
               <Text style={styles.filterTextDark}>Trajetos</Text>
             </View>
             <View style={styles.filterPillDark}>
-              <MapPin color="#FFF" size={14} />
+              <MapPin color={colors.text} size={14} />
               <Text style={styles.filterTextDark}>Parques</Text>
             </View>
           </View>
@@ -217,14 +243,14 @@ export default function Home() {
           <View style={styles.placeCard}>
             <View>
               <Text style={styles.placeTitle}>SmartFit Centro</Text>
-              <Text style={styles.placeSub}>📍 320m de distância · Aberto 24h</Text>
+              <Text style={styles.placeSub}>320m de distância · Aberto 24h</Text>
             </View>
             <TouchableOpacity style={styles.placeButton}>
               <Text style={styles.placeButtonText}>Abrir</Text>
-              <ChevronRight color="#8CC63F" size={14} />
+              <ChevronRight color={colors.brand} size={14} />
             </TouchableOpacity>
           </View>
-        </View>
+        </Card>
 
       </ScrollView>
     </SafeAreaView>

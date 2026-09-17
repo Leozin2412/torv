@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, X, Edit2, Trash2 } from 'lucide-react-native';
+import { Plus, X, Edit2, Trash2, UtensilsCrossed } from 'lucide-react-native';
 
 import { ProgressBar } from '../../components/ProgressBar';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
+import { Card } from '../../components/Card';
 import api from '../../services/api';
+import { colors } from '../../theme/tokens';
 import { styles } from './styles';
 
 interface MacroState {
@@ -48,10 +50,10 @@ export default function MyDiet() {
   const [isDateLoading, setIsDateLoading] = useState(false);
 
   const [metrics, setMetrics] = useState<DietMetrics>({
-    calories: { current: 0, goal: 2400, color: '#8CC63F' },
-    protein: { current: 0, goal: 150, color: '#FF9500' },
-    carbs: { current: 0, goal: 250, color: '#FFCC00' },
-    fat: { current: 0, goal: 75, color: '#AF52DE' }
+    calories: { current: 0, goal: 2400, color: colors.brand },
+    protein: { current: 0, goal: 150, color: colors.accentProtein },
+    carbs: { current: 0, goal: 250, color: colors.accentCarbs },
+    fat: { current: 0, goal: 75, color: colors.accentFat }
   });
 
   const generateDates = () => {
@@ -76,10 +78,10 @@ export default function MyDiet() {
     const consumed = data.consumed || { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
     
     setMetrics({
-      calories: { current: consumed.calories || 0, goal: targets.daily_calories || 2400, color: '#8CC63F' },
-      protein: { current: consumed.protein_g || 0, goal: targets.protein_g || 150, color: '#FF9500' },
-      carbs: { current: consumed.carbs_g || 0, goal: targets.carbs_g || 250, color: '#FFCC00' },
-      fat: { current: consumed.fat_g || 0, goal: targets.fat_g || 75, color: '#AF52DE' },
+      calories: { current: consumed.calories || 0, goal: targets.daily_calories || 2400, color: colors.brand },
+      protein: { current: consumed.protein_g || 0, goal: targets.protein_g || 150, color: colors.accentProtein },
+      carbs: { current: consumed.carbs_g || 0, goal: targets.carbs_g || 250, color: colors.accentCarbs },
+      fat: { current: consumed.fat_g || 0, goal: targets.fat_g || 75, color: colors.accentFat },
     });
 
     if (data.logs) {
@@ -230,90 +232,120 @@ export default function MyDiet() {
         {availableDates.map((item) => {
           const isActive = item.fullDate === selectedDate;
           return (
-            <TouchableOpacity 
-              key={item.fullDate} 
-              style={[styles.dateItem, isActive && styles.dateItemActive]}
+            <TouchableOpacity
+              key={item.fullDate}
               onPress={() => setSelectedDate(item.fullDate)}
+              accessibilityRole="button"
+              accessibilityLabel={`Selecionar dia ${item.dayNumber} de ${item.dayName}`}
             >
-              <Text style={styles.dateDay}>{item.dayName}</Text>
-              <Text style={styles.dateNumber}>{item.dayNumber}</Text>
+              <Card style={[styles.dateItem, isActive && styles.dateItemActive]}>
+                <Text style={styles.dateDay}>{item.dayName}</Text>
+                <Text style={styles.dateNumber}>{item.dayNumber}</Text>
+              </Card>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
       {/* Main Calories Progress Bar */}
-      <View style={styles.mainCaloriesCard}>
+      <Card style={styles.mainCaloriesCard}>
         <View style={styles.caloriesHeaderRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.mainCaloriesTitle}>Total Calorias ⚡</Text>
-            <TouchableOpacity onPress={handleOpenTargetEdit} style={{ marginLeft: 8 }}>
-              <Edit2 color="#8CC63F" size={16} />
+          <View style={styles.caloriesTitleRow}>
+            <Text style={styles.mainCaloriesTitle}>Total Calorias</Text>
+            <TouchableOpacity
+              onPress={handleOpenTargetEdit}
+              style={styles.editTargetButton}
+              accessibilityRole="button"
+              accessibilityLabel="Editar metas diárias"
+            >
+              <Edit2 color={colors.brand} size={16} />
             </TouchableOpacity>
           </View>
-          <Text style={[styles.mainCaloriesValue, metrics.calories.current > metrics.calories.goal && { color: '#FF3B30' }]}>
+          <Text style={[styles.mainCaloriesValue, metrics.calories.current > metrics.calories.goal && styles.valueOverGoal]}>
             {metrics.calories.current} <Text style={styles.mainCaloriesGoal}>/ {metrics.calories.goal} kcal</Text>
           </Text>
         </View>
-        <ProgressBar progress={metrics.calories.goal > 0 ? metrics.calories.current / metrics.calories.goal : 0} color={metrics.calories.color} height={12} />
-      </View>
+        <ProgressBar progress={metrics.calories.goal > 0 ? metrics.calories.current / metrics.calories.goal : 0} color={metrics.calories.color} style={styles.mainCaloriesBar} />
+      </Card>
 
       <View style={styles.macrosContainer}>
-        <View style={styles.macroCard}>
-          <Text style={styles.macroTitle}>Proteína 🍗</Text>
-          <Text style={[styles.macroValue, metrics.protein.current > metrics.protein.goal && { color: '#FF3B30' }]}>
-            {metrics.protein.current} <Text style={[styles.macroGoal, { fontSize: 12 }]}>/ {metrics.protein.goal}g</Text>
+        <Card style={styles.macroCard}>
+          <Text style={styles.macroTitle}>Proteína</Text>
+          <Text style={[styles.macroValue, metrics.protein.current > metrics.protein.goal && styles.valueOverGoal]}>
+            {metrics.protein.current} <Text style={styles.macroGoal}>/ {metrics.protein.goal}g</Text>
           </Text>
           <ProgressBar progress={metrics.protein.goal > 0 ? metrics.protein.current / metrics.protein.goal : 0} color={metrics.protein.color} />
-        </View>
-        <View style={styles.macroCard}>
-          <Text style={styles.macroTitle}>Carbo 🥖</Text>
-          <Text style={[styles.macroValue, metrics.carbs.current > metrics.carbs.goal && { color: '#FF3B30' }]}>
-            {metrics.carbs.current} <Text style={[styles.macroGoal, { fontSize: 12 }]}>/ {metrics.carbs.goal}g</Text>
+        </Card>
+        <Card style={styles.macroCard}>
+          <Text style={styles.macroTitle}>Carboidratos</Text>
+          <Text style={[styles.macroValue, metrics.carbs.current > metrics.carbs.goal && styles.valueOverGoal]}>
+            {metrics.carbs.current} <Text style={styles.macroGoal}>/ {metrics.carbs.goal}g</Text>
           </Text>
           <ProgressBar progress={metrics.carbs.goal > 0 ? metrics.carbs.current / metrics.carbs.goal : 0} color={metrics.carbs.color} />
-        </View>
-        <View style={styles.macroCard}>
-          <Text style={styles.macroTitle}>Gordura 🍔</Text>
-          <Text style={[styles.macroValue, metrics.fat.current > metrics.fat.goal && { color: '#FF3B30' }]}>
-            {metrics.fat.current} <Text style={[styles.macroGoal, { fontSize: 12 }]}>/ {metrics.fat.goal}g</Text>
+        </Card>
+        <Card style={styles.macroCard}>
+          <Text style={styles.macroTitle}>Gordura</Text>
+          <Text style={[styles.macroValue, metrics.fat.current > metrics.fat.goal && styles.valueOverGoal]}>
+            {metrics.fat.current} <Text style={styles.macroGoal}>/ {metrics.fat.goal}g</Text>
           </Text>
           <ProgressBar progress={metrics.fat.goal > 0 ? metrics.fat.current / metrics.fat.goal : 0} color={metrics.fat.color} />
-        </View>
+        </Card>
       </View>
 
       <Text style={styles.sectionTitle}>Refeições</Text>
       
       <ScrollView>
-        {meals.map(meal => (
-          <View key={meal.id} style={styles.mealCard}>
+        {meals.length === 0 && !isDateLoading ? (
+          <Card style={styles.mealCard}>
+            <View style={styles.mealEmptyIconContainer}>
+              <UtensilsCrossed color={colors.textSecondary} size={20} />
+            </View>
             <View style={styles.mealInfo}>
-              <Text style={styles.mealName}>{meal.name}</Text>
-              <Text style={styles.mealMacros}>
-                P: {meal.protein}g · C: {meal.carbs}g · G: {meal.fat}g
-              </Text>
+              <Text style={styles.mealName}>Nenhuma refeição ainda</Text>
+              <Text style={styles.mealMacros}>Você ainda não registrou nada hoje.</Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-              <Text style={styles.mealCalories}>{meal.calories} kcal</Text>
-              <TouchableOpacity onPress={() => handleOpenEditMeal(meal)}>
-                <Edit2 color="#8E8E93" size={18} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDeleteMealPrompt(meal.id)}>
-                <Trash2 color="#FF3B30" size={18} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
-        {isDateLoading && (
-          <ActivityIndicator size="small" color="#8CC63F" style={{ marginTop: 20 }} />
+          </Card>
+        ) : (
+          meals.map(meal => (
+            <Card key={meal.id} style={styles.mealCard}>
+              <View style={styles.mealInfo}>
+                <Text style={styles.mealName}>{meal.name}</Text>
+                <Text style={styles.mealMacros}>
+                  P: {meal.protein}g · C: {meal.carbs}g · G: {meal.fat}g
+                </Text>
+              </View>
+              <View style={styles.mealActions}>
+                <Text style={styles.mealCalories}>{meal.calories} kcal</Text>
+                <TouchableOpacity
+                  onPress={() => handleOpenEditMeal(meal)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Editar refeição ${meal.name}`}
+                >
+                  <Edit2 color={colors.textSecondary} size={18} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleDeleteMealPrompt(meal.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Excluir refeição ${meal.name}`}
+                >
+                  <Trash2 color={colors.error} size={18} />
+                </TouchableOpacity>
+              </View>
+            </Card>
+          ))
         )}
-        
-        <TouchableOpacity 
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1C1C1E', borderColor: '#8CC63F', borderWidth: 1, padding: 16, borderRadius: 12, marginTop: 8, marginBottom: 32 }} 
+        {isDateLoading && (
+          <ActivityIndicator size="small" color={colors.brand} style={styles.dateLoadingIndicator} />
+        )}
+
+        <TouchableOpacity
+          style={styles.addMealButton}
           onPress={handleOpenNewMeal}
+          accessibilityRole="button"
+          accessibilityLabel="Adicionar refeição"
         >
-          <Plus color="#8CC63F" size={24} style={{ marginRight: 8 }} />
-          <Text style={{ color: '#8CC63F', fontWeight: 'bold', fontSize: 16 }}>Adicionar Refeição</Text>
+          <Plus color={colors.brand} size={24} style={styles.addMealIcon} />
+          <Text style={styles.addMealText}>Adicionar Refeição</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -323,29 +355,29 @@ export default function MyDiet() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{selectedMealId ? 'Editar Refeição' : 'Nova Refeição'}</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X color="#FFF" size={24} />
+              <TouchableOpacity onPress={() => setModalVisible(false)} accessibilityRole="button" accessibilityLabel="Fechar formulário de refeição">
+                <X color={colors.text} size={24} />
               </TouchableOpacity>
             </View>
-            
+
             <ScrollView>
               <Input label="Nome da Refeição" placeholder="Ex: Almoço" value={mealName} onChangeText={setMealName} />
               <Input label="Calorias" placeholder="0" value={mealCalories} onChangeText={setMealCalories} keyboardType="numeric" />
-              
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ flex: 1 }}>
+
+              <View style={styles.formRow}>
+                <View style={styles.formRowItem}>
                   <Input label="Proteína (g)" placeholder="0" value={mealProtein} onChangeText={setMealProtein} keyboardType="numeric" />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={styles.formRowItem}>
                   <Input label="Carbo (g)" placeholder="0" value={mealCarbs} onChangeText={setMealCarbs} keyboardType="numeric" />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={styles.formRowItem}>
                   <Input label="Gordura (g)" placeholder="0" value={mealFat} onChangeText={setMealFat} keyboardType="numeric" />
                 </View>
               </View>
 
               {mealFormError ? (
-                <Text style={{ color: '#FF3B30', textAlign: 'center', marginBottom: 12 }}>{mealFormError}</Text>
+                <Text style={styles.formError}>{mealFormError}</Text>
               ) : null}
 
               <Button title="Salvar" onPress={handleAddMeal} loading={loading} />
@@ -360,22 +392,22 @@ export default function MyDiet() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Editar Metas Diárias</Text>
-              <TouchableOpacity onPress={() => setTargetModalVisible(false)}>
-                <X color="#FFF" size={24} />
+              <TouchableOpacity onPress={() => setTargetModalVisible(false)} accessibilityRole="button" accessibilityLabel="Fechar edição de metas">
+                <X color={colors.text} size={24} />
               </TouchableOpacity>
             </View>
-            
+
             <ScrollView>
               <Input label="Calorias Totais (kcal)" placeholder="2000" value={editTargets.calories} onChangeText={(val) => setEditTargets({...editTargets, calories: val})} keyboardType="numeric" />
-              
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ flex: 1 }}>
+
+              <View style={styles.formRow}>
+                <View style={styles.formRowItem}>
                   <Input label="Proteína (g)" placeholder="150" value={editTargets.protein} onChangeText={(val) => setEditTargets({...editTargets, protein: val})} keyboardType="numeric" />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={styles.formRowItem}>
                   <Input label="Carbo (g)" placeholder="250" value={editTargets.carbs} onChangeText={(val) => setEditTargets({...editTargets, carbs: val})} keyboardType="numeric" />
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={styles.formRowItem}>
                   <Input label="Gordura (g)" placeholder="75" value={editTargets.fat} onChangeText={(val) => setEditTargets({...editTargets, fat: val})} keyboardType="numeric" />
                 </View>
               </View>
@@ -388,31 +420,17 @@ export default function MyDiet() {
 
       {/* Delete Confirmation Modal */}
       <Modal visible={deleteConfirmVisible} transparent animationType="fade">
-        <View style={[styles.modalOverlay, { justifyContent: 'center', padding: 24 }]}>
-          <View style={[styles.modalContent, { minHeight: 'auto', borderRadius: 24 }]}>
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Excluir Refeição?</Text>
             </View>
-            <Text style={{ color: '#E0E0E0', fontSize: 16, marginBottom: 24, lineHeight: 24 }}>
+            <Text style={styles.deleteModalText}>
               Tem certeza que deseja excluir esta refeição permanentemente? Os dados não poderão ser recuperados.
             </Text>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <TouchableOpacity 
-                  style={{ backgroundColor: 'transparent', borderWidth: 1, borderColor: '#2C2C2E', borderRadius: 12, paddingVertical: 14, alignItems: 'center' }} 
-                  onPress={() => setDeleteConfirmVisible(false)}
-                >
-                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={{ flex: 1 }}>
-                <TouchableOpacity 
-                  style={{ backgroundColor: '#FF3B30', borderRadius: 12, paddingVertical: 14, alignItems: 'center' }} 
-                  onPress={handleConfirmDelete}
-                >
-                  <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Excluir</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.deleteModalActions}>
+              <Button title="Cancelar" outline onPress={() => setDeleteConfirmVisible(false)} style={styles.deleteModalButton} />
+              <Button title="Excluir" danger onPress={handleConfirmDelete} style={styles.deleteModalButton} />
             </View>
           </View>
         </View>

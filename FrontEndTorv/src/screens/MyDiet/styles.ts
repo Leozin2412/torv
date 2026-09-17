@@ -1,9 +1,10 @@
 import { StyleSheet } from 'react-native';
+import { colors, radius, fontFamily } from '../../theme/tokens';
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
     paddingTop: 48,
   },
@@ -16,8 +17,8 @@ export const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
   },
   dateSelector: {
     flexDirection: 'row',
@@ -26,34 +27,27 @@ export const styles = StyleSheet.create({
   dateItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1C1C1E',
-    borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginRight: 12,
-    borderWidth: 1,
-    borderColor: '#2C2C2E',
+    marginBottom: 0,
   },
   dateItemActive: {
-    borderColor: '#8CC63F',
+    borderColor: colors.brand,
   },
   dateDay: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 12,
     marginBottom: 4,
   },
   dateNumber: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
   },
   mainCaloriesCard: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#2C2C2E',
   },
   caloriesHeaderRow: {
     flexDirection: 'row',
@@ -61,20 +55,33 @@ export const styles = StyleSheet.create({
     alignItems: 'baseline',
     marginBottom: 16,
   },
+  caloriesTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  editTargetButton: {
+    marginLeft: 8,
+  },
   mainCaloriesTitle: {
-    color: '#E0E0E0',
+    color: colors.textMuted,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
   },
   mainCaloriesValue: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 24,
-    fontWeight: '900',
+    fontFamily: fontFamily.extraBold,
   },
   mainCaloriesGoal: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 14,
-    fontWeight: 'normal',
+    fontFamily: fontFamily.regular,
+  },
+  mainCaloriesBar: {
+    height: 12,
+  },
+  valueOverGoal: {
+    color: colors.error,
   },
   macrosContainer: {
     flexDirection: 'row',
@@ -83,31 +90,30 @@ export const styles = StyleSheet.create({
   },
   macroCard: {
     flex: 1,
-    backgroundColor: '#1C1C1E',
-    borderRadius: 12,
     padding: 12,
     marginHorizontal: 4,
+    marginBottom: 0,
   },
   macroTitle: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 12,
     marginBottom: 8,
   },
   macroValue: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
     marginBottom: 8,
   },
   macroGoal: {
-    color: '#8E8E93',
-    fontSize: 10,
-    marginTop: 8,
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontFamily: fontFamily.regular,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
     marginBottom: 16,
   },
   mealCard: {
@@ -115,43 +121,74 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#1C1C1E',
-    borderRadius: 12,
     marginBottom: 12,
+  },
+  mealEmptyIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
   },
   mealInfo: {
     flex: 1,
   },
+  mealActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
   mealName: {
-    color: '#FFF',
+    color: colors.text,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
     marginBottom: 4,
   },
   mealMacros: {
-    color: '#8E8E93',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   mealCalories: {
-    color: '#8CC63F',
+    color: colors.brand,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: fontFamily.semiBold,
   },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    backgroundColor: '#8CC63F',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
+  dateLoadingIndicator: {
+    marginTop: 20,
+  },
+  addMealButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.brand,
+    borderWidth: 1,
+    padding: 16,
+    borderRadius: radius.sm,
+    marginTop: 8,
+    marginBottom: 32,
+  },
+  addMealIcon: {
+    marginRight: 8,
+  },
+  addMealText: {
+    color: colors.brand,
+    fontFamily: fontFamily.semiBold,
+    fontSize: 16,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  formRowItem: {
+    flex: 1,
+  },
+  formError: {
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   // Modal styles
   modalOverlay: {
@@ -160,9 +197,9 @@ export const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1C1C1E',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
     padding: 24,
     minHeight: '60%',
   },
@@ -174,7 +211,33 @@ export const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontFamily: fontFamily.extraBold,
+    color: colors.text,
+  },
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  deleteModalContent: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 24,
+  },
+  deleteModalText: {
+    color: colors.textMuted,
+    fontSize: 16,
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  deleteModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  deleteModalButton: {
+    flex: 1,
+    width: undefined,
+    marginTop: 0,
   },
 });

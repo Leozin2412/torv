@@ -1,11 +1,12 @@
 import { StyleSheet } from 'react-native';
+import { colors, radius, fontFamily } from '../../theme/tokens';
 
 export const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1C1C1E',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#2C2C2E',
-    borderRadius: 16,
+    borderColor: colors.border,
+    borderRadius: radius.md,
     padding: 16,
     marginBottom: 16,
     flexDirection: 'row',
@@ -13,8 +14,8 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardActive: {
-    borderColor: '#8CC63F',
-    shadowColor: '#8CC63F',
+    borderColor: colors.brand,
+    shadowColor: colors.brand,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -26,33 +27,33 @@ export const styles = StyleSheet.create({
   },
   title: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#E0E0E0',
+    fontFamily: fontFamily.semiBold,
+    color: colors.textMuted,
     marginBottom: 4,
   },
   titleActive: {
-    color: '#8CC63F',
+    color: colors.brand,
   },
   description: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: colors.textSecondary,
   },
   radioOuter: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#2C2C2E',
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   radioOuterActive: {
-    borderColor: '#8CC63F',
+    borderColor: colors.brand,
   },
   radioInner: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#8CC63F',
+    backgroundColor: colors.brand,
   },
 });

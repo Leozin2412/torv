@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, ViewStyle } from 'react-native';
+import { colors } from '../../theme/tokens';
 import { styles } from './styles';
 
 interface ProgressBarProps {
@@ -8,7 +9,7 @@ interface ProgressBarProps {
   style?: ViewStyle;
 }
 
-export const ProgressBar: React.FC<ProgressBarProps> = ({ progress, color = '#8CC63F', style }) => {
+export const ProgressBar: React.FC<ProgressBarProps> = ({ progress, color = colors.brand, style }) => {
   // Ensure progress is between 0 and 1
   const safeProgress = Math.min(Math.max(progress, 0), 1);
 

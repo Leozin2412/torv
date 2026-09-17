@@ -9,6 +9,7 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { AuthContext } from '../../contexts/AuthContext';
 import api from '../../services/api';
+import { colors } from '../../theme/tokens';
 import { styles } from './styles';
 
 type AuthStackParamList = {
@@ -64,12 +65,12 @@ export default function Login() {
             resizeMode="cover" 
           />
           <LinearGradient
-            colors={['transparent', '#121212']}
+            colors={['transparent', colors.background]}
             style={StyleSheet.absoluteFillObject}
           />
         </View>
         <View style={styles.landingContent}>
-          <Text style={styles.landingTitle}>Bem-vindo(a) ao <Text style={styles.landingTitleHighlight}>TORV!</Text></Text>
+          <Text style={styles.landingTitle}>Bem-vindo(a) ao TORV!</Text>
           <Text style={styles.landingSubtitle}>Comece hoje a construir sua melhor versão.</Text>
           <Button title="Registre-se" onPress={() => navigation.navigate('Register')} style={{ marginBottom: 16 }} />
           <Button title="Login" onPress={() => setShowForm(true)} outline />
@@ -104,7 +105,7 @@ export default function Login() {
       />
 
       {loginError ? (
-        <Text style={{ color: '#FF3B30', textAlign: 'center', marginBottom: 12 }}>{loginError}</Text>
+        <Text style={styles.errorText}>{loginError}</Text>
       ) : null}
 
       <Button
