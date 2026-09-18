@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, X, Edit2, Trash2, UtensilsCrossed } from 'lucide-react-native';
+import { Plus, X, Edit2, Trash2, UtensilsCrossed, Calendar } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { ProgressBar } from '../../components/ProgressBar';
 import { Input } from '../../components/Input';
@@ -56,22 +57,45 @@ export default function MyDiet() {
     fat: { current: 0, goal: 75, color: colors.accentFat }
   });
 
-  const generateDates = () => {
+  const DAY_NAMES = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+
+  const toDateEntry = (d: Date) => ({
+    fullDate: d.toISOString().split('T')[0],
+    dayName: DAY_NAMES[d.getDay()],
+    dayNumber: d.getDate(),
+  });
+
+  const getLastFiveDays = () => {
     const dates = [];
     for (let i = 4; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-      dates.push({
-        fullDate: d.toISOString().split('T')[0],
-        dayName: dayNames[d.getDay()],
-        dayNumber: d.getDate(),
-      });
+      dates.push(toDateEntry(d));
     }
     return dates;
   };
 
-  const [availableDates] = useState(generateDates());
+  const parseLocalDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const getWeekOf = (dateStr: string) => {
+    const anchor = parseLocalDate(dateStr);
+    const sunday = new Date(anchor);
+    sunday.setDate(anchor.getDate() - anchor.getDay());
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sunday);
+      d.setDate(sunday.getDate() + i);
+      dates.push(toDateEntry(d));
+    }
+    return dates;
+  };
+
+  const [filterDate, setFilterDate] = useState<string | null>(null);
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const displayedDates = filterDate ? getWeekOf(filterDate) : getLastFiveDays();
 
   const updateDietMetrics = (data: any) => {
     const targets = data.targets || { daily_calories: 2400, protein_g: 150, carbs_g: 250, fat_g: 75 };
@@ -142,7 +166,7 @@ export default function MyDiet() {
       if (selectedMealId) {
         await api.put(`/diet/${selectedMealId}`, payload);
       } else {
-        await api.post('/diet', payload);
+        await api.post('/diet', { ...payload, logged_date: selectedDate });
       }
 
       await loadDataForDate(selectedDate);
@@ -226,10 +250,67 @@ export default function MyDiet() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Minha Dieta</Text>
+        <View style={styles.headerActions}>
+          {filterDate && (
+            <TouchableOpacity
+              onPress={() => {
+                setFilterDate(null);
+                setSelectedDate(new Date().toISOString().split('T')[0]);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar para hoje"
+              style={styles.todayChip}
+            >
+              <Text style={styles.todayChipText}>Hoje</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={() => setPickerVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Filtrar por data"
+          >
+            <Calendar size={22} color={colors.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
+      {pickerVisible && Platform.select({
+        web: (
+          <input
+            type="date"
+            aria-label="Filtrar por data"
+            value={filterDate ?? selectedDate}
+            max={new Date().toISOString().split('T')[0]}
+            onChange={(e) => {
+              setPickerVisible(false);
+              const value = e.target.value;
+              if (value) {
+                setFilterDate(value);
+                setSelectedDate(value);
+              }
+            }}
+            style={{ marginBottom: 12 }}
+          />
+        ),
+        default: (
+          <DateTimePicker
+            value={filterDate ? parseLocalDate(filterDate) : new Date()}
+            mode="date"
+            maximumDate={new Date()}
+            onChange={(_event, date) => {
+              setPickerVisible(false);
+              if (date) {
+                const dateStr = date.toISOString().split('T')[0];
+                setFilterDate(dateStr);
+                setSelectedDate(dateStr);
+              }
+            }}
+          />
+        ),
+      })}
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateSelector}>
-        {availableDates.map((item) => {
+        {displayedDates.map((item) => {
           const isActive = item.fullDate === selectedDate;
           return (
             <TouchableOpacity

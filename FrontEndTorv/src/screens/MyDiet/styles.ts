@@ -20,6 +20,22 @@ export const styles = StyleSheet.create({
     fontFamily: fontFamily.extraBold,
     color: colors.text,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  todayChip: {
+    backgroundColor: colors.brandTint,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  todayChipText: {
+    color: colors.brand,
+    fontFamily: fontFamily.semiBold,
+    fontSize: 13,
+  },
   dateSelector: {
     flexDirection: 'row',
     marginBottom: 24,
