@@ -208,7 +208,7 @@ git commit -m "feat(db): link users to auth.users, add handle_new_user trigger a
 **Interfaces:**
 - Produces: `request.user.userId` (string, the Supabase `sub` claim) — same shape the 9 existing call sites in `diet.controller.js`/`profile.controller.js` already destructure, so **no changes needed in those files**.
 
-- [ ] **Step 1: Add the env var and the JWKS-verification dependency**
+- [x] **Step 1: Add the env var and the JWKS-verification dependency**
 
 `jsonwebtoken` (already installed) has no JWKS support — it only verifies against a key/secret you hand it directly, it can't fetch and cache a remote key set or pick the right key by `kid`. `jose` does, and is the library Supabase's own docs point to for this exact case.
 
@@ -223,7 +223,7 @@ In `BackEndTorv/.env`, add (Project URL from the Supabase dashboard → Project 
 SUPABASE_URL="<project API URL from the dashboard>"
 ```
 
-- [ ] **Step 2: Rewrite the middleware**
+- [x] **Step 2: Rewrite the middleware**
 
 Replace the full contents of `BackEndTorv/src/middlewares/auth.middleware.js`:
 
@@ -254,7 +254,7 @@ module.exports = authenticateToken;
 
 The handler is `async` now instead of taking a `done` callback — Fastify's `preHandler` hooks support both styles, and `jwtVerify` is promise-based, so `async`/`await` is the natural fit here rather than wrapping it back into callback style. `createRemoteJWKSet` caches the fetched key set internally and automatically re-fetches if a token references a `kid` it hasn't seen yet (e.g. right after a future key rotation), so there's no manual caching or rotation handling to write.
 
-- [ ] **Step 3: Delete the now-unused custom secret file**
+- [x] **Step 3: Delete the now-unused custom secret file**
 
 `BackEndTorv/src/lib/jwt-secret.js` was only used by the old middleware and the removed `auth.controller.js` (Task 4 deletes the controller). Confirm no other importer, then delete:
 
@@ -268,7 +268,7 @@ Expected: only `auth.middleware.js` (just edited) and `auth.controller.js` (abou
 rm BackEndTorv/src/lib/jwt-secret.js
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add BackEndTorv/src/middlewares/auth.middleware.js BackEndTorv/.env BackEndTorv/package.json BackEndTorv/package-lock.json
@@ -289,7 +289,7 @@ git commit -m "feat(auth): verify Supabase-issued JWTs via JWKS instead of a sel
 **Interfaces:**
 - Consumes: nothing (this task only removes code).
 
-- [ ] **Step 1: Remove the route registration**
+- [x] **Step 1: Remove the route registration**
 
 In `BackEndTorv/server.js`, delete this line:
 
@@ -297,7 +297,7 @@ In `BackEndTorv/server.js`, delete this line:
 fastify.register(require('./src/routes/auth.routes'), { prefix: '/auth' });
 ```
 
-- [ ] **Step 2: Delete the controller and routes files**
+- [x] **Step 2: Delete the controller and routes files**
 
 ```bash
 git rm BackEndTorv/src/controller/auth.controller.js BackEndTorv/src/routes/auth.routes.js BackEndTorv/src/repository/auth.repository.js
@@ -305,7 +305,7 @@ git rm BackEndTorv/src/controller/auth.controller.js BackEndTorv/src/routes/auth
 
 (`auth.repository.js` is deleted too — its only callers were `auth.controller.js`.)
 
-- [ ] **Step 3: Verify nothing else references the removed files**
+- [x] **Step 3: Verify nothing else references the removed files**
 
 ```bash
 grep -rn "auth.controller\|auth.routes\|auth.repository" BackEndTorv/src BackEndTorv/server.js
@@ -313,7 +313,7 @@ grep -rn "auth.controller\|auth.routes\|auth.repository" BackEndTorv/src BackEnd
 
 Expected: no matches.
 
-- [ ] **Step 4: Start the server and confirm it boots**
+- [x] **Step 4: Start the server and confirm it boots**
 
 ```bash
 cd BackEndTorv
@@ -322,7 +322,7 @@ node server.js
 
 Expected: starts without error, no `/auth` routes registered (check `http://localhost:3000/documentation` in dev — `/auth/login` and `/auth/register` should no longer be listed). Stop the server after confirming (do not leave it running on port 3000 outside the "Furnace" Maestri terminal that normally owns it).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add BackEndTorv/server.js
