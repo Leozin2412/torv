@@ -374,8 +374,8 @@ export default function MyDiet() {
       </View>
 
       <Text style={styles.sectionTitle}>Refeições</Text>
-      
-      <ScrollView>
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         {meals.length === 0 && !isDateLoading ? (
           <Card style={styles.mealCard}>
             <View style={styles.mealEmptyIconContainer}>

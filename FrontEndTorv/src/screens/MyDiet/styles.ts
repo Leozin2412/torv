@@ -38,7 +38,7 @@ export const styles = StyleSheet.create({
   },
   dateSelector: {
     flexDirection: 'row',
-    marginBottom: 24,
+    marginBottom: 32,
   },
   dateItem: {
     alignItems: 'center',
