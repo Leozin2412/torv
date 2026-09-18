@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { View, Text, Alert, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -8,8 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { SelectCard } from '../../components/SelectCard';
-import { AuthContext } from '../../contexts/AuthContext';
-import api from '../../services/api';
+import { supabase } from '../../services/supabase';
 import { colors } from '../../theme/tokens';
 import { styles } from './styles';
 
@@ -21,7 +20,6 @@ const FITNESS_LEVELS = [
 
 export default function Register() {
   const navigation = useNavigation();
-  const { login } = useContext(AuthContext);
   const [step, setStep] = useState(0); // 0 to 5
   const [loading, setLoading] = useState(false);
 
@@ -99,29 +97,41 @@ export default function Register() {
     }
   };
 
+  const toIsoDate = (ddmmyyyy: string) => {
+    const [day, month, year] = ddmmyyyy.split('/');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleRegister = async () => {
     if (loading || goals.length === 0) return;
 
     setLoading(true);
     setRegisterError('');
     try {
-      const response = await api.post('/auth/register', {
+      const { error } = await supabase.auth.signUp({
         email,
         password,
-        name,
-        username,
-        birth_date: birthDate,
-        weight: Number(weight),
-        height: Number(height),
-        gender,
-        fitness_level: fitnessLevel,
-        goal: goals.join(', '),
+        options: {
+          data: {
+            name,
+            username,
+            birth_date: toIsoDate(birthDate),
+            weight: Number(weight),
+            height: Number(height),
+            gender,
+            fitness_level: fitnessLevel,
+            goal: goals.join(', '),
+          },
+        },
       });
-
-      login(response.data.token, response.data.user);
-    } catch (error) {
+      if (error) throw error;
+    } catch (error: any) {
       console.log(error);
-      setRegisterError('Falha ao criar conta. Tente novamente.');
+      if (error?.message?.includes('already registered')) {
+        setRegisterError('Já existe uma conta com esse e-mail.');
+      } else {
+        setRegisterError('Falha ao criar conta. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
