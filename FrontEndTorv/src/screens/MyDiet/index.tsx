@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, X, Edit2, Trash2, UtensilsCrossed, Calendar } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -75,9 +75,13 @@ export default function MyDiet() {
     return dates;
   };
 
-  const getWeekOf = (dateStr: string) => {
+  const parseLocalDate = (dateStr: string) => {
     const [year, month, day] = dateStr.split('-').map(Number);
-    const anchor = new Date(year, month - 1, day);
+    return new Date(year, month - 1, day);
+  };
+
+  const getWeekOf = (dateStr: string) => {
+    const anchor = parseLocalDate(dateStr);
     const sunday = new Date(anchor);
     sunday.setDate(anchor.getDate() - anchor.getDay());
     const dates = [];
@@ -249,7 +253,10 @@ export default function MyDiet() {
         <View style={styles.headerActions}>
           {filterDate && (
             <TouchableOpacity
-              onPress={() => setFilterDate(null)}
+              onPress={() => {
+                setFilterDate(null);
+                setSelectedDate(new Date().toISOString().split('T')[0]);
+              }}
               accessibilityRole="button"
               accessibilityLabel="Voltar para hoje"
               style={styles.todayChip}
@@ -267,19 +274,40 @@ export default function MyDiet() {
         </View>
       </View>
 
-      {pickerVisible && (
-        <DateTimePicker
-          value={filterDate ? new Date(filterDate) : new Date()}
-          mode="date"
-          maximumDate={new Date()}
-          onChange={(_event, date) => {
-            setPickerVisible(false);
-            if (date) {
-              setFilterDate(date.toISOString().split('T')[0]);
-            }
-          }}
-        />
-      )}
+      {pickerVisible && Platform.select({
+        web: (
+          <input
+            type="date"
+            aria-label="Filtrar por data"
+            value={filterDate ?? selectedDate}
+            max={new Date().toISOString().split('T')[0]}
+            onChange={(e) => {
+              setPickerVisible(false);
+              const value = e.target.value;
+              if (value) {
+                setFilterDate(value);
+                setSelectedDate(value);
+              }
+            }}
+            style={{ marginBottom: 12 }}
+          />
+        ),
+        default: (
+          <DateTimePicker
+            value={filterDate ? parseLocalDate(filterDate) : new Date()}
+            mode="date"
+            maximumDate={new Date()}
+            onChange={(_event, date) => {
+              setPickerVisible(false);
+              if (date) {
+                const dateStr = date.toISOString().split('T')[0];
+                setFilterDate(dateStr);
+                setSelectedDate(dateStr);
+              }
+            }}
+          />
+        ),
+      })}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateSelector}>
         {displayedDates.map((item) => {
