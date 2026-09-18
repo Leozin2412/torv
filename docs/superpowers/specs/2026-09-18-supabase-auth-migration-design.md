@@ -36,17 +36,17 @@ A ideia original de "banco guardando só o refresh token" é satisfeita nativame
 
 ### Backend (`BackEndTorv`)
 
-- **`src/middlewares/auth.middleware.js`**: troca `jwt.verify(token, JWT_SECRET)` por `jwt.verify(token, SUPABASE_JWT_SECRET)` (mesma lib `jsonwebtoken`, só muda o secret e a claim lida). Normaliza `request.user.userId = decoded.sub` logo após verificar — **isso é o único ponto de mudança**; os 9 call-sites existentes (`diet.controller.js`, `profile.controller.js`) que fazem `const { userId } = request.user` continuam funcionando sem alteração.
+- **`src/middlewares/auth.middleware.js`**: o projeto Supabase já rotacionou pra chaves de assinatura assimétricas (ECC P-256) — não existe mais um secret HS256 compartilhado pra tokens novos, só um "previous key" HS256 que só valida tokens já emitidos antes da rotação. Verificação passa a ser via **JWKS** (conjunto de chaves públicas do projeto, `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`), usando a lib `jose` (`createRemoteJWKSet` + `jwtVerify`) — `jsonwebtoken` sozinho não faz fetch/cache de JWKS, por isso é a única dependência nova do backend nesta migração. Normaliza `request.user.userId = payload.sub` logo após verificar — **isso é o único ponto de mudança de shape**; os 9 call-sites existentes (`diet.controller.js`, `profile.controller.js`) que fazem `const { userId } = request.user` continuam funcionando sem alteração.
 - **`src/controller/auth.controller.js`** e **`src/routes/auth.routes.js`**: removidos — não há mais login/registro no nosso backend.
 - **`server.js`**: remove o `fastify.register(require('./src/routes/auth.routes'), { prefix: '/auth' })`.
-- **`.env`**: adiciona `SUPABASE_JWT_SECRET` (valor real buscado do projeto Supabase na hora de implementar).
+- **`.env`**: adiciona `SUPABASE_URL` (não é segredo — é a URL pública do projeto, usada só pra montar o endpoint do JWKS). Nenhum secret novo é necessário no backend: JWKS é público por natureza.
 
 ### Banco (`BackEndTorv/prisma/schema.prisma` + migração SQL)
 
 - `users`: remove `password_hash`; `id` ganha FK `references auth.users(id) on delete cascade` (mantida como tabela "espelho" fina — as 9 tabelas dependentes de hoje, `user_profiles`/`user_measurements`/`user_streaks`/`follows`/`group_members`/`group_rankings`/`activities`/`workout_routines`/`nutrition_targets`/`food_logs`, continuam referenciando `users.id` sem nenhuma mudança de schema nelas).
 - Trigger SQL `handle_new_user()` (`AFTER INSERT ON auth.users`): insere em `public.users` (id, email) e `public.user_profiles` (name, username, birth_date, weight, height, gender, fitness_level, goal — lidos de `NEW.raw_user_meta_data`), replicando o que `authController.register` fazia manualmente hoje.
 - Como confirmado que os dados atuais são só de teste: a migração reseta (`TRUNCATE ... CASCADE` ou equivalente) `users` e as tabelas dependentes antes de aplicar o novo schema, em vez de tentar preservar linhas órfãs sem `auth.users` correspondente.
-- `.env`: adiciona `SUPABASE_URL`, `SUPABASE_ANON_KEY` (usados só no frontend, mas documentados aqui pra referência de setup).
+- `.env`: adiciona `SUPABASE_URL`, `SUPABASE_ANON_KEY` — a **publishable key** nova (`sb_publishable_...`), não a legada — usados só no frontend, mas documentados aqui pra referência de setup.
 
 ## Fora de escopo
 

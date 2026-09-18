@@ -8,7 +8,7 @@
 
 **Architecture:** See the design doc below — RN uses the Supabase client SDK directly for auth (not proxied through Fastify); Fastify's `auth.middleware.js` verifies Supabase JWTs instead of signing its own; a Postgres trigger on `auth.users` replaces the old registration side-effects (creating `user_profiles`/`user_measurements`/`user_streaks` rows).
 
-**Tech Stack:** `@supabase/supabase-js`, `expo-secure-store`, `react-native-url-polyfill` (frontend); `jsonwebtoken` (already installed, backend — same lib, different secret); raw SQL migration + Postgres trigger (database).
+**Tech Stack:** `@supabase/supabase-js`, `expo-secure-store`, `react-native-url-polyfill` (frontend); `jose` for JWKS-based JWT verification (backend — new dependency, the project's Supabase Auth uses asymmetric signing keys, not a static secret); raw SQL migration + Postgres trigger (database).
 
 **Spec:** `docs/superpowers/specs/2026-09-18-supabase-auth-migration-design.md`
 
@@ -18,7 +18,7 @@
 - No MFA, social login, or password-reset-by-email flow — not requested, out of scope (spec's "Fora de escopo" section).
 - Existing account data is test-only and may be reset; no bcrypt-hash-preserving migration needed (spec decision).
 - Access token TTL 15 minutes, refresh token TTL 30 days, multi-device sessions allowed — all configured on the Supabase project, not hand-built.
-- `SUPABASE_URL` / `SUPABASE_ANON_KEY` (frontend) and `SUPABASE_JWT_SECRET` (backend) must be pulled from the real project's dashboard (project ref `figlsyikardnbfuykhxq`, Project Settings → API) — this session's connected Supabase MCP account does not include this project, so these are supplied by whoever runs the task, not guessed.
+- `SUPABASE_URL` (frontend and backend — not sensitive) and `SUPABASE_ANON_KEY` (frontend only — the new **publishable key**, format `sb_publishable_...`, Supabase's own dashboard marks it "safe to use in a browser") must be pulled from the real project's dashboard (project ref `figlsyikardnbfuykhxq`, Project Settings → API Keys) — this session's connected Supabase MCP account does not include this project, so these are supplied by whoever runs the task, not guessed. No backend secret is needed at all: JWT verification uses the project's public JWKS (Task 3).
 
 ---
 
@@ -198,19 +198,29 @@ git commit -m "feat(db): link users to auth.users, add handle_new_user trigger a
 
 **Recruit:** Torv Backend
 
+**This project's Supabase Auth already rotated to asymmetric JWT signing keys (ECC P-256) — confirmed on the dashboard's JWT Keys page, "CURRENT KEY" is ECC P-256, the old HS256 shared secret is listed under "Previously used keys" and only still validates tokens issued before the rotation.** New tokens can't be verified with a static secret. Verification has to fetch the project's public JSON Web Key Set (JWKS) instead — this is a plain HTTPS GET to a public, non-secret URL, so there's nothing sensitive to paste into `.env` for this task, just the project URL.
+
 **Files:**
 - Modify: `BackEndTorv/src/middlewares/auth.middleware.js`
-- Modify: `BackEndTorv/.env` (add `SUPABASE_JWT_SECRET`)
+- Modify: `BackEndTorv/.env` (add `SUPABASE_URL`)
+- Modify: `BackEndTorv/package.json` (new dependency: `jose`)
 
 **Interfaces:**
 - Produces: `request.user.userId` (string, the Supabase `sub` claim) — same shape the 9 existing call sites in `diet.controller.js`/`profile.controller.js` already destructure, so **no changes needed in those files**.
 
-- [ ] **Step 1: Add the env var**
+- [ ] **Step 1: Add the env var and the JWKS-verification dependency**
 
-In `BackEndTorv/.env`, add (value from the Supabase project dashboard → Project Settings → API → JWT Settings → "Legacy JWT Secret", project ref `figlsyikardnbfuykhxq` — not available via this session's connected Supabase MCP account, must be pulled from the dashboard by whoever runs this task):
+`jsonwebtoken` (already installed) has no JWKS support — it only verifies against a key/secret you hand it directly, it can't fetch and cache a remote key set or pick the right key by `kid`. `jose` does, and is the library Supabase's own docs point to for this exact case.
+
+```bash
+cd BackEndTorv
+npm install jose
+```
+
+In `BackEndTorv/.env`, add (Project URL from the Supabase dashboard → Project Settings → API Keys, project ref `figlsyikardnbfuykhxq` — not sensitive, just documented here for setup):
 
 ```env
-SUPABASE_JWT_SECRET="<paste from Supabase dashboard>"
+SUPABASE_URL="<project API URL from the dashboard>"
 ```
 
 - [ ] **Step 2: Rewrite the middleware**
@@ -218,25 +228,31 @@ SUPABASE_JWT_SECRET="<paste from Supabase dashboard>"
 Replace the full contents of `BackEndTorv/src/middlewares/auth.middleware.js`:
 
 ```javascript
-const jwt = require('jsonwebtoken');
+const { createRemoteJWKSet, jwtVerify } = require('jose');
 
-const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const JWKS = createRemoteJWKSet(new URL(`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`));
 
-const authenticateToken = (request, reply, done) => {
+const authenticateToken = async (request, reply) => {
   const authHeader = request.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) return reply.status(401).send({ error: 'Access token is missing' });
 
-  jwt.verify(token, SUPABASE_JWT_SECRET, (err, decoded) => {
-    if (err) return reply.status(403).send({ error: 'Invalid or expired token' });
-    request.user = { ...decoded, userId: decoded.sub };
-    done();
-  });
+  try {
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer: `${SUPABASE_URL}/auth/v1`,
+    });
+    request.user = { ...payload, userId: payload.sub };
+  } catch (err) {
+    return reply.status(403).send({ error: 'Invalid or expired token' });
+  }
 };
 
 module.exports = authenticateToken;
 ```
+
+The handler is `async` now instead of taking a `done` callback — Fastify's `preHandler` hooks support both styles, and `jwtVerify` is promise-based, so `async`/`await` is the natural fit here rather than wrapping it back into callback style. `createRemoteJWKSet` caches the fetched key set internally and automatically re-fetches if a token references a `kid` it hasn't seen yet (e.g. right after a future key rotation), so there's no manual caching or rotation handling to write.
 
 - [ ] **Step 3: Delete the now-unused custom secret file**
 
@@ -255,9 +271,9 @@ rm BackEndTorv/src/lib/jwt-secret.js
 - [ ] **Step 4: Commit**
 
 ```bash
-git add BackEndTorv/src/middlewares/auth.middleware.js BackEndTorv/.env
+git add BackEndTorv/src/middlewares/auth.middleware.js BackEndTorv/.env BackEndTorv/package.json BackEndTorv/package-lock.json
 git rm BackEndTorv/src/lib/jwt-secret.js
-git commit -m "feat(auth): verify Supabase-issued JWTs instead of a self-signed token"
+git commit -m "feat(auth): verify Supabase-issued JWTs via JWKS instead of a self-signed token"
 ```
 
 ---
@@ -373,11 +389,11 @@ In `FrontEndTorv` (create `.env` if it doesn't exist, or add to the existing one
 grep -c "" FrontEndTorv/.env 2>/dev/null || echo "no .env yet"
 ```
 
-Add (values from Supabase dashboard → Project Settings → API, project ref `figlsyikardnbfuykhxq`):
+Add (values from Supabase dashboard → Project Settings → API Keys, project ref `figlsyikardnbfuykhxq` — use the **"Publishable and secret API keys"** tab's `Publishable key` (`sb_publishable_...`), not the "Legacy anon, service_role API keys" tab):
 
 ```env
 EXPO_PUBLIC_SUPABASE_URL="<project API URL>"
-EXPO_PUBLIC_SUPABASE_ANON_KEY="<anon/publishable key>"
+EXPO_PUBLIC_SUPABASE_ANON_KEY="<publishable key, sb_publishable_...>"
 ```
 
 (`EXPO_PUBLIC_` prefix is required for Expo to inline these into the client bundle — a bare `SUPABASE_URL` would be `undefined` at runtime.)
