@@ -1,10 +1,9 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from '../services/supabase';
 import api from '../services/api';
 
-const STORAGE_KEY = '@torv:auth';
-
-interface User {
+interface Profile {
   id: string;
   name: string;
   email: string;
@@ -16,59 +15,57 @@ interface User {
 
 interface AuthContextData {
   signed: boolean;
-  user: User | null;
-  token: string | null;
+  user: Profile | null;
   loading: boolean;
-  login: (token: string, user: User) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Keep useEffect as a fallback in case state triggers differently
-  useEffect(() => {
-    if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete api.defaults.headers.common['Authorization'];
+  const loadProfile = async () => {
+    try {
+      const response = await api.get('/profile');
+      setUser(response.data);
+    } catch (error) {
+      console.log('Error loading profile after auth', error);
+      setUser(null);
     }
-  }, [token]);
-
-  // Restore session on app start
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((stored) => {
-      if (stored) {
-        const { token: storedToken, user: storedUser } = JSON.parse(stored);
-        api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-        setToken(storedToken);
-        setUser(storedUser);
-      }
-      setLoading(false);
-    });
-  }, []);
-
-  const login = (newToken: string, loggedUser: User) => {
-    // Set headers synchronously before state updates trigger child renders
-    api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-    setToken(newToken);
-    setUser(loggedUser);
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ token: newToken, user: loggedUser }));
   };
 
-  const logout = () => {
-    delete api.defaults.headers.common['Authorization'];
-    setToken(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session: current } }) => {
+      setSession(current);
+      if (current) {
+        loadProfile().finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      if (newSession) {
+        loadProfile();
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    AsyncStorage.removeItem(STORAGE_KEY);
   };
 
   return (
-    <AuthContext.Provider value={{ signed: !!token, user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{ signed: !!session, user, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -49,7 +49,6 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-fastify.register(require('./src/routes/auth.routes'), { prefix: '/auth' });
 fastify.register(require('./src/routes/profile.routes'), { prefix: '/profile' });
 fastify.register(require('./src/routes/diet.routes'), { prefix: '/diet' });
 

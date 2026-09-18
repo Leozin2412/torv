@@ -9,9 +9,8 @@ generator client {
 }
 
 model users {
-  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                String              @id @db.Uuid
   email             String              @unique @db.VarChar(255)
-  password_hash     String              @db.VarChar(255)
   auth_provider     String?             @db.VarChar(50)
   created_at        DateTime?           @default(now()) @db.Timestamptz
 

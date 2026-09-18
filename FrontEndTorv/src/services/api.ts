@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase } from './supabase';
 
 // Escolha a URL base dependendo de como você está testando o app:
 
@@ -15,7 +16,12 @@ const api = axios.create({
   baseURL,
 });
 
-// We will add the token to the requests using an interceptor inside the AuthContext
-// or we can export a function to update the token here, but doing it in the Context is cleaner.
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return config;
+});
 
 export default api;
