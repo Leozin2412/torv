@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import App from './App';
+import AppRoot from './src/AppRoot';
 import { colors } from './src/theme/tokens';
 
 const SCROLLBAR_CSS = `
@@ -33,5 +33,5 @@ export default function AppWeb() {
     };
   }, []);
 
-  return <App />;
+  return <AppRoot />;
 }
