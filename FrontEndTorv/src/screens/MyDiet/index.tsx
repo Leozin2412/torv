@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, X, Edit2, Trash2, UtensilsCrossed } from 'lucide-react-native';
+import { Plus, X, Edit2, Trash2, UtensilsCrossed, Calendar } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { ProgressBar } from '../../components/ProgressBar';
 import { Input } from '../../components/Input';
@@ -89,6 +90,7 @@ export default function MyDiet() {
   };
 
   const [filterDate, setFilterDate] = useState<string | null>(null);
+  const [pickerVisible, setPickerVisible] = useState(false);
   const displayedDates = filterDate ? getWeekOf(filterDate) : getLastFiveDays();
 
   const updateDietMetrics = (data: any) => {
@@ -244,10 +246,43 @@ export default function MyDiet() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Minha Dieta</Text>
+        <View style={styles.headerActions}>
+          {filterDate && (
+            <TouchableOpacity
+              onPress={() => setFilterDate(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar para hoje"
+              style={styles.todayChip}
+            >
+              <Text style={styles.todayChipText}>Hoje</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={() => setPickerVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Filtrar por data"
+          >
+            <Calendar size={22} color={colors.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
+      {pickerVisible && (
+        <DateTimePicker
+          value={filterDate ? new Date(filterDate) : new Date()}
+          mode="date"
+          maximumDate={new Date()}
+          onChange={(_event, date) => {
+            setPickerVisible(false);
+            if (date) {
+              setFilterDate(date.toISOString().split('T')[0]);
+            }
+          }}
+        />
+      )}
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateSelector}>
-        {availableDates.map((item) => {
+        {displayedDates.map((item) => {
           const isActive = item.fullDate === selectedDate;
           return (
             <TouchableOpacity
