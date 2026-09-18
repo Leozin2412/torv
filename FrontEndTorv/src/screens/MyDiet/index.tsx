@@ -56,22 +56,40 @@ export default function MyDiet() {
     fat: { current: 0, goal: 75, color: colors.accentFat }
   });
 
-  const generateDates = () => {
+  const DAY_NAMES = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+
+  const toDateEntry = (d: Date) => ({
+    fullDate: d.toISOString().split('T')[0],
+    dayName: DAY_NAMES[d.getDay()],
+    dayNumber: d.getDate(),
+  });
+
+  const getLastFiveDays = () => {
     const dates = [];
     for (let i = 4; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-      dates.push({
-        fullDate: d.toISOString().split('T')[0],
-        dayName: dayNames[d.getDay()],
-        dayNumber: d.getDate(),
-      });
+      dates.push(toDateEntry(d));
     }
     return dates;
   };
 
-  const [availableDates] = useState(generateDates());
+  const getWeekOf = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const anchor = new Date(year, month - 1, day);
+    const sunday = new Date(anchor);
+    sunday.setDate(anchor.getDate() - anchor.getDay());
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sunday);
+      d.setDate(sunday.getDate() + i);
+      dates.push(toDateEntry(d));
+    }
+    return dates;
+  };
+
+  const [filterDate, setFilterDate] = useState<string | null>(null);
+  const displayedDates = filterDate ? getWeekOf(filterDate) : getLastFiveDays();
 
   const updateDietMetrics = (data: any) => {
     const targets = data.targets || { daily_calories: 2400, protein_g: 150, carbs_g: 250, fat_g: 75 };
