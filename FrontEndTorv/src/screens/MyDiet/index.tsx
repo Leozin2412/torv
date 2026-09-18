@@ -142,7 +142,7 @@ export default function MyDiet() {
       if (selectedMealId) {
         await api.put(`/diet/${selectedMealId}`, payload);
       } else {
-        await api.post('/diet', payload);
+        await api.post('/diet', { ...payload, logged_date: selectedDate });
       }
 
       await loadDataForDate(selectedDate);
