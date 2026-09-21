@@ -8,6 +8,16 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 48,
   },
+  fixedHeader: {
+    backgroundColor: colors.background,
+    zIndex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 120,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -130,7 +140,10 @@ export const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: fontFamily.extraBold,
     color: colors.text,
-    marginBottom: 16,
+  },
+  sectionHeader: {
+    backgroundColor: colors.background,
+    paddingBottom: 16,
   },
   mealCard: {
     flexDirection: 'row',

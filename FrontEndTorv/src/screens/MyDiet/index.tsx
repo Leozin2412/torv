@@ -260,6 +260,7 @@ export default function MyDiet() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.fixedHeader}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Minha Dieta</Text>
         <View style={styles.headerActions}>
@@ -343,7 +344,15 @@ export default function MyDiet() {
           );
         })}
       </ScrollView>
+      </View>
 
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        stickyHeaderIndices={[1]}
+        showsVerticalScrollIndicator={false}
+      >
+      <View>
       {/* Main Calories Progress Bar */}
       <Card style={styles.mainCaloriesCard}>
         <View style={styles.caloriesHeaderRow}>
@@ -388,10 +397,13 @@ export default function MyDiet() {
           <ProgressBar progress={metrics.fat.goal > 0 ? metrics.fat.current / metrics.fat.goal : 0} color={metrics.fat.color} />
         </Card>
       </View>
+      </View>
 
-      <Text style={styles.sectionTitle}>Refeições</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Refeições</Text>
+      </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+      <View>
         {meals.length === 0 && !isDateLoading ? (
           <Card style={styles.mealCard}>
             <View style={styles.mealEmptyIconContainer}>
@@ -444,6 +456,7 @@ export default function MyDiet() {
           <Plus color={colors.brand} size={24} style={styles.addMealIcon} />
           <Text style={styles.addMealText}>Adicionar Refeição</Text>
         </TouchableOpacity>
+      </View>
       </ScrollView>
 
       {/* Form Modal (Create/Edit) */}
