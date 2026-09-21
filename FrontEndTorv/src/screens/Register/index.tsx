@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Alert, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Alert, ScrollView, TouchableOpacity, StyleSheet, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { X, Mars, Venus } from 'lucide-react-native';
@@ -139,6 +139,7 @@ export default function Register() {
 
   return (
     <SafeAreaView style={styles.container}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       {step > 0 ? (
         <View style={styles.progressContainer}>
           {[1, 2, 3, 4, 5].map((s) => (
@@ -156,7 +157,7 @@ export default function Register() {
         </TouchableOpacity>
       )}
 
-      <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.formContainer} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {step === 0 && (
           <>
             <Text style={styles.title}>Registre-se</Text>
@@ -276,6 +277,7 @@ export default function Register() {
           <Button title="Continuar" onPress={handleRegister} loading={loading} style={styles.navButton} />
         )}
       </View>
+    </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

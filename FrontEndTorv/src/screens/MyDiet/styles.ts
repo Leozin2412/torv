@@ -37,7 +37,8 @@ export const styles = StyleSheet.create({
     fontSize: 13,
   },
   dateSelector: {
-    flexDirection: 'row',
+    flexGrow: 0,
+    flexShrink: 0,
     marginBottom: 32,
   },
   dateItem: {
@@ -46,7 +47,6 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginRight: 12,
-    marginBottom: 0,
   },
   dateItemActive: {
     borderColor: colors.brand,

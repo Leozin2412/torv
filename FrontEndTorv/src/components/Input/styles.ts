@@ -23,6 +23,18 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: fontFamily.regular,
   },
+  inputWithToggle: {
+    paddingRight: 48,
+  },
+  toggle: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   inputFocused: {
     borderColor: colors.brand,
   },

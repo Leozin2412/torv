@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, X, Edit2, Trash2, UtensilsCrossed, Calendar } from 'lucide-react-native';
@@ -25,6 +25,9 @@ interface DietMetrics {
   fat: MacroState;
 }
 
+const toISODate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export default function MyDiet() {
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -47,7 +50,7 @@ export default function MyDiet() {
   const [targetModalVisible, setTargetModalVisible] = useState(false);
   const [editTargets, setEditTargets] = useState({ calories: '', protein: '', carbs: '', fat: '' });
 
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(toISODate(new Date()));
   const [isDateLoading, setIsDateLoading] = useState(false);
 
   const [metrics, setMetrics] = useState<DietMetrics>({
@@ -57,10 +60,13 @@ export default function MyDiet() {
     fat: { current: 0, goal: 75, color: colors.accentFat }
   });
 
+  const stripRef = useRef<ScrollView>(null);
+  const itemX = useRef<Record<string, number>>({});
+
   const DAY_NAMES = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
   const toDateEntry = (d: Date) => ({
-    fullDate: d.toISOString().split('T')[0],
+    fullDate: toISODate(d),
     dayName: DAY_NAMES[d.getDay()],
     dayNumber: d.getDate(),
   });
@@ -142,7 +148,13 @@ export default function MyDiet() {
     }
   };
 
+  const scrollStripTo = (dateStr: string) => {
+    const x = itemX.current[dateStr];
+    if (x !== undefined) stripRef.current?.scrollTo({ x: Math.max(0, x - 16), animated: false });
+  };
+
   useEffect(() => {
+    scrollStripTo(selectedDate);
     loadDataForDate(selectedDate);
   }, [selectedDate]);
 
@@ -255,7 +267,7 @@ export default function MyDiet() {
             <TouchableOpacity
               onPress={() => {
                 setFilterDate(null);
-                setSelectedDate(new Date().toISOString().split('T')[0]);
+                setSelectedDate(toISODate(new Date()));
               }}
               accessibilityRole="button"
               accessibilityLabel="Voltar para hoje"
@@ -280,7 +292,7 @@ export default function MyDiet() {
             type="date"
             aria-label="Filtrar por data"
             value={filterDate ?? selectedDate}
-            max={new Date().toISOString().split('T')[0]}
+            max={toISODate(new Date())}
             onChange={(e) => {
               setPickerVisible(false);
               const value = e.target.value;
@@ -300,7 +312,7 @@ export default function MyDiet() {
             onChange={(_event, date) => {
               setPickerVisible(false);
               if (date) {
-                const dateStr = date.toISOString().split('T')[0];
+                const dateStr = toISODate(date);
                 setFilterDate(dateStr);
                 setSelectedDate(dateStr);
               }
@@ -309,12 +321,16 @@ export default function MyDiet() {
         ),
       })}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateSelector}>
+      <ScrollView ref={stripRef} horizontal showsHorizontalScrollIndicator={false} style={styles.dateSelector}>
         {displayedDates.map((item) => {
           const isActive = item.fullDate === selectedDate;
           return (
             <TouchableOpacity
               key={item.fullDate}
+              onLayout={(e) => {
+                itemX.current[item.fullDate] = e.nativeEvent.layout.x;
+                if (isActive) scrollStripTo(item.fullDate);
+              }}
               onPress={() => setSelectedDate(item.fullDate)}
               accessibilityRole="button"
               accessibilityLabel={`Selecionar dia ${item.dayNumber} de ${item.dayName}`}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingView, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -77,6 +77,8 @@ export default function Login() {
 
   return (
     <SafeAreaView style={styles.container}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+    <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <TouchableOpacity onPress={() => setShowForm(false)} style={styles.backButton}>
         <Text style={styles.backButtonText}>← Voltar</Text>
       </TouchableOpacity>
@@ -116,6 +118,8 @@ export default function Login() {
           <Text style={styles.registerLink}>Registre-se</Text>
         </TouchableOpacity>
       </View>
+    </ScrollView>
+    </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
