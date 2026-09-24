@@ -42,7 +42,12 @@ async function buildSuggestion(userId) {
   const current = pickTargets(saved);
   const suggested = pickTargets(calc);
   const sameNumbers = Object.keys(current).every((k) => current[k] === suggested[k]);
-  if (sameNumbers) return { has_suggestion: false };
+  if (sameNumbers) {
+    // Os dados mudaram mas caem na mesma meta arredondada: recarimba o basis pra próxima
+    // mudança não ser atribuída ao que já foi visto (ex: modal dizer "seu objetivo mudou" à toa).
+    await dietRepository.updateTargetsBasis(userId, calc.basis);
+    return { has_suggestion: false };
+  }
 
   return { has_suggestion: true, current, suggested, warnings: calc.warnings, changed };
 }
