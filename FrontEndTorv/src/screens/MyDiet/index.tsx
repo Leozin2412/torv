@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, X, Edit2, Trash2, UtensilsCrossed, Calendar } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { Plus, X, Edit2, Trash2, UtensilsCrossed, Calendar, Sparkles, ChevronRight } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { ProgressBar } from '../../components/ProgressBar';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { NutritionSuggestionModal, type NutritionSuggestion } from '../../components/NutritionSuggestionModal';
 import api from '../../services/api';
 import { colors } from '../../theme/tokens';
 import { styles } from './styles';
@@ -101,6 +103,9 @@ export default function MyDiet() {
 
   const [filterDate, setFilterDate] = useState<string | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
+
+  const [pendingSuggestion, setPendingSuggestion] = useState<NutritionSuggestion | null>(null);
+  const [showSuggestion, setShowSuggestion] = useState(false);
   const displayedDates = filterDate ? getWeekOf(filterDate) : getLastFiveDays();
 
   const updateDietMetrics = (data: any) => {
@@ -158,6 +163,21 @@ export default function MyDiet() {
     loadDataForDate(selectedDate);
   }, [selectedDate]);
 
+  const loadSuggestion = useCallback(async () => {
+    try {
+      const response = await api.get('/diet/targets/suggestion');
+      setPendingSuggestion(response.data?.has_suggestion ? response.data : null);
+    } catch (error) {
+      console.log('Error fetching targets suggestion', error);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSuggestion();
+    }, [loadSuggestion])
+  );
+
   const handleAddMeal = async () => {
     if (loading) return;
     setMealFormError('');
@@ -210,6 +230,7 @@ export default function MyDiet() {
         fat_g: Number(editTargets.fat)
       });
       await loadDataForDate(selectedDate);
+      await loadSuggestion();
       setTargetModalVisible(false);
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível atualizar as metas.');
@@ -353,6 +374,18 @@ export default function MyDiet() {
         showsVerticalScrollIndicator={false}
       >
       <View>
+      {pendingSuggestion && (
+        <TouchableOpacity
+          style={styles.suggestionBanner}
+          onPress={() => setShowSuggestion(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Nova meta sugerida, toque para ver"
+        >
+          <Sparkles color={colors.brand} size={18} />
+          <Text style={styles.suggestionBannerText}>Nova meta sugerida — toque para ver</Text>
+          <ChevronRight color={colors.textSecondary} size={18} />
+        </TouchableOpacity>
+      )}
       {/* Main Calories Progress Bar */}
       <Card style={styles.mainCaloriesCard}>
         <View style={styles.caloriesHeaderRow}>
@@ -527,6 +560,16 @@ export default function MyDiet() {
           </View>
         </View>
       </Modal>
+
+      <NutritionSuggestionModal
+        suggestion={showSuggestion ? pendingSuggestion : null}
+        onClose={() => setShowSuggestion(false)}
+        onResolved={(accepted) => {
+          setShowSuggestion(false);
+          setPendingSuggestion(null);
+          if (accepted) loadDataForDate(selectedDate);
+        }}
+      />
 
       {/* Delete Confirmation Modal */}
       <Modal visible={deleteConfirmVisible} transparent animationType="fade">

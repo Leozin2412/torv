@@ -269,4 +269,21 @@ export const styles = StyleSheet.create({
     width: undefined,
     marginTop: 0,
   },
+  suggestionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 14,
+    marginBottom: 12,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.brand,
+    backgroundColor: colors.brandTint,
+  },
+  suggestionBannerText: {
+    flex: 1,
+    color: colors.text,
+    fontFamily: fontFamily.semiBold,
+    fontSize: 14,
+  },
 });
