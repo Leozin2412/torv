@@ -17,7 +17,7 @@
 --     id: 'A1000000-0000-0000-0000-000000000001',
 --     email: 'joao@torv.com', password: '<senha de teste>', email_confirm: true,
 --     user_metadata: { username: '@joaosilva', name: 'João Silva',
---                      fitness_level: 'Intermediário', goal: 'Ganhar Massa',
+--                      fitness_level: 'INTERMEDIÁRIO', goal: 'Ganhar Massa Muscular',
 --                      birth_date: '1995-05-10', gender: 'Masculino' }
 --   })
 --
@@ -39,12 +39,18 @@ INSERT INTO users (id, email, auth_provider) VALUES
 ('A1000000-0000-0000-0000-000000000005', 'pedro@torv.com', 'google')
 ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, auth_provider = EXCLUDED.auth_provider;
 
+-- Valores de domínio exatos, iguais aos que o app grava:
+--   fitness_level: 'INICIANTE' | 'INTERMEDIÁRIO' | 'AVANÇADO'
+--   goal: 'Perder Peso', 'Ganhar Massa Muscular', 'Melhorar Condicionamento',
+--         'Aumentar Resistência', 'Criar uma Rotina', 'Saúde & Bem-estar'
+--         (múltiplos objetivos = uma string só, separados por ', ')
+--   gender: 'Masculino' | 'Feminino'
 INSERT INTO user_profiles (user_id, username, name, fitness_level, goal, birth_date, gender) VALUES
-('A1000000-0000-0000-0000-000000000001', '@joaosilva', 'João Silva', 'Intermediário', 'Ganhar Massa', '1995-05-10', 'Masculino'),
-('A1000000-0000-0000-0000-000000000002', '@marinalves', 'Marina Alves', 'Avançado', 'Melhorar Condicionamento', '1992-08-22', 'Feminino'),
-('A1000000-0000-0000-0000-000000000003', '@rafacosta', 'Rafael Costa', 'Avançado', 'Aumentar Resistência', '1990-11-05', 'Masculino'),
-('A1000000-0000-0000-0000-000000000004', '@julialima', 'Julia Lima', 'Iniciante', 'Perder Peso', '1998-02-15', 'Feminino'),
-('A1000000-0000-0000-0000-000000000005', '@pedrotorres', 'Pedro Torres', 'Intermediário', 'Criar uma Rotina', '1997-07-30', 'Masculino')
+('A1000000-0000-0000-0000-000000000001', '@joaosilva', 'João Silva', 'INTERMEDIÁRIO', 'Ganhar Massa Muscular', '1995-05-10', 'Masculino'),
+('A1000000-0000-0000-0000-000000000002', '@marinalves', 'Marina Alves', 'AVANÇADO', 'Melhorar Condicionamento', '1992-08-22', 'Feminino'),
+('A1000000-0000-0000-0000-000000000003', '@rafacosta', 'Rafael Costa', 'AVANÇADO', 'Aumentar Resistência', '1990-11-05', 'Masculino'),
+('A1000000-0000-0000-0000-000000000004', '@julialima', 'Julia Lima', 'INICIANTE', 'Perder Peso', '1998-02-15', 'Feminino'),
+('A1000000-0000-0000-0000-000000000005', '@pedrotorres', 'Pedro Torres', 'INTERMEDIÁRIO', 'Criar uma Rotina', '1997-07-30', 'Masculino')
 ON CONFLICT (user_id) DO UPDATE SET
   username = EXCLUDED.username, name = EXCLUDED.name,
   fitness_level = EXCLUDED.fitness_level, goal = EXCLUDED.goal,
