@@ -1,6 +1,7 @@
 const { Type } = require('@sinclair/typebox');
 const profileController = require('../controller/profile.controller');
 const authenticateToken = require('../middlewares/auth.middleware');
+const { suggestionSchema } = require('./nutrition.schemas');
 
 async function profileRoutes(fastify) {
   fastify.addHook('preHandler', authenticateToken);
@@ -20,6 +21,9 @@ async function profileRoutes(fastify) {
         photo_url: Type.Union([Type.String(), Type.Null()]),
         birth_date: Type.Any(),
         gender: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+        weight_kg: Type.Union([Type.Number(), Type.Null()]),
+        height_cm: Type.Union([Type.Number(), Type.Null()]),
+        age: Type.Union([Type.Number(), Type.Null()]),
         streak: Type.Number(),
         longest_streak: Type.Number(),
         workouts_in_month: Type.Number(),
@@ -48,12 +52,15 @@ async function profileRoutes(fastify) {
   fastify.post('/upload', { schema: uploadPhotoSchema }, profileController.uploadPhoto);
 
   const updateProfileSchema = {
-    description: 'Atualiza username e/ou goal do perfil do usuário autenticado',
+    description: 'Atualiza username, objetivos, nível físico, peso e/ou altura do usuário autenticado',
     tags: ['Profile'],
     security: [{ bearerAuth: [] }],
     body: Type.Object({
       username: Type.Optional(Type.String()),
       goal: Type.Optional(Type.String()),
+      fitness_level: Type.Optional(Type.String()),
+      weight_kg: Type.Optional(Type.Number()),
+      height_cm: Type.Optional(Type.Number()),
     }),
     response: {
       200: Type.Object({
@@ -68,6 +75,7 @@ async function profileRoutes(fastify) {
           birth_date: Type.Any(),
           gender: Type.Union([Type.String(), Type.Null()]),
         }),
+        nutrition_suggestion: suggestionSchema,
       }),
       400: Type.Object({ error: Type.String() }),
       409: Type.Object({ error: Type.String() }),

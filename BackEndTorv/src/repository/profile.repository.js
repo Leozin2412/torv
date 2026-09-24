@@ -7,6 +7,7 @@ class ProfileRepository {
       include: {
         user_profiles: true,
         user_streaks: true,
+        user_measurements: { orderBy: { recorded_at: 'desc' }, take: 1 },
       },
     });
   }
@@ -22,6 +23,23 @@ class ProfileRepository {
     return await prisma.user_profiles.update({
       where: { user_id: userId },
       data,
+    });
+  }
+
+  async getProfileRow(userId) {
+    return await prisma.user_profiles.findUnique({ where: { user_id: userId } });
+  }
+
+  async getLatestMeasurement(userId) {
+    return await prisma.user_measurements.findFirst({
+      where: { user_id: userId },
+      orderBy: { recorded_at: 'desc' },
+    });
+  }
+
+  async addMeasurement(userId, { weight_kg, height_cm }) {
+    return await prisma.user_measurements.create({
+      data: { user_id: userId, weight_kg, height_cm },
     });
   }
 }

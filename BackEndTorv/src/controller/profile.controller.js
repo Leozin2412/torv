@@ -1,6 +1,9 @@
 const path = require('path');
 const fs = require('fs');
 const profileRepository = require('../repository/profile.repository');
+const { validateProfileUpdate } = require('../lib/profileValidation');
+const { buildSuggestion } = require('../lib/nutritionSuggestion');
+const { ageOn } = require('../lib/nutritionCalculator');
 
 const ALLOWED_IMAGE_TYPES = {
   'image/jpeg': '.jpg',
@@ -33,6 +36,7 @@ class ProfileController {
 
       const profile = user.user_profiles || {};
       const streaks = user.user_streaks || {};
+      const measurement = user.user_measurements?.[0];
 
       const photoUrl = profile.photo_url
         ? `${request.protocol}://${request.headers.host}/uploads/${profile.photo_url}`
@@ -48,6 +52,9 @@ class ProfileController {
         photo_url: photoUrl,
         birth_date: profile.birth_date,
         gender: profile.gender,
+        weight_kg: measurement?.weight_kg != null ? Number(measurement.weight_kg) : null,
+        height_cm: measurement?.height_cm ?? null,
+        age: profile.birth_date ? ageOn(profile.birth_date, new Date()) : null,
         streak: streaks.current_streak || 0,
         longest_streak: streaks.longest_streak || 0,
         workouts_in_month: 0,
@@ -109,24 +116,31 @@ class ProfileController {
   async updateProfile(request, reply) {
     try {
       const { userId } = request.user;
-      const { username, goal } = request.body;
-      console.log('[updateProfile] userId:', userId, 'requested username:', username, 'goal:', goal);
-
-      if (!username && !goal) {
-        return reply.status(400).send({ error: 'No fields provided for update' });
+      const result = validateProfileUpdate(request.body);
+      if (result.error) {
+        return reply.status(400).send({ error: result.error });
       }
 
-      const dataToUpdate = {};
-      if (username) dataToUpdate.username = username;
-      if (goal) dataToUpdate.goal = goal;
-      console.log('[updateProfile] dataToUpdate:', dataToUpdate);
+      const updatedProfile = Object.keys(result.profileData).length > 0
+        ? await profileRepository.updateProfile(userId, result.profileData)
+        : await profileRepository.getProfileRow(userId);
 
-      const updatedProfile = await profileRepository.updateProfile(userId, dataToUpdate);
-      console.log('[updateProfile] DB result:', updatedProfile);
+      if (result.measurement) {
+        const last = await profileRepository.getLatestMeasurement(userId);
+        const next = {
+          weight_kg: result.measurement.weight_kg ?? (last?.weight_kg != null ? Number(last.weight_kg) : null),
+          height_cm: result.measurement.height_cm ?? last?.height_cm ?? null,
+        };
+        const changed = !last
+          || Number(last.weight_kg) !== Number(next.weight_kg)
+          || last.height_cm !== next.height_cm;
+        if (changed) await profileRepository.addMeasurement(userId, next);
+      }
 
       reply.status(200).send({
         message: 'Profile updated successfully',
         profile: updatedProfile,
+        nutrition_suggestion: await buildSuggestion(userId),
       });
     } catch (error) {
       request.log.error(error);
