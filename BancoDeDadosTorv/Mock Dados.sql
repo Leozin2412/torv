@@ -7,22 +7,51 @@
 -- Nota: não é necessário nenhum equivalente a SET IDENTITY_INSERT — as colunas de
 -- id usam UUID com DEFAULT gen_random_uuid(), e informar o valor explicitamente
 -- (como abaixo) simplesmente sobrescreve o default, sem exigir nenhum passo extra.
+--
+-- PRÉ-REQUISITO (mudou em 20260918165833_supabase_auth_link): users.id agora é FK
+-- para auth.users(id) e não tem mais DEFAULT — este script NÃO cria usuários
+-- sozinho. Antes de rodá-lo, crie os 5 usuários no Supabase Auth com estes mesmos
+-- UUIDs, via Admin API (service_role), por exemplo:
+--
+--   await supabase.auth.admin.createUser({
+--     id: 'A1000000-0000-0000-0000-000000000001',
+--     email: 'joao@torv.com', password: '<senha de teste>', email_confirm: true,
+--     user_metadata: { username: '@joaosilva', name: 'João Silva',
+--                      fitness_level: 'Intermediário', goal: 'Ganhar Massa',
+--                      birth_date: '1995-05-10', gender: 'Masculino' }
+--   })
+--
+-- Cada createUser dispara a trigger on_auth_user_created (ver "Regras BD.sql"),
+-- que já cria as linhas de users, user_profiles, user_measurements e user_streaks.
+-- Por isso os INSERTs de users, user_profiles e user_streaks abaixo usam
+-- ON CONFLICT DO UPDATE: eles ajustam o que a trigger criou para os valores de
+-- demo, e continuam funcionando caso a trigger não esteja instalada no ambiente.
+-- user_measurements é o caso à parte, explicado na seção dela.
 
 -- 1.1 Módulo de Autenticação e Perfil
-INSERT INTO users (id, email, password_hash, auth_provider) VALUES
-('A1000000-0000-0000-0000-000000000001', 'joao@torv.com', 'hash123', 'email'),
-('A1000000-0000-0000-0000-000000000002', 'marina@torv.com', 'hash123', 'google'),
-('A1000000-0000-0000-0000-000000000003', 'rafael@torv.com', 'hash123', 'apple'),
-('A1000000-0000-0000-0000-000000000004', 'julia@torv.com', 'hash123', 'email'),
-('A1000000-0000-0000-0000-000000000005', 'pedro@torv.com', 'hash123', 'google');
+-- Sem password_hash: a senha vive só no Supabase Auth (auth.users), nunca aqui.
+-- auth_provider é meramente descritivo; o provedor real é o que foi usado no Auth.
+INSERT INTO users (id, email, auth_provider) VALUES
+('A1000000-0000-0000-0000-000000000001', 'joao@torv.com', 'email'),
+('A1000000-0000-0000-0000-000000000002', 'marina@torv.com', 'google'),
+('A1000000-0000-0000-0000-000000000003', 'rafael@torv.com', 'apple'),
+('A1000000-0000-0000-0000-000000000004', 'julia@torv.com', 'email'),
+('A1000000-0000-0000-0000-000000000005', 'pedro@torv.com', 'google')
+ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, auth_provider = EXCLUDED.auth_provider;
 
 INSERT INTO user_profiles (user_id, username, name, fitness_level, goal, birth_date, gender) VALUES
 ('A1000000-0000-0000-0000-000000000001', '@joaosilva', 'João Silva', 'Intermediário', 'Ganhar Massa', '1995-05-10', 'Masculino'),
 ('A1000000-0000-0000-0000-000000000002', '@marinalves', 'Marina Alves', 'Avançado', 'Melhorar Condicionamento', '1992-08-22', 'Feminino'),
 ('A1000000-0000-0000-0000-000000000003', '@rafacosta', 'Rafael Costa', 'Avançado', 'Aumentar Resistência', '1990-11-05', 'Masculino'),
 ('A1000000-0000-0000-0000-000000000004', '@julialima', 'Julia Lima', 'Iniciante', 'Perder Peso', '1998-02-15', 'Feminino'),
-('A1000000-0000-0000-0000-000000000005', '@pedrotorres', 'Pedro Torres', 'Intermediário', 'Criar uma Rotina', '1997-07-30', 'Masculino');
+('A1000000-0000-0000-0000-000000000005', '@pedrotorres', 'Pedro Torres', 'Intermediário', 'Criar uma Rotina', '1997-07-30', 'Masculino')
+ON CONFLICT (user_id) DO UPDATE SET
+  username = EXCLUDED.username, name = EXCLUDED.name,
+  fitness_level = EXCLUDED.fitness_level, goal = EXCLUDED.goal,
+  birth_date = EXCLUDED.birth_date, gender = EXCLUDED.gender;
 
+-- user_measurements é série temporal (PK é o id, não o user_id): a trigger já
+-- gravou a medição do cadastro, e estas linhas entram como a medição mais recente.
 INSERT INTO user_measurements (user_id, weight_kg, height_cm) VALUES
 ('A1000000-0000-0000-0000-000000000001', 78.5, 180),
 ('A1000000-0000-0000-0000-000000000002', 62.0, 165),
@@ -36,7 +65,10 @@ INSERT INTO user_streaks (user_id, current_streak, longest_streak, last_activity
 ('A1000000-0000-0000-0000-000000000002', 5, 15, now() - interval '1 day'),
 ('A1000000-0000-0000-0000-000000000003', 0, 45, now() - interval '5 days'), -- Ofensiva quebrada
 ('A1000000-0000-0000-0000-000000000004', 2, 2, now() - interval '1 day'),
-('A1000000-0000-0000-0000-000000000005', 1, 10, now()); -- Treinou hoje
+('A1000000-0000-0000-0000-000000000005', 1, 10, now()) -- Treinou hoje
+ON CONFLICT (user_id) DO UPDATE SET
+  current_streak = EXCLUDED.current_streak, longest_streak = EXCLUDED.longest_streak,
+  last_activity = EXCLUDED.last_activity;
 
 INSERT INTO follows (follower_id, followed_id) VALUES
 ('A1000000-0000-0000-0000-000000000001', 'A1000000-0000-0000-0000-000000000002'),
@@ -89,6 +121,9 @@ INSERT INTO routine_exercises (routine_id, exercise_id, sets, reps) VALUES
 ('D4000000-0000-0000-0000-000000000003', 'C3000000-0000-0000-0000-000000000002', 4, 8);
 
 -- 1.4 Módulo de Nutrição
+-- basis_json e updated_at (20260924171548_nutrition_targets_basis) ficam NULL aqui
+-- de propósito: são preenchidos pelo backend quando ele calcula ou aceita uma meta,
+-- e uma meta de mock não tem um cálculo real por trás.
 INSERT INTO nutrition_targets (user_id, daily_calories, protein_g, carbs_g, fat_g) VALUES
 ('A1000000-0000-0000-0000-000000000001', 2400, 160, 250, 80),
 ('A1000000-0000-0000-0000-000000000002', 1800, 120, 150, 60),

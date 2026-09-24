@@ -2,7 +2,8 @@
 -- ARQUIVO: Gestão de Usuários e Controle de Performance
 -- OBJETIVO: Demonstrar os entregáveis acadêmicos aplicados ao escopo atual
 -- Postgres (Supabase) — documentation copy of what's actually deployed.
--- Source of truth: BackEndTorv/prisma/migrations/20260915170948_init_postgres/migration.sql
+-- Source of truth: BackEndTorv/prisma/migrations/ (init_postgres + supabase_auth_link
+-- + nutrition_targets_basis); ver o cabeçalho de "SQL BANCO DE DADOS.sql".
 -- This file has no runtime effect; it exists for readability/presentation only.
 -- =======================================================================
 
@@ -32,7 +33,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO torv_api
 
 -- Passo 1.2: Criar a role do Analista (poderia conectar um PowerBI no futuro)
 -- Só pode LER, e apenas pelas Views — nunca tabelas diretamente, protegendo
--- dados sensíveis (senhas, e-mails).
+-- dados sensíveis (e-mails, datas de nascimento). Senha não é mais um risco aqui:
+-- desde 20260918165833_supabase_auth_link ela vive só em auth.users, fora do
+-- schema public.
 CREATE ROLE torv_analyst LOGIN PASSWORD '<set-at-deploy-time>';
 GRANT USAGE ON SCHEMA public TO torv_analyst;
 GRANT SELECT ON vw_dashboard_user_stats, vw_group_leaderboard TO torv_analyst;

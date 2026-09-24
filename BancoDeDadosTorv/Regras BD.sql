@@ -1,6 +1,9 @@
 -- Postgres (Supabase) — documentation copy of the functions, views and triggers
--- actually deployed. Source of truth:
--- BackEndTorv/prisma/migrations/20260915170948_init_postgres/migration.sql
+-- actually deployed. Source of truth: BackEndTorv/prisma/migrations/, refletindo
+-- todas as migrations aplicadas até aqui:
+--   20260915170948_init_postgres        - functions, views e triggers base
+--   20260918165833_supabase_auth_link   - remove fn_register_new_user, adiciona handle_new_user
+--   20260924171548_nutrition_targets_basis - só colunas, não mexe em function/trigger
 -- This file has no runtime effect; it exists for readability/presentation only.
 
 --UDFs
@@ -73,31 +76,67 @@ SELECT * FROM vw_group_leaderboard;
 -- EXEC — these are regular functions, invoked with SELECT (see
 -- "Testes Procedures e Triggers.sql" for calling examples).
 
---Registro de User
--- Ported for documentation parity only. BackEndTorv/src/repository/auth.repository.js
--- keeps using Prisma's nested `create` (already transactional) for real signups —
--- this function is not called from BackEndTorv/src.
-CREATE OR REPLACE FUNCTION fn_register_new_user(
-  p_email varchar(255), p_password_hash varchar(255), p_username varchar(100), p_name varchar(100)
-)
-RETURNS uuid
+--Registro de User (via Supabase Auth)
+-- fn_register_new_user foi REMOVIDA em 20260918165833_supabase_auth_link: ela
+-- escrevia em users.password_hash, coluna que não existe mais. O cadastro agora
+-- acontece no Supabase Auth, e esta trigger é quem cria as linhas do schema public
+-- a partir do usuário recém-criado em auth.users.
+--
+-- SECURITY DEFINER porque a trigger roda no contexto do Auth, que não tem
+-- privilégio de escrita nas tabelas de public; search_path fixo em public para a
+-- função não poder ser sequestrada por um schema plantado no search_path de quem
+-- dispara o INSERT.
+-- Os dados de perfil chegam em auth.users.raw_user_meta_data (preenchido pelo app
+-- no signUp). Sem username no metadata, gera um a partir do e-mail + 8 chars do id,
+-- que é único por construção.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
-  v_new_user_id uuid := gen_random_uuid();
+  meta jsonb := NEW.raw_user_meta_data;
+  final_username text;
 BEGIN
-  INSERT INTO users (id, email, password_hash, auth_provider)
-  VALUES (v_new_user_id, p_email, p_password_hash, 'email');
+  final_username := NULLIF(meta->>'username', '');
+  IF final_username IS NULL THEN
+    final_username := split_part(NEW.email, '@', 1) || '_' || substr(NEW.id::text, 1, 8);
+  END IF;
 
-  INSERT INTO user_profiles (user_id, username, name)
-  VALUES (v_new_user_id, p_username, p_name);
+  INSERT INTO public.users (id, email, auth_provider, created_at)
+  VALUES (NEW.id, NEW.email, 'email', now());
 
-  INSERT INTO user_streaks (user_id, current_streak, longest_streak)
-  VALUES (v_new_user_id, 0, 0);
+  INSERT INTO public.user_profiles (user_id, username, name, fitness_level, goal, birth_date, gender)
+  VALUES (
+    NEW.id,
+    final_username,
+    meta->>'name',
+    meta->>'fitness_level',
+    meta->>'goal',
+    NULLIF(meta->>'birth_date', '')::date,
+    meta->>'gender'
+  );
 
-  RETURN v_new_user_id;
+  INSERT INTO public.user_measurements (id, user_id, weight_kg, height_cm)
+  VALUES (
+    gen_random_uuid(),
+    NEW.id,
+    NULLIF(meta->>'weight', '')::decimal,
+    NULLIF(meta->>'height', '')::int
+  );
+
+  INSERT INTO public.user_streaks (user_id, current_streak, longest_streak)
+  VALUES (NEW.id, 0, 0);
+
+  RETURN NEW;
 END;
 $$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 --Insert food log and return macro balance
 CREATE OR REPLACE FUNCTION fn_log_food_and_return_remaining(
@@ -134,7 +173,7 @@ $$;
 -- matching rows, but PL/pgSQL's non-aggregate `SELECT ... INTO` sets the target to
 -- NULL on zero rows instead — which would have silently defeated the intended
 -- 2000/150/250/65 defaults for every user without a nutrition_targets row (i.e.
--- every brand-new user, since fn_register_new_user above doesn't create one).
+-- every brand-new user, since handle_new_user above doesn't create one).
 -- Scalar subqueries always evaluate to exactly one value (NULL on no match), so
 -- COALESCE works correctly here, the same way it already does for the
 -- aggregate-based consumed-totals query below.

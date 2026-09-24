@@ -6,17 +6,27 @@
 --Teste Functions
 
 --register
-SELECT fn_register_new_user(
-  'carlos.teste@torv.com',
-  'senhaSegura123',
-  '@carlinhos',
-  'Carlos Teste'
-);
+-- fn_register_new_user não existe mais (removida em 20260918165833_supabase_auth_link).
+-- O cadastro agora nasce no Supabase Auth, então este teste não é mais uma chamada
+-- SQL: crie o usuário pelo Auth (dashboard, signUp no app, ou Admin API) e depois
+-- rode os SELECTs abaixo para conferir que a trigger on_auth_user_created propagou
+-- as linhas para o schema public.
+--
+--   await supabase.auth.admin.createUser({
+--     email: 'carlos.teste@torv.com', password: 'senhaSegura123', email_confirm: true,
+--     user_metadata: { username: '@carlinhos', name: 'Carlos Teste' }
+--   })
 
 SELECT 'USERS' as Tabela, email FROM users WHERE email = 'carlos.teste@torv.com';
 SELECT 'PROFILES' as Tabela, username, name FROM user_profiles WHERE username = '@carlinhos';
 SELECT 'STREAKS' as Tabela, current_streak FROM user_streaks
 WHERE user_id = (SELECT id FROM users WHERE email = 'carlos.teste@torv.com');
+SELECT 'MEASUREMENTS' as Tabela, weight_kg, height_cm FROM user_measurements
+WHERE user_id = (SELECT id FROM users WHERE email = 'carlos.teste@torv.com');
+-- users.id tem que bater com auth.users.id (FK users_id_fkey):
+SELECT 'AUTH LINK' as Tabela, u.id = a.id AS ids_batem
+FROM users u JOIN auth.users a ON a.email = u.email
+WHERE u.email = 'carlos.teste@torv.com';
 
 -- calorias
 -- Note: plain SQL scripts have no T-SQL-style session variable (no equivalent to

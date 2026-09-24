@@ -1,14 +1,20 @@
 -- Postgres (Supabase) — documentation copy of the schema actually deployed.
--- Source of truth: BackEndTorv/prisma/migrations/20260915170948_init_postgres/migration.sql
+-- Source of truth: BackEndTorv/prisma/migrations/ - this file reflects ALL migrations
+-- applied so far, in order:
+--   20260915170948_init_postgres        - schema base
+--   20260918165833_supabase_auth_link   - users passa a espelhar auth.users (Supabase Auth)
+--   20260924171548_nutrition_targets_basis - basis_json / updated_at em nutrition_targets
 -- This file has no runtime effect; it exists for readability/presentation only.
 -- No CREATE DATABASE / USE statement here: Supabase already scopes a project to
 -- one database, unlike SQL Server's multi-database-per-server model.
 
 --Modulo User
+-- users não gera mais o próprio id nem guarda senha: a identidade vive em
+-- auth.users (Supabase Auth), e esta tabela só espelha o id dela (ver a FK
+-- users_id_fkey mais abaixo e a trigger on_auth_user_created em "Regras BD.sql").
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     email VARCHAR(255) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
     auth_provider VARCHAR(50),
     created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -24,12 +30,16 @@ CREATE TABLE user_profiles (
     gender VARCHAR(50)
 );
 
+-- Os CHECKs abaixo saíram do antigo authController.register e viraram regra do
+-- banco, valendo para qualquer escritor (app, seed ou SQL manual).
 CREATE TABLE user_measurements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     weight_kg DECIMAL(5,2),
     height_cm INT,
-    recorded_at TIMESTAMPTZ DEFAULT now()
+    recorded_at TIMESTAMPTZ DEFAULT now(),
+    CONSTRAINT user_measurements_weight_kg_check CHECK (weight_kg IS NULL OR (weight_kg >= 20 AND weight_kg <= 300)),
+    CONSTRAINT user_measurements_height_cm_check CHECK (height_cm IS NULL OR (height_cm >= 50 AND height_cm <= 250))
 );
 
 
@@ -115,12 +125,18 @@ CREATE TABLE routine_exercises (
 
 --Modulo Nutrição
 
+-- basis_json guarda os dados de perfil usados para calcular a meta salva
+-- (idade, peso, altura, sexo, nível, objetivos); comparar esse retrato com os dados
+-- atuais é o que dispara a sugestão de nova meta. updated_at marca a última
+-- gravação da meta.
 CREATE TABLE nutrition_targets (
     user_id UUID PRIMARY KEY,
     daily_calories INT,
     protein_g INT,
     carbs_g INT,
-    fat_g INT
+    fat_g INT,
+    basis_json JSONB,
+    updated_at TIMESTAMPTZ
 );
 
 CREATE TABLE food_logs (
@@ -144,6 +160,10 @@ CREATE UNIQUE INDEX user_profiles_username_key ON user_profiles(username);
 
 -- Foreign keys
 -- Names below match exactly what Prisma generated on the live database.
+
+-- users.id tem que ser exatamente o id do dono em auth.users (Supabase Auth);
+-- apagar o usuário no Auth apaga a linha aqui em cascata.
+ALTER TABLE users ADD CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 ALTER TABLE user_profiles ADD CONSTRAINT user_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE user_measurements ADD CONSTRAINT user_measurements_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;
