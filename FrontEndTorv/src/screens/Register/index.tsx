@@ -9,14 +9,10 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { SelectCard } from '../../components/SelectCard';
 import { supabase } from '../../services/supabase';
+import { GoalConflictWarning } from '../../components/GoalConflictWarning';
 import { colors } from '../../theme/tokens';
+import { FITNESS_LEVELS, GOAL_OPTIONS } from '../../utils/profileOptions';
 import { styles } from './styles';
-
-const FITNESS_LEVELS = [
-  { value: 'INICIANTE', label: 'Iniciante', color: colors.brand, description: 'Está começando agora ou treina raramente. Vamos construir sua base do zero.' },
-  { value: 'INTERMEDIÁRIO', label: 'Intermediário', color: colors.accentIntermediate, description: 'Treina com regularidade. Quer evoluir com mais inteligência e consistência.' },
-  { value: 'AVANÇADO', label: 'Avançado', color: colors.accentAdvanced, description: 'Treina pesado há muito tempo. Busca performance máxima e superação.' },
-];
 
 export default function Register() {
   const navigation = useNavigation();
@@ -240,14 +236,7 @@ export default function Register() {
           <>
             <Text style={styles.title}>Qual seu objetivo?</Text>
             <Text style={styles.subtitle}>Isso nos ajuda a personalizar seus treinos e metas.</Text>
-            {[
-              'Perder Peso',
-              'Ganhar Massa Muscular',
-              'Melhorar Condicionamento',
-              'Aumentar Resistência',
-              'Criar uma Rotina',
-              'Saúde & Bem-estar'
-            ].map((option) => (
+            {GOAL_OPTIONS.map((option) => (
               <SelectCard 
                 key={option}
                 title={option} 
@@ -261,6 +250,7 @@ export default function Register() {
                 }} 
               />
             ))}
+            <GoalConflictWarning goals={goals} />
           </>
         )}
       </ScrollView>
