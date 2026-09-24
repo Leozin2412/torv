@@ -27,6 +27,15 @@ interface DietMetrics {
   fat: MacroState;
 }
 
+// O app grava macros_json no singular; registros antigos/externos podem vir no plural.
+interface MealMacros {
+  protein?: number;
+  proteins?: number;
+  carbs?: number;
+  fat?: number;
+  fats?: number;
+}
+
 const toISODate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -121,7 +130,7 @@ export default function MyDiet() {
 
     if (data.logs) {
       const formattedLogs = data.logs.map((log: any) => {
-        let macros = { proteins: 0, carbs: 0, fats: 0 };
+        let macros: MealMacros = { proteins: 0, carbs: 0, fats: 0 };
         try {
           macros = typeof log.macros_json === 'string' ? JSON.parse(log.macros_json) : log.macros_json || macros;
         } catch (e) {}

@@ -62,7 +62,7 @@ export default function Login() {
           />
           <LinearGradient
             colors={['transparent', colors.background]}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
         </View>
         <View style={styles.landingContent}>
