@@ -1,26 +1,34 @@
 const dietRepository = require('../repository/diet.repository');
 const { computeForUser, ensureTargets, buildSuggestion, pickTargets } = require('../lib/nutritionSuggestion');
 
+// fn_get_diet_summary sempre devolve linha; isto é só pra não virar TypeError se algum dia não devolver.
+const EMPTY_SUMMARY = {
+  GoalCalories: 2000, GoalProtein: 150, GoalCarbs: 250, GoalFat: 65,
+  ConsumedCalories: 0, ConsumedProtein: 0, ConsumedCarbs: 0, ConsumedFat: 0,
+  RemainingCalories: 2000, RemainingProtein: 150, RemainingCarbs: 250, RemainingFat: 65,
+};
+
 const formatDietSummaryResponse = (date, spResult, logsArray) => {
+  const summary = spResult || EMPTY_SUMMARY;
   return {
     date,
     targets: {
-      daily_calories: spResult.GoalCalories,
-      protein_g: spResult.GoalProtein,
-      carbs_g: spResult.GoalCarbs,
-      fat_g: spResult.GoalFat,
+      daily_calories: summary.GoalCalories,
+      protein_g: summary.GoalProtein,
+      carbs_g: summary.GoalCarbs,
+      fat_g: summary.GoalFat,
     },
     consumed: {
-      calories: spResult.ConsumedCalories,
-      protein_g: spResult.ConsumedProtein,
-      carbs_g: spResult.ConsumedCarbs,
-      fat_g: spResult.ConsumedFat,
+      calories: summary.ConsumedCalories,
+      protein_g: summary.ConsumedProtein,
+      carbs_g: summary.ConsumedCarbs,
+      fat_g: summary.ConsumedFat,
     },
     remaining: {
-      calories: spResult.RemainingCalories,
-      protein_g: spResult.RemainingProtein,
-      carbs_g: spResult.RemainingCarbs,
-      fat_g: spResult.RemainingFat,
+      calories: summary.RemainingCalories,
+      protein_g: summary.RemainingProtein,
+      carbs_g: summary.RemainingCarbs,
+      fat_g: summary.RemainingFat,
     },
     logs: logsArray.map(log => {
       let macros = { proteins: 0, carbs: 0, fats: 0 };
@@ -49,11 +57,7 @@ class DietController {
       const spResult = await dietRepository.getDietSummaryByDate(userId, date);
       const { foodLogs } = await dietRepository.getDietDataByDate(userId, date);
 
-      const finalResponse = formatDietSummaryResponse(date, spResult || {
-        GoalCalories: 2000, GoalProtein: 150, GoalCarbs: 250, GoalFat: 65,
-        ConsumedCalories: 0, ConsumedProtein: 0, ConsumedCarbs: 0, ConsumedFat: 0,
-        RemainingCalories: 2000, RemainingProtein: 150, RemainingCarbs: 250, RemainingFat: 65
-      }, foodLogs || []);
+      const finalResponse = formatDietSummaryResponse(date, spResult, foodLogs || []);
 
       reply.status(200).send(finalResponse);
     } catch (error) {

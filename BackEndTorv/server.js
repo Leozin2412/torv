@@ -60,6 +60,12 @@ fastify.setErrorHandler((err, request, reply) => {
     return reply.status(err.statusCode || 400).send({ error: err.message });
   }
 
+  // Erros que o Fastify já classificou como do cliente (corpo vazio, JSON inválido, 404, 415...)
+  // mantêm o próprio status e a mensagem curta da lib; só os 5xx viram mensagem genérica.
+  if (err.statusCode && err.statusCode < 500) {
+    return reply.status(err.statusCode).send({ error: err.message });
+  }
+
   reply.status(500).send({ error: 'An unexpected error occurred' });
 });
 
