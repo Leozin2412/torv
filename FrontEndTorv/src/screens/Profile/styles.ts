@@ -295,4 +295,10 @@ export const styles = StyleSheet.create({
     fontFamily: fontFamily.semiBold,
     fontSize: 16,
   },
+  formError: {
+    color: colors.error,
+    fontFamily: fontFamily.regular,
+    fontSize: 13,
+    marginBottom: 8,
+  },
 });

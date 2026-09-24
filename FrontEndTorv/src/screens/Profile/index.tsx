@@ -2,7 +2,7 @@ import React, { useContext, useState, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { LogOut, Edit2, ChevronRight, User as UserIcon, Plus, X, Flame, Dumbbell, Watch, Footprints, UtensilsCrossed } from 'lucide-react-native';
+import { LogOut, Edit2, ChevronRight, User as UserIcon, Plus, X, Flame, Dumbbell, Watch, Footprints, UtensilsCrossed, Activity, Scale } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -10,9 +10,12 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { SelectCard } from '../../components/SelectCard';
 import { Card } from '../../components/Card';
+import { GoalConflictWarning } from '../../components/GoalConflictWarning';
+import { NutritionSuggestionModal, type NutritionSuggestion } from '../../components/NutritionSuggestionModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import { colors } from '../../theme/tokens';
+import { FITNESS_LEVELS, GOAL_OPTIONS, fitnessLevelLabel } from '../../utils/profileOptions';
 import { styles } from './styles';
 
 export default function Profile() {
@@ -30,6 +33,16 @@ export default function Profile() {
   
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [editGoals, setEditGoals] = useState<string[]>([]);
+
+  const [showLevelModal, setShowLevelModal] = useState(false);
+  const [editLevel, setEditLevel] = useState('');
+
+  const [showBodyModal, setShowBodyModal] = useState(false);
+  const [editWeight, setEditWeight] = useState('');
+  const [editHeight, setEditHeight] = useState('');
+  const [bodyError, setBodyError] = useState('');
+
+  const [suggestion, setSuggestion] = useState<NutritionSuggestion | null>(null);
 
   // Fetch all data every time the screen is focused
   useFocusEffect(
@@ -155,12 +168,54 @@ export default function Profile() {
   const handleSaveGoals = async () => {
     try {
       const newGoalStr = editGoals.join(', ');
-      await api.put('/profile', { goal: newGoalStr });
+      const response = await api.put('/profile', { goal: newGoalStr });
       setProfileData((prev: any) => ({ ...prev, goal: newGoalStr }));
       setShowGoalModal(false);
+      setSuggestion(response.data.nutrition_suggestion ?? null);
     } catch (error) {
       console.log('Failed to save goals', error);
       Alert.alert('Erro', 'Não foi possível atualizar os objetivos.');
+    }
+  };
+
+  const handleOpenLevelEdit = () => {
+    setEditLevel(profileData?.fitness_level || '');
+    setShowLevelModal(true);
+  };
+
+  const handleSaveLevel = async () => {
+    if (!editLevel) return;
+    try {
+      const response = await api.put('/profile', { fitness_level: editLevel });
+      setProfileData((prev: any) => ({ ...prev, fitness_level: editLevel }));
+      setShowLevelModal(false);
+      setSuggestion(response.data.nutrition_suggestion ?? null);
+    } catch (error) {
+      console.log('Failed to save fitness level', error);
+      Alert.alert('Erro', 'Não foi possível atualizar o nível físico.');
+    }
+  };
+
+  const handleOpenBodyEdit = () => {
+    setEditWeight(profileData?.weight_kg != null ? String(profileData.weight_kg) : '');
+    setEditHeight(profileData?.height_cm != null ? String(profileData.height_cm) : '');
+    setBodyError('');
+    setShowBodyModal(true);
+  };
+
+  const handleSaveBody = async () => {
+    const weight = Number(editWeight.replace(',', '.'));
+    const height = Number(editHeight);
+    if (!(weight >= 20 && weight <= 300)) return setBodyError('Peso deve estar entre 20 e 300 kg.');
+    if (!Number.isInteger(height) || height < 50 || height > 250) return setBodyError('Altura deve ser um número inteiro entre 50 e 250 cm.');
+    try {
+      const response = await api.put('/profile', { weight_kg: weight, height_cm: height });
+      setProfileData((prev: any) => ({ ...prev, weight_kg: weight, height_cm: height }));
+      setShowBodyModal(false);
+      setSuggestion(response.data.nutrition_suggestion ?? null);
+    } catch (error) {
+      console.log('Failed to save weight/height', error);
+      setBodyError('Não foi possível salvar. Tente novamente.');
     }
   };
 
@@ -256,6 +311,40 @@ export default function Profile() {
           <View style={styles.listCardContent}>
             <Text style={styles.listCardTitle}>{profileData?.goal || user?.goal || 'Ganhar Massa Muscular'}</Text>
             <Text style={styles.listCardSubtitle}>Definido no cadastro</Text>
+          </View>
+        </Card>
+
+        {/* Nível físico */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitleInline}>Nível físico</Text>
+          <TouchableOpacity onPress={handleOpenLevelEdit} accessibilityRole="button" accessibilityLabel="Editar nível físico">
+            <Text style={styles.editLink}>Editar</Text>
+          </TouchableOpacity>
+        </View>
+        <Card style={styles.listCard}>
+          <View style={styles.listCardIconContainer}>
+            <Activity color={colors.brand} size={22} />
+          </View>
+          <View style={styles.listCardContent}>
+            <Text style={styles.listCardTitle}>{fitnessLevelLabel(profileData?.fitness_level)}</Text>
+          </View>
+        </Card>
+
+        {/* Peso e altura */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitleInline}>Peso e altura</Text>
+          <TouchableOpacity onPress={handleOpenBodyEdit} accessibilityRole="button" accessibilityLabel="Editar peso e altura">
+            <Text style={styles.editLink}>Editar</Text>
+          </TouchableOpacity>
+        </View>
+        <Card style={styles.listCard}>
+          <View style={styles.listCardIconContainer}>
+            <Scale color={colors.brand} size={22} />
+          </View>
+          <View style={styles.listCardContent}>
+            <Text style={styles.listCardTitle}>
+              {profileData?.weight_kg != null ? `${profileData.weight_kg} kg` : '— kg'} · {profileData?.height_cm != null ? `${profileData.height_cm} cm` : '— cm'}
+            </Text>
           </View>
         </Card>
 
@@ -386,14 +475,7 @@ export default function Profile() {
             </Text>
 
             <ScrollView style={styles.goalScrollView} showsVerticalScrollIndicator={false}>
-              {[
-                'Perder Peso',
-                'Ganhar Massa Muscular',
-                'Melhorar Condicionamento',
-                'Aumentar Resistência',
-                'Criar uma Rotina',
-                'Saúde & Bem-estar'
-              ].map((option) => (
+              {GOAL_OPTIONS.map((option) => (
                 <SelectCard
                   key={option}
                   title={option}
@@ -402,6 +484,7 @@ export default function Profile() {
                   style={styles.goalSelectCard}
                 />
               ))}
+              <GoalConflictWarning goals={editGoals} />
             </ScrollView>
 
             <View style={styles.modalFooter}>
@@ -419,6 +502,65 @@ export default function Profile() {
           </LinearGradient>
         </View>
       </Modal>
+
+      {/* Fitness Level Edit Modal */}
+      <Modal visible={showLevelModal} transparent animationType="slide">
+        <View style={styles.modalContainer}>
+          <LinearGradient colors={[colors.brandTint, colors.background]} style={styles.modalContent} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Nível físico</Text>
+              <TouchableOpacity onPress={() => setShowLevelModal(false)} accessibilityRole="button" accessibilityLabel="Fechar edição de nível físico">
+                <X color={colors.textSecondary} size={24} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSubtitle}>Escolha a opção que melhor descreve sua rotina atual.</Text>
+            {FITNESS_LEVELS.map((level) => (
+              <SelectCard
+                key={level.value}
+                title={level.label}
+                titleColor={level.color}
+                description={level.description}
+                selected={editLevel === level.value}
+                onPress={() => setEditLevel(level.value)}
+              />
+            ))}
+            <TouchableOpacity style={styles.futuristicButton} onPress={handleSaveLevel}>
+              <LinearGradient colors={[colors.brand, colors.brandDark]} style={styles.futuristicButtonGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <Text style={styles.futuristicButtonText}>ATUALIZAR NÍVEL</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      </Modal>
+
+      {/* Weight & Height Edit Modal */}
+      <Modal visible={showBodyModal} transparent animationType="slide">
+        <View style={styles.modalContainer}>
+          <LinearGradient colors={[colors.brandTint, colors.background]} style={styles.modalContent} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Peso e altura</Text>
+              <TouchableOpacity onPress={() => setShowBodyModal(false)} accessibilityRole="button" accessibilityLabel="Fechar edição de peso e altura">
+                <X color={colors.textSecondary} size={24} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSubtitle}>Mantenha seus dados atualizados para ajustarmos suas metas.</Text>
+            <Input label="Peso (kg)" placeholder="Ex: 70" value={editWeight} onChangeText={setEditWeight} keyboardType="decimal-pad" />
+            <Input label="Altura (cm)" placeholder="Ex: 175" value={editHeight} onChangeText={setEditHeight} keyboardType="number-pad" />
+            {bodyError ? <Text style={styles.formError}>{bodyError}</Text> : null}
+            <TouchableOpacity style={styles.futuristicButton} onPress={handleSaveBody}>
+              <LinearGradient colors={[colors.brand, colors.brandDark]} style={styles.futuristicButtonGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <Text style={styles.futuristicButtonText}>SALVAR</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      </Modal>
+
+      <NutritionSuggestionModal
+        suggestion={suggestion}
+        onClose={() => setSuggestion(null)}
+        onResolved={() => setSuggestion(null)}
+      />
 
     </SafeAreaView>
   );
