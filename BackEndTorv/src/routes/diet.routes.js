@@ -37,7 +37,7 @@ async function dietRoutes(fastify) {
   fastify.addHook('preHandler', authenticateToken);
 
   const summaryQuerystring = Type.Object({
-    date: Type.Optional(Type.String({ description: 'YYYY-MM-DD, padrão: hoje' })),
+    date: Type.Optional(Type.String({ format: 'date', description: 'YYYY-MM-DD, padrão: hoje' })),
   });
 
   const getDietSummarySchema = {
@@ -74,7 +74,7 @@ async function dietRoutes(fastify) {
       food_name: Type.String(),
       calories: Type.Number(),
       macros_json: Type.Any({ description: 'Objeto com macros (ex: {protein, carbs, fat})' }),
-      logged_date: Type.Optional(Type.String({ description: 'YYYY-MM-DD, padrão: hoje' })),
+      logged_date: Type.Optional(Type.String({ format: 'date', description: 'YYYY-MM-DD, padrão: hoje' })),
     }),
     response: {
       201: dietSummarySchema,
