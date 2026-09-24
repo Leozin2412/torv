@@ -140,7 +140,7 @@ async function dietRoutes(fastify) {
   }, dietController.dismissTargetsSuggestion);
 
   const logIdParams = Type.Object({
-    logId: Type.String(),
+    logId: Type.String({ format: 'uuid' }),
   });
 
   const updateFoodLogSchema = {
