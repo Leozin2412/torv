@@ -172,9 +172,20 @@ export default function MyDiet() {
     }
   }, []);
 
+  // Lido por ref pra que o callback do useFocusEffect fique estável: se `selectedDate`
+  // entrasse nas deps, trocar de dia dispararia o efeito de foco junto com o useEffect acima.
+  const selectedDateRef = useRef(selectedDate);
+  selectedDateRef.current = selectedDate;
+  const skipFirstFocus = useRef(true);
+
   useFocusEffect(
     useCallback(() => {
       loadSuggestion();
+      if (skipFirstFocus.current) {
+        skipFirstFocus.current = false; // na montagem o useEffect de selectedDate já carregou
+        return;
+      }
+      loadDataForDate(selectedDateRef.current); // meta aceita em outra tela (ex.: Perfil)
     }, [loadSuggestion])
   );
 

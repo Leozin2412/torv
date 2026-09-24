@@ -484,8 +484,11 @@ export default function Profile() {
                   style={styles.goalSelectCard}
                 />
               ))}
-              <GoalConflictWarning goals={editGoals} />
             </ScrollView>
+
+            <View style={styles.goalModalPadded}>
+              <GoalConflictWarning goals={editGoals} />
+            </View>
 
             <View style={styles.modalFooter}>
               <TouchableOpacity style={styles.futuristicButton} onPress={handleSaveGoals}>
