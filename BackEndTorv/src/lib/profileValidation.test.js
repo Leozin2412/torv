@@ -34,3 +34,8 @@ test('peso/altura fora da faixa ou altura não inteira → erro', () => {
   assert.ok(validateProfileUpdate({ height_cm: 251 }).error);
   assert.ok(validateProfileUpdate({ height_cm: 175.5 }).error);
 });
+
+test('fitness_level da prototype chain → erro', () => {
+  assert.ok(validateProfileUpdate({ fitness_level: 'constructor' }).error);
+  assert.ok(validateProfileUpdate({ fitness_level: 'toString' }).error);
+});

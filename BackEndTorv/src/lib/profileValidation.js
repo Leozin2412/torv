@@ -16,7 +16,7 @@ function validateProfileUpdate({ username, goal, fitness_level, weight_kg, heigh
   }
 
   if (fitness_level !== undefined) {
-    if (!ACTIVITY_FACTORS[fitness_level]) return { error: 'fitness_level must be INICIANTE, INTERMEDIÁRIO or AVANÇADO' };
+    if (!Object.hasOwn(ACTIVITY_FACTORS, fitness_level)) return { error: 'fitness_level must be INICIANTE, INTERMEDIÁRIO or AVANÇADO' };
     profileData.fitness_level = fitness_level;
   }
 

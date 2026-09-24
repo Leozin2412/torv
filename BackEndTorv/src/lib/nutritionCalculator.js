@@ -37,7 +37,7 @@ function parseGoals(goals) {
   const list = Array.isArray(goals) ? goals : String(goals || '').split(',');
   const valid = list
     .map((g) => String(g).trim().normalize('NFC'))
-    .filter((g) => GOALS[g]);
+    .filter((g) => Object.hasOwn(GOALS, g));
   return [...new Set(valid)].sort();
 }
 
@@ -54,13 +54,13 @@ function effectiveAdjust(goal, bmiClass) {
 }
 
 function calculateTargets({ gender, birthDate, weightKg, heightCm, fitnessLevel, goals, today = new Date() }) {
-  const sex = GENDERS[gender];
+  const sex = Object.hasOwn(GENDERS, gender) ? GENDERS[gender] : undefined;
   const weight = Number(weightKg);
   const height = Number(heightCm);
   if (!sex || !birthDate || !(weight > 0) || !(height > 0)) return null;
 
   const age = ageOn(birthDate, today);
-  const level = ACTIVITY_FACTORS[fitnessLevel] ? fitnessLevel : DEFAULT_FITNESS_LEVEL;
+  const level = Object.hasOwn(ACTIVITY_FACTORS, fitnessLevel) ? fitnessLevel : DEFAULT_FITNESS_LEVEL;
   let selected = parseGoals(goals);
   if (selected.length === 0) selected = [DEFAULT_GOAL];
 

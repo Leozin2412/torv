@@ -94,3 +94,17 @@ test('diffBasis', () => {
   assert.deepEqual(diffBasis({ ...cur, age: 29, goals: ['Criar uma Rotina'] }, cur), ['age', 'goals']);
   assert.deepEqual(diffBasis({ ...cur, weight_kg: '80' }, cur), []); // JSON guarda número; tolera string
 });
+
+test('chaves da prototype chain não viram nível/sexo/objetivo válidos', () => {
+  const proto = calculateTargets({ ...base, fitnessLevel: 'constructor', goals: 'Perder Peso' });
+  assert.equal(proto.basis.fitness_level, 'INICIANTE');
+  assert.ok(Number.isFinite(proto.daily_calories));
+  assert.ok(Number.isFinite(proto.protein_g));
+
+  assert.equal(calculateTargets({ ...base, gender: 'constructor', goals: 'Perder Peso' }), null);
+  assert.equal(calculateTargets({ ...base, gender: 'toString', goals: 'Perder Peso' }), null);
+
+  const goals = calculateTargets({ ...base, goals: 'constructor, toString' });
+  assert.deepEqual(goals.basis.goals, ['Saúde & Bem-estar']);
+  assert.ok(Number.isFinite(goals.daily_calories));
+});
