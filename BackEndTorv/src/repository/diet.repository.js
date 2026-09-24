@@ -79,22 +79,54 @@ class DietRepository {
     });
   }
 
-  async upsertNutritionTargets(userId, targets) {
+  async getCalcInputs(userId) {
+    const [profile, measurement] = await Promise.all([
+      prisma.user_profiles.findUnique({
+        where: { user_id: userId },
+        select: { gender: true, birth_date: true, fitness_level: true, goal: true },
+      }),
+      prisma.user_measurements.findFirst({
+        where: { user_id: userId },
+        orderBy: { recorded_at: 'desc' },
+        select: { weight_kg: true, height_cm: true },
+      }),
+    ]);
+    if (!profile) return null;
+    return {
+      gender: profile.gender,
+      birthDate: profile.birth_date,
+      fitnessLevel: profile.fitness_level,
+      goals: profile.goal,
+      weightKg: measurement?.weight_kg ?? null,
+      heightCm: measurement?.height_cm ?? null,
+    };
+  }
+
+  async getNutritionTargets(userId) {
+    return await prisma.nutrition_targets.findUnique({ where: { user_id: userId } });
+  }
+
+  async updateTargetsBasis(userId, basis) {
     return await prisma.nutrition_targets.upsert({
       where: { user_id: userId },
-      update: {
-        daily_calories: targets.daily_calories,
-        protein_g: targets.protein_g,
-        carbs_g: targets.carbs_g,
-        fat_g: targets.fat_g,
-      },
-      create: {
-        user_id: userId,
-        daily_calories: targets.daily_calories,
-        protein_g: targets.protein_g,
-        carbs_g: targets.carbs_g,
-        fat_g: targets.fat_g,
-      },
+      update: { basis_json: basis, updated_at: new Date() },
+      create: { user_id: userId, basis_json: basis, updated_at: new Date() },
+    });
+  }
+
+  async upsertNutritionTargets(userId, targets) {
+    const data = {
+      daily_calories: targets.daily_calories,
+      protein_g: targets.protein_g,
+      carbs_g: targets.carbs_g,
+      fat_g: targets.fat_g,
+      basis_json: targets.basis_json ?? null,
+      updated_at: new Date(),
+    };
+    return await prisma.nutrition_targets.upsert({
+      where: { user_id: userId },
+      update: data,
+      create: { user_id: userId, ...data },
     });
   }
 }

@@ -1,4 +1,5 @@
 const dietRepository = require('../repository/diet.repository');
+const { computeForUser, ensureTargets, buildSuggestion, pickTargets } = require('../lib/nutritionSuggestion');
 
 const formatDietSummaryResponse = (date, spResult, logsArray) => {
   return {
@@ -42,6 +43,8 @@ class DietController {
       if (!date) {
         date = new Date().toISOString().split('T')[0];
       }
+
+      await ensureTargets(userId);
 
       const spResult = await dietRepository.getDietSummaryByDate(userId, date);
       const { foodLogs } = await dietRepository.getDietDataByDate(userId, date);
@@ -173,8 +176,10 @@ class DietController {
         return reply.status(400).send({ error: 'Missing daily_calories' });
       }
 
+      const calc = await computeForUser(userId);
       await dietRepository.upsertNutritionTargets(userId, {
         daily_calories, protein_g: protein_g || 0, carbs_g: carbs_g || 0, fat_g: fat_g || 0,
+        basis_json: calc ? calc.basis : null,
       });
 
       const date = new Date().toISOString().split('T')[0];
@@ -186,6 +191,49 @@ class DietController {
       request.log.error(error);
       console.error(error);
       reply.status(500).send({ error: 'Internal server error updating targets' });
+    }
+  }
+
+  async getTargetsSuggestion(request, reply) {
+    try {
+      reply.status(200).send(await buildSuggestion(request.user.userId));
+    } catch (error) {
+      request.log.error(error);
+      reply.status(500).send({ error: 'Internal server error fetching targets suggestion' });
+    }
+  }
+
+  async acceptTargetsSuggestion(request, reply) {
+    try {
+      const { userId } = request.user;
+      const calc = await computeForUser(userId); // recalcula: nunca usa números do cliente
+      if (!calc) {
+        return reply.status(409).send({ error: 'Not enough profile data to calculate targets' });
+      }
+      await dietRepository.upsertNutritionTargets(userId, { ...pickTargets(calc), basis_json: calc.basis });
+
+      const date = new Date().toISOString().split('T')[0];
+      const spResult = await dietRepository.getDietSummaryByDate(userId, date);
+      const { foodLogs } = await dietRepository.getDietDataByDate(userId, date);
+      reply.status(200).send(formatDietSummaryResponse(date, spResult, foodLogs || []));
+    } catch (error) {
+      request.log.error(error);
+      reply.status(500).send({ error: 'Internal server error accepting targets suggestion' });
+    }
+  }
+
+  async dismissTargetsSuggestion(request, reply) {
+    try {
+      const { userId } = request.user;
+      const calc = await computeForUser(userId);
+      if (!calc) {
+        return reply.status(409).send({ error: 'Not enough profile data to calculate targets' });
+      }
+      await dietRepository.updateTargetsBasis(userId, calc.basis);
+      reply.status(200).send({ message: 'Suggestion dismissed' });
+    } catch (error) {
+      request.log.error(error);
+      reply.status(500).send({ error: 'Internal server error dismissing targets suggestion' });
     }
   }
 }

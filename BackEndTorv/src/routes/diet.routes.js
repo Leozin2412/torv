@@ -1,6 +1,7 @@
 const { Type } = require('@sinclair/typebox');
 const dietController = require('../controller/diet.controller');
 const authenticateToken = require('../middlewares/auth.middleware');
+const { suggestionSchema } = require('./nutrition.schemas');
 
 const dietSummarySchema = Type.Object({
   date: Type.String(),
@@ -102,6 +103,41 @@ async function dietRoutes(fastify) {
   };
 
   fastify.put('/targets', { schema: updateTargetsSchema }, dietController.updateNutritionTargets);
+
+  fastify.get('/targets/suggestion', {
+    schema: {
+      description: 'Sugere nova meta quando idade, peso, altura, sexo, nível ou objetivo mudaram desde a meta atual',
+      tags: ['Diet'],
+      security: [{ bearerAuth: [] }],
+      response: { 200: suggestionSchema, 500: Type.Object({ error: Type.String() }) },
+    },
+  }, dietController.getTargetsSuggestion);
+
+  fastify.post('/targets/suggestion/accept', {
+    schema: {
+      description: 'Aplica a meta recalculada no servidor e retorna o resumo do dia',
+      tags: ['Diet'],
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: dietSummarySchema,
+        409: Type.Object({ error: Type.String() }),
+        500: Type.Object({ error: Type.String() }),
+      },
+    },
+  }, dietController.acceptTargetsSuggestion);
+
+  fastify.post('/targets/suggestion/dismiss', {
+    schema: {
+      description: 'Mantém a meta atual e marca os dados atuais como vistos',
+      tags: ['Diet'],
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: Type.Object({ message: Type.String() }),
+        409: Type.Object({ error: Type.String() }),
+        500: Type.Object({ error: Type.String() }),
+      },
+    },
+  }, dietController.dismissTargetsSuggestion);
 
   const logIdParams = Type.Object({
     logId: Type.String(),
