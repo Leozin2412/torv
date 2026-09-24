@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const dietRepository = require('../repository/diet.repository');
 const { buildSuggestion } = require('./nutritionSuggestion');
 
-// Perfil fixo: só o basis salvo muda entre os casos.
+// Perfil fixo: só o basis salvo muda entre os casos. O 'today' atravessa getCalcInputs ->
+// computeForUser -> calculateTargets, então a idade (e os números esperados) não dependem do relógio.
 const INPUTS = {
   gender: 'Masculino',
   birthDate: '1996-01-15',
@@ -11,6 +12,7 @@ const INPUTS = {
   goals: 'Criar uma Rotina',
   weightKg: 80,
   heightCm: 175,
+  today: new Date('2026-09-24T12:00:00Z'),
 };
 
 // Stub do repository: sem banco, só o que buildSuggestion consome.
