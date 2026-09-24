@@ -153,13 +153,15 @@ model routine_exercises {
 }
 
 model nutrition_targets {
-  user_id        String @id @db.Uuid
+  user_id        String    @id @db.Uuid
   daily_calories Int?
   protein_g      Int?
   carbs_g        Int?
   fat_g          Int?
+  basis_json     Json?     @db.JsonB
+  updated_at     DateTime? @db.Timestamptz
 
-  user           users  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user           users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model food_logs {
