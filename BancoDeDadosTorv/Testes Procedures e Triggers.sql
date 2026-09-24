@@ -13,7 +13,7 @@
 -- as linhas para o schema public.
 --
 --   await supabase.auth.admin.createUser({
---     email: 'carlos.teste@torv.com', password: 'senhaSegura123', email_confirm: true,
+--     email: 'carlos.teste@torv.com', password: '<senha de teste>', email_confirm: true,
 --     user_metadata: { username: '@carlinhos', name: 'Carlos Teste' }
 --   })
 
