@@ -122,7 +122,9 @@ export default function Register() {
       }
     } catch (error: any) {
       const status = error?.response?.status;
-      if (status === 409) {
+      if (status === 409 && error.response.data?.code === 'USERNAME_TAKEN') {
+        setRegisterError('Esse nome de usuário já está em uso.');
+      } else if (status === 409) {
         setRegisterError('Já existe uma conta com esse e-mail.');
       } else if (status === 429) {
         setRegisterError('Muitas tentativas. Aguarde um minuto e tente de novo.');
