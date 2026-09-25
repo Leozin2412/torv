@@ -152,7 +152,7 @@ No Profile, se só o `/profile` falhar, o `Promise.all` rejeita e o `setFoodLogs
 |---|---|---|
 | `qa.perf.1790379707832a@torvtest.dev` | Review and Tests | corrida summary ∥ suggestion em conta nova |
 | `qa.perf.1790379707832b@torvtest.dev` | Review and Tests | medição de todas as rotas, rajada e fluxo no navegador. Terminou com 0 refeições, meta 1683 e 1 sugestão pendente (nível) |
+| `qa.perf.1790379502518@torvtest.dev` | Torv Backend | medição do Backend (lista informada pelo Maestro) |
+| `qa.perf.1790379525847@torvtest.dev` | Torv Backend | medição do Backend (lista informada pelo Maestro) |
 
-- As contas `qa.perf.*` criadas pelo **Torv Backend** não aparecem em commit nem em doc desta branch, e não consegui enumerar o banco (a leitura direta foi bloqueada no ciclo anterior).
-- O Maestro precisa pedir a lista ao Torv Backend.
-- Nenhuma refeição `qa-perf*` ficou sobrando: as 11 da medição foram apagadas via `DELETE /diet/:id`.
+- Nenhuma refeição `qa-perf*` criada nesta rodada ficou sobrando: as 11 da medição foram apagadas via `DELETE /diet/:id`.
