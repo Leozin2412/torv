@@ -25,7 +25,7 @@ Branch: `fix/supabase-anon-exposure` (criada a partir de `feat/calorie-macro-cal
 
 | Rota | Body | Sucesso | Erros |
 |---|---|---|---|
-| `POST /auth/register` | `{ email, password, name, username?, birth_date: 'YYYY-MM-DD', weight_kg, height_cm, gender: 'Masculino'\|'Feminino', fitness_level, goal }` | `201 { session: Session \| null, confirmation_required: boolean }` | `400` validação · `409` e-mail já cadastrado · `429` · `502` falha do provedor |
+| `POST /auth/register` | `{ email, password, name, username?, birth_date: 'YYYY-MM-DD', weight_kg, height_cm, gender: 'Masculino'\|'Feminino', fitness_level, goal }` | `201 { session: Session \| null, confirmation_required: boolean }` | `400` validação · `409 { code: 'EMAIL_TAKEN' \| 'USERNAME_TAKEN' }` (username checado antes do signup; corrida rara ainda cai no 502) · `429` · `502` falha do provedor |
 | `POST /auth/login` | `{ email, password }` | `200 { session }` | `400` · `401` genérico ("Invalid email or password", sem distinguir usuário inexistente de senha errada) · `429` · `502` |
 | `POST /auth/refresh` | `{ refresh_token }` | `200 { session }` | `400` · `401` · `429` · `502` |
 | `POST /auth/logout` | — (Bearer access token) | `204` sempre; revogação no GoTrue é best-effort | — |
