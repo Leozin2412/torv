@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import type { Session } from '@supabase/supabase-js';
-import { supabase } from '../services/supabase';
-import api from '../services/api';
+import api, { authApi, setOnSessionExpired } from '../services/api';
+import { getSession, setSession, clearSession, Session } from '../services/session';
 
 interface Profile {
   id: string;
@@ -13,17 +12,33 @@ interface Profile {
   goalCalories?: number;
 }
 
+export interface RegisterPayload {
+  email: string;
+  password: string;
+  name: string;
+  username?: string;
+  birth_date: string; // YYYY-MM-DD
+  weight_kg: number;
+  height_cm: number;
+  gender: 'Masculino' | 'Feminino';
+  fitness_level: string;
+  goal: string;
+}
+
 interface AuthContextData {
   signed: boolean;
   user: Profile | null;
   loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  // Resolves to true when the account needs e-mail confirmation before login.
+  register: (payload: RegisterPayload) => Promise<boolean>;
   logout: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [session, setSession] = useState<Session | null>(null);
+  const [signed, setSigned] = useState(false);
   const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,35 +52,54 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const startSession = async (session: Session) => {
+    await setSession(session);
+    setSigned(true);
+    await loadProfile();
+  };
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: current } }) => {
-      setSession(current);
+    setOnSessionExpired(() => {
+      setSigned(false);
+      setUser(null);
+    });
+
+    getSession().then(async (current) => {
       if (current) {
-        loadProfile().finally(() => setLoading(false));
-      } else {
-        setLoading(false);
+        setSigned(true);
+        await loadProfile();
       }
-    });
+    }).finally(() => setLoading(false));
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      if (newSession) {
-        loadProfile();
-      } else {
-        setUser(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    return () => setOnSessionExpired(null);
   }, []);
 
+  const login = async (email: string, password: string) => {
+    const { data } = await authApi.post('/auth/login', { email, password });
+    await startSession(data.session);
+  };
+
+  const register = async (payload: RegisterPayload) => {
+    const { data } = await authApi.post('/auth/register', payload);
+    if (data.session) await startSession(data.session);
+    return !!data.confirmation_required;
+  };
+
   const logout = async () => {
-    await supabase.auth.signOut();
+    const current = await getSession();
+    if (current) {
+      // Best-effort revoke; local sign-out happens regardless.
+      await authApi.post('/auth/logout', null, {
+        headers: { Authorization: `Bearer ${current.access_token}` },
+      }).catch(() => {});
+    }
+    await clearSession();
+    setSigned(false);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ signed: !!session, user, loading, logout }}>
+    <AuthContext.Provider value={{ signed, user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

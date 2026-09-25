@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { View, Text, Alert, ScrollView, TouchableOpacity, StyleSheet, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { SelectCard } from '../../components/SelectCard';
-import { supabase } from '../../services/supabase';
+import { AuthContext } from '../../contexts/AuthContext';
 import { GoalConflictWarning } from '../../components/GoalConflictWarning';
 import { colors } from '../../theme/tokens';
 import { FITNESS_LEVELS, GOAL_OPTIONS } from '../../utils/profileOptions';
@@ -16,6 +16,7 @@ import { styles } from './styles';
 
 export default function Register() {
   const navigation = useNavigation();
+  const { register } = useContext(AuthContext);
   const [step, setStep] = useState(0); // 0 to 5
   const [loading, setLoading] = useState(false);
 
@@ -104,27 +105,27 @@ export default function Register() {
     setLoading(true);
     setRegisterError('');
     try {
-      const { error } = await supabase.auth.signUp({
+      const confirmationRequired = await register({
         email,
         password,
-        options: {
-          data: {
-            name,
-            username,
-            birth_date: toIsoDate(birthDate),
-            weight: Number(weight),
-            height: Number(height),
-            gender,
-            fitness_level: fitnessLevel,
-            goal: goals.join(', '),
-          },
-        },
+        name,
+        username,
+        birth_date: toIsoDate(birthDate),
+        weight_kg: Number(weight),
+        height_cm: Number(height),
+        gender: gender!,
+        fitness_level: fitnessLevel,
+        goal: goals.join(', '),
       });
-      if (error) throw error;
+      if (confirmationRequired) {
+        setRegisterError('Conta criada. Confirme seu e-mail e faça login.');
+      }
     } catch (error: any) {
-      console.log(error);
-      if (error?.message?.includes('already registered')) {
+      const status = error?.response?.status;
+      if (status === 409) {
         setRegisterError('Já existe uma conta com esse e-mail.');
+      } else if (status === 429) {
+        setRegisterError('Muitas tentativas. Aguarde um minuto e tente de novo.');
       } else {
         setRegisterError('Falha ao criar conta. Tente novamente.');
       }

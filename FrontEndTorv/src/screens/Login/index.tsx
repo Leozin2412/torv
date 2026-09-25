@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingView, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,7 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
-import { supabase } from '../../services/supabase';
+import { AuthContext } from '../../contexts/AuthContext';
 import { colors } from '../../theme/tokens';
 import { styles } from './styles';
 
@@ -25,6 +25,7 @@ export default function Login() {
   const [showForm, setShowForm] = useState(false);
   const [loginError, setLoginError] = useState('');
   const navigation = useNavigation<LoginScreenNavigationProp>();
+  const { login } = useContext(AuthContext);
 
   const handleLogin = async () => {
     if (loading) return;
@@ -37,12 +38,13 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      await login(email, password);
     } catch (error: any) {
-      console.log(error);
-      if (error?.status === 400 || error?.message?.includes('Invalid login credentials')) {
+      const status = error?.response?.status;
+      if (status === 401) {
         setLoginError('Email ou senha incorretos.');
+      } else if (status === 429) {
+        setLoginError('Muitas tentativas. Aguarde um minuto e tente de novo.');
       } else {
         setLoginError('Falha ao realizar login. Tente novamente.');
       }

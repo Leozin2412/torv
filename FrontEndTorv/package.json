@@ -8,7 +8,6 @@
     "@react-navigation/bottom-tabs": "^7.16.2",
     "@react-navigation/native": "^7.2.5",
     "@react-navigation/native-stack": "^7.16.0",
-    "@supabase/supabase-js": "^2.116.0",
     "axios": "^1.17.0",
     "expo": "^57.0.24",
     "expo-font": "~57.0.4",
@@ -23,7 +22,6 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
-    "react-native-url-polyfill": "^4.0.0",
     "react-native-web": "^0.21.2",
     "use-latest-callback": "^0.3.4",
     "whatwg-url-minimum": "^0.1.2"
