@@ -35,7 +35,7 @@ Nenhum segredo foi impresso nesta revisão. Os valores foram comparados só por 
 ### 1. Vazamento da senha do `postgres`: mitigação confirmada
 
 **O que vazou.**
-- O commit `faf2fb3` (autor em 2026-09-15) adicionou, em `docs/superpowers/plans/2026-09-15-postgres-fastify-migration.md:785`, uma URL `postgresql://postgres.<ref>:[<senha>]@…pooler.supabase.com:6543`. A senha estava **entre colchetes**, no formato do template `[YOUR-PASSWORD]` do dashboard do Supabase.
+- O commit `faf2fb3` (autor em 2026-09-15) adicionou, em `docs/superpowers/plans/2026-09-15-postgres-fastify-migration.md:785`, uma URL de conexão do role `postgres` para o pooler (porta 6543) com a senha literal no campo de senha. A senha estava **entre colchetes**, no formato do template `[YOUR-PASSWORD]` do dashboard do Supabase.
 - `faf2fb3` está em `origin/main` e em `origin/feat/calorie-macro-calculator`, e o repositório é público. A janela de exposição foi de ~10 dias, até a rotação.
 
 **Verificação, sem usar a credencial vazada:**
