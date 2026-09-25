@@ -4,6 +4,7 @@
 --   20260915170948_init_postgres        - functions, views e triggers base
 --   20260918165833_supabase_auth_link   - remove fn_register_new_user, adiciona handle_new_user
 --   20260924171548_nutrition_targets_basis - só colunas, não mexe em function/trigger
+--   20260925180000_lock_down_public_schema - revoga EXECUTE de PUBLIC/anon/authenticated (ver Gestao_e_Performance.sql, passo 1.3)
 -- This file has no runtime effect; it exists for readability/presentation only.
 
 --UDFs

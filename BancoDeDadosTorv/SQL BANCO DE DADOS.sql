@@ -4,6 +4,7 @@
 --   20260915170948_init_postgres        - schema base
 --   20260918165833_supabase_auth_link   - users passa a espelhar auth.users (Supabase Auth)
 --   20260924171548_nutrition_targets_basis - basis_json / updated_at em nutrition_targets
+--   20260925180000_lock_down_public_schema - privilégios + RLS (ver Gestao_e_Performance.sql, passo 1.3)
 -- This file has no runtime effect; it exists for readability/presentation only.
 -- No CREATE DATABASE / USE statement here: Supabase already scopes a project to
 -- one database, unlike SQL Server's multi-database-per-server model.
