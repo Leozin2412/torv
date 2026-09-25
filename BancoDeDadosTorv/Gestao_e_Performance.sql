@@ -3,7 +3,7 @@
 -- OBJETIVO: Demonstrar os entregáveis acadêmicos aplicados ao escopo atual
 -- Postgres (Supabase) — documentation copy of what's actually deployed.
 -- Source of truth: BackEndTorv/prisma/migrations/ (init_postgres + supabase_auth_link
--- + nutrition_targets_basis + lock_down_public_schema); ver o cabeçalho de "SQL BANCO DE DADOS.sql".
+-- + nutrition_targets_basis + lock_down_public_schema + revoke_global_function_execute); ver o cabeçalho de "SQL BANCO DE DADOS.sql".
 -- This file has no runtime effect; it exists for readability/presentation only.
 -- =======================================================================
 
@@ -55,6 +55,13 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO torv_api;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM anon, authenticated, PUBLIC;
+-- O "FROM PUBLIC" acima não tem efeito: EXECUTE para PUBLIC é um default GLOBAL
+-- embutido, e default per-schema só soma ao global. Só um ALTER global o remove
+-- (migration 20260925210000_revoke_global_function_execute). anon/authenticated
+-- herdam PUBLIC, então sem isso uma function nova seria chamável via /rest/v1/rpc.
+-- torv_api continua recebendo EXECUTE em functions novas pelo default per-schema
+-- do passo 1.1.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
 -- RLS em todas as tabelas (segunda camada, caso algum GRANT volte por engano).
 -- torv_api não é dono das tabelas, então precisa de uma policy explícita.
