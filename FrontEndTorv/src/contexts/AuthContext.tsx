@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import api, { authApi, setOnSessionExpired } from '../services/api';
+import api, { authApi, refreshSession, setOnSessionExpired } from '../services/api';
 import { getSession, setSession, clearSession, Session } from '../services/session';
 
 interface Profile {
@@ -86,7 +86,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
-    const current = await getSession();
+    let current = await getSession();
+    // An expired access token can't revoke; refresh first so GoTrue accepts it.
+    if (current && current.expires_at - Date.now() / 1000 < 60) {
+      current = await refreshSession().catch(() => null);
+    }
     if (current) {
       // Best-effort revoke; local sign-out happens regardless.
       await authApi.post('/auth/logout', {}, {
