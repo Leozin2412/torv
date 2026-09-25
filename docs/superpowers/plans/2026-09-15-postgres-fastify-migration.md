@@ -782,7 +782,7 @@ DATABASE_URL="postgresql://torv_api.figlsyikardnbfuykhxq:<generated-password-1>@
 - [ ] **Step 5: Update the Maestri note with the new connection strings**
 
 ```bash
-maestri note edit "database-url-postgresql-pos" 'DATABASE_URL="postgresql://postgres.figlsyikardnbfuykhxq:[Torv2026$2412]@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"' 'DATABASE_URL="postgresql://torv_api.figlsyikardnbfuykhxq:<generated-password-1>@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"'
+maestri note edit "database-url-postgresql-pos" 'DATABASE_URL="postgresql://postgres.figlsyikardnbfuykhxq:<postgres-password>@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"' 'DATABASE_URL="postgresql://torv_api.figlsyikardnbfuykhxq:<generated-password-1>@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"'
 ```
 
 - [ ] **Step 6: Verify runtime connectivity as `torv_api` and confirm it cannot run DDL**
