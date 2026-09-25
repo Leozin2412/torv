@@ -8,6 +8,7 @@ const Session = Type.Object({
   user: Type.Object({ id: Type.String(), email: Type.String() }),
 });
 const ErrorBody = Type.Object({ error: Type.String() });
+const ConflictBody = Type.Object({ error: Type.String(), code: Type.Union([Type.Literal('EMAIL_TAKEN'), Type.Literal('USERNAME_TAKEN')]) });
 const errors = (...codes) => Object.fromEntries(codes.map((c) => [c, ErrorBody]));
 
 // Limite por IP do cliente: o GoTrue só vê o IP do backend, então o controle é nosso.
@@ -36,7 +37,8 @@ async function authRoutes(fastify) {
       }),
       response: {
         201: Type.Object({ session: Type.Union([Session, Type.Null()]), confirmation_required: Type.Boolean() }),
-        ...errors(400, 409, 429, 502),
+        409: ConflictBody,
+        ...errors(400, 429, 502),
       },
     },
   }, authController.register);

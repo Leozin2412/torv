@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Fastify = require('fastify');
 const authProvider = require('../lib/authProvider');
+const profileRepository = require('../repository/profile.repository');
 const { AuthError } = authProvider;
 
 const session = { access_token: 'at', refresh_token: 'rt', expires_at: 2000000000, user: { id: 'u1', email: 'a@b.dev' } };
@@ -12,6 +13,7 @@ const validRegister = {
 };
 
 async function build(t) {
+  t.mock.method(profileRepository, 'usernameExists', async () => false);
   const app = Fastify();
   app.register(require('./auth.routes'), { prefix: '/auth' });
   t.after(() => app.close());
@@ -77,6 +79,28 @@ test('register 409 / 502 mapeados sem vazar erro do provedor', async (t) => {
   res = await post(app, '/auth/register', validRegister);
   assert.equal(res.statusCode, 502);
   assert.deepEqual(Object.keys(res.json()), ['error']);
+});
+
+test('register 409 USERNAME_TAKEN: username já existe → não chama o provedor', async (t) => {
+  const signUp = t.mock.method(authProvider, 'signUp', async () => session);
+  const app = await build(t);
+  const exists = t.mock.method(profileRepository, 'usernameExists', async () => true);
+  const res = await post(app, '/auth/register', validRegister);
+  assert.equal(res.statusCode, 409);
+  assert.deepEqual(res.json(), { error: 'Username already taken', code: 'USERNAME_TAKEN' });
+  assert.equal(exists.mock.calls[0].arguments[0], 'ana');
+  assert.equal(signUp.mock.callCount(), 0);
+});
+
+test('register sem username pula o pre-check (trigger gera um)', async (t) => {
+  const signUp = t.mock.method(authProvider, 'signUp', async () => session);
+  const app = await build(t);
+  const exists = t.mock.method(profileRepository, 'usernameExists', async () => true);
+  const { username, ...noUsername } = validRegister;
+  const res = await post(app, '/auth/register', noUsername);
+  assert.equal(res.statusCode, 201);
+  assert.equal(exists.mock.callCount(), 0);
+  assert.equal(signUp.mock.calls[0].arguments[2].username, undefined);
 });
 
 test('login 200 / 401 genérico / 400', async (t) => {

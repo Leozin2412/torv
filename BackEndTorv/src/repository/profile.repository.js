@@ -26,6 +26,10 @@ class ProfileRepository {
     });
   }
 
+  async usernameExists(username) {
+    return (await prisma.user_profiles.count({ where: { username } })) > 0;
+  }
+
   async getProfileRow(userId) {
     return await prisma.user_profiles.findUnique({ where: { user_id: userId } });
   }
