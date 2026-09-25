@@ -121,12 +121,14 @@ class ProfileController {
         return reply.status(400).send({ error: result.error });
       }
 
-      const updatedProfile = Object.keys(result.profileData).length > 0
-        ? await profileRepository.updateProfile(userId, result.profileData)
-        : await profileRepository.getProfileRow(userId);
+      const [updatedProfile, last] = await Promise.all([
+        Object.keys(result.profileData).length > 0
+          ? profileRepository.updateProfile(userId, result.profileData)
+          : profileRepository.getProfileRow(userId),
+        result.measurement ? profileRepository.getLatestMeasurement(userId) : null,
+      ]);
 
       if (result.measurement) {
-        const last = await profileRepository.getLatestMeasurement(userId);
         const next = {
           weight_kg: result.measurement.weight_kg ?? (last?.weight_kg != null ? Number(last.weight_kg) : null),
           height_cm: result.measurement.height_cm ?? last?.height_cm ?? null,

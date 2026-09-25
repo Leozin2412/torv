@@ -52,10 +52,11 @@ class DietController {
         date = new Date().toISOString().split('T')[0];
       }
 
-      await ensureTargets(userId);
-
-      const spResult = await dietRepository.getDietSummaryByDate(userId, date);
-      const { foodLogs } = await dietRepository.getDietDataByDate(userId, date);
+      // ensureTargets precisa vir antes do summary (a função lê a meta); os logs não dependem de nenhum dos dois.
+      const [spResult, { foodLogs }] = await Promise.all([
+        ensureTargets(userId).then(() => dietRepository.getDietSummaryByDate(userId, date)),
+        dietRepository.getDietDataByDate(userId, date),
+      ]);
 
       const finalResponse = formatDietSummaryResponse(date, spResult, foodLogs || []);
 
@@ -132,8 +133,10 @@ class DietController {
 
       await dietRepository.updateFoodLog(userId, logId, { food_name, calories, macros_json });
 
-      const spResult = await dietRepository.getDietSummaryByDate(userId, date);
-      const { foodLogs } = await dietRepository.getDietDataByDate(userId, date);
+      const [spResult, { foodLogs }] = await Promise.all([
+        dietRepository.getDietSummaryByDate(userId, date),
+        dietRepository.getDietDataByDate(userId, date),
+      ]);
 
       reply.status(200).send(formatDietSummaryResponse(date, spResult, foodLogs || []));
     } catch (error) {
@@ -160,8 +163,10 @@ class DietController {
 
       await dietRepository.deleteFoodLog(userId, logId);
 
-      const spResult = await dietRepository.getDietSummaryByDate(userId, date);
-      const { foodLogs } = await dietRepository.getDietDataByDate(userId, date);
+      const [spResult, { foodLogs }] = await Promise.all([
+        dietRepository.getDietSummaryByDate(userId, date),
+        dietRepository.getDietDataByDate(userId, date),
+      ]);
 
       reply.status(200).send(formatDietSummaryResponse(date, spResult, foodLogs || []));
     } catch (error) {
@@ -187,8 +192,10 @@ class DietController {
       });
 
       const date = new Date().toISOString().split('T')[0];
-      const spResult = await dietRepository.getDietSummaryByDate(userId, date);
-      const { foodLogs } = await dietRepository.getDietDataByDate(userId, date);
+      const [spResult, { foodLogs }] = await Promise.all([
+        dietRepository.getDietSummaryByDate(userId, date),
+        dietRepository.getDietDataByDate(userId, date),
+      ]);
 
       reply.status(200).send(formatDietSummaryResponse(date, spResult, foodLogs || []));
     } catch (error) {
@@ -217,8 +224,10 @@ class DietController {
       await dietRepository.upsertNutritionTargets(userId, { ...pickTargets(calc), basis_json: calc.basis });
 
       const date = new Date().toISOString().split('T')[0];
-      const spResult = await dietRepository.getDietSummaryByDate(userId, date);
-      const { foodLogs } = await dietRepository.getDietDataByDate(userId, date);
+      const [spResult, { foodLogs }] = await Promise.all([
+        dietRepository.getDietSummaryByDate(userId, date),
+        dietRepository.getDietDataByDate(userId, date),
+      ]);
       reply.status(200).send(formatDietSummaryResponse(date, spResult, foodLogs || []));
     } catch (error) {
       request.log.error(error);

@@ -1,15 +1,16 @@
 const prisma = require('../lib/prisma');
 
 class ProfileRepository {
+  // 4 queries em paralelo (1 RTT) em vez do include, que o Prisma roda em sequência. Mesmo shape do include.
   async getUserProfile(userId) {
-    return await prisma.users.findUnique({
-      where: { id: userId },
-      include: {
-        user_profiles: true,
-        user_streaks: true,
-        user_measurements: { orderBy: { recorded_at: 'desc' }, take: 1 },
-      },
-    });
+    const [user, user_profiles, user_streaks, measurement] = await Promise.all([
+      prisma.users.findUnique({ where: { id: userId } }),
+      prisma.user_profiles.findUnique({ where: { user_id: userId } }),
+      prisma.user_streaks.findUnique({ where: { user_id: userId } }),
+      prisma.user_measurements.findFirst({ where: { user_id: userId }, orderBy: { recorded_at: 'desc' } }),
+    ]);
+    if (!user) return null;
+    return { ...user, user_profiles, user_streaks, user_measurements: measurement ? [measurement] : [] };
   }
 
   async updatePhotoUrl(userId, photoUrl) {

@@ -18,11 +18,7 @@ async function computeForUser(userId) {
   return inputs ? calculateTargets(inputs) : null;
 }
 
-// Cria a meta só quando não existe linha — nunca sobrescreve.
-async function ensureTargets(userId) {
-  if (await dietRepository.getNutritionTargets(userId)) return;
-  const calc = await computeForUser(userId);
-  if (!calc) return;
+async function createTargets(userId, calc) {
   try {
     await dietRepository.upsertNutritionTargets(userId, { ...pickTargets(calc), basis_json: calc.basis });
   } catch (error) {
@@ -30,13 +26,23 @@ async function ensureTargets(userId) {
   }
 }
 
-async function buildSuggestion(userId) {
-  await ensureTargets(userId);
+// Cria a meta só quando não existe linha — nunca sobrescreve.
+async function ensureTargets(userId) {
+  if (await dietRepository.getNutritionTargets(userId)) return;
   const calc = await computeForUser(userId);
-  if (!calc) return { has_suggestion: false };
+  if (calc) await createTargets(userId, calc);
+}
 
-  const saved = await dietRepository.getNutritionTargets(userId);
-  const changed = diffBasis(saved?.basis_json, calc.basis);
+async function buildSuggestion(userId) {
+  const [saved, calc] = await Promise.all([dietRepository.getNutritionTargets(userId), computeForUser(userId)]);
+  if (!calc) return { has_suggestion: false };
+  if (!saved) {
+    // Meta recém-criada nasce com o basis atual: nada a sugerir.
+    await createTargets(userId, calc);
+    return { has_suggestion: false };
+  }
+
+  const changed = diffBasis(saved.basis_json, calc.basis);
   if (changed.length === 0) return { has_suggestion: false };
 
   const current = pickTargets(saved);

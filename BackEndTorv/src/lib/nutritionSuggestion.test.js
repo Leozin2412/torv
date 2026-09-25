@@ -74,3 +74,49 @@ test('números diferentes: sugestão normal, sem recarimbar', async (t) => {
   assert.equal(result.suggested.daily_calories, 2711);
   assert.equal(calls.updateTargetsBasis.length, 0);
 });
+
+test('sem meta salva: cria com o calc, sem sugestão, e calcula uma vez só', async (t) => {
+  const calls = stubRepo(t, null);
+
+  assert.deepEqual(await buildSuggestion('user-1'), { has_suggestion: false });
+  assert.equal(calls.upsertNutritionTargets.length, 1);
+  const { userId, targets } = calls.upsertNutritionTargets[0];
+  assert.equal(userId, 'user-1');
+  assert.deepEqual(
+    { daily_calories: targets.daily_calories, protein_g: targets.protein_g, carbs_g: targets.carbs_g, fat_g: targets.fat_g },
+    { daily_calories: 2711, protein_g: 169, carbs_g: 305, fat_g: 90 },
+  );
+  assert.deepEqual(targets.basis_json.goals, ['Criar uma Rotina']);
+  assert.equal(calls.updateTargetsBasis.length, 0);
+  assert.equal(dietRepository.getCalcInputs.mock.callCount(), 1);
+  assert.equal(dietRepository.getNutritionTargets.mock.callCount(), 1);
+});
+
+test('sem meta salva e outra request criou antes (P2002): engole, sem sugestão', async (t) => {
+  stubRepo(t, null);
+  t.mock.method(dietRepository, 'upsertNutritionTargets', async () => {
+    throw Object.assign(new Error('unique'), { code: 'P2002' });
+  });
+  assert.deepEqual(await buildSuggestion('user-1'), { has_suggestion: false });
+});
+
+test('sem dados de perfil: sem sugestão e não cria meta', async (t) => {
+  const calls = stubRepo(t, null);
+  t.mock.method(dietRepository, 'getCalcInputs', async () => null);
+  assert.deepEqual(await buildSuggestion('user-1'), { has_suggestion: false });
+  assert.equal(calls.upsertNutritionTargets.length, 0);
+});
+
+test('meta salva e inputs do cálculo são buscados em paralelo', async (t) => {
+  stubRepo(t, SAME_NUMBERS_ROW);
+  let calcStarted;
+  const calcCalled = new Promise((resolve) => { calcStarted = resolve; });
+  t.mock.method(dietRepository, 'getCalcInputs', async () => { calcStarted(); return INPUTS; });
+  // Só resolve depois que getCalcInputs já começou; em sequência, estoura o timeout.
+  t.mock.method(dietRepository, 'getNutritionTargets', () => Promise.race([
+    calcCalled.then(() => SAME_NUMBERS_ROW),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('queries em sequência')), 200)),
+  ]));
+
+  assert.deepEqual(await buildSuggestion('user-1'), { has_suggestion: false });
+});
