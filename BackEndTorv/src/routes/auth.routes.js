@@ -15,6 +15,7 @@ const errors = (...codes) => Object.fromEntries(codes.map((c) => [c, ErrorBody])
 const perMinute = (max) => ({ rateLimit: { max, timeWindow: '1 minute' } });
 
 async function authRoutes(fastify) {
+  // ponytail: chave = request.ip. Atrás de proxy/LB todo mundo vira o IP do proxy; configurar trustProxy no deploy.
   // Registrado dentro deste plugin → só vale pras rotas /auth/*. Default 30/min (refresh, logout).
   await fastify.register(require('@fastify/rate-limit'), { max: 30, timeWindow: '1 minute' });
 
@@ -26,8 +27,8 @@ async function authRoutes(fastify) {
       body: Type.Object({
         email: Type.String({ format: 'email' }),
         password: Type.String({ minLength: 6 }),
-        name: Type.String({ minLength: 1 }),
-        username: Type.Optional(Type.String({ minLength: 1 })),
+        name: Type.String({ minLength: 1, maxLength: 100 }),
+        username: Type.Optional(Type.String({ minLength: 1, maxLength: 100 })),
         birth_date: Type.String({ format: 'date', description: 'YYYY-MM-DD' }),
         weight_kg: Type.Number(),
         height_cm: Type.Number(),

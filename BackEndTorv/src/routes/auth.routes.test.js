@@ -59,6 +59,8 @@ test('register 400: campos inválidos não chegam no provedor', async (t) => {
     { goal: 'Voar' },
     { weight_kg: 5 },
     { height_cm: 170.5 },
+    { name: 'a'.repeat(101) },
+    { username: 'a'.repeat(101) },
   ];
   const { name, ...noName } = validRegister;
   for (const patch of bad) {
