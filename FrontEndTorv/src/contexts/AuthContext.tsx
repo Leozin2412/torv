@@ -89,7 +89,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const current = await getSession();
     if (current) {
       // Best-effort revoke; local sign-out happens regardless.
-      await authApi.post('/auth/logout', null, {
+      await authApi.post('/auth/logout', {}, {
         headers: { Authorization: `Bearer ${current.access_token}` },
       }).catch(() => {});
     }

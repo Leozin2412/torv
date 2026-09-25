@@ -172,8 +172,8 @@ export default function Register() {
           <>
             <Text style={styles.title}>Sobre você</Text>
             <Text style={styles.subtitle}>Conte-nos um pouco sobre você.</Text>
-            <Input label="Como quer ser chamado?" placeholder="Nome completo" value={name} onChangeText={(text) => { setName(text); setNameError(''); }} error={nameError} />
-            <Input label="Nome de usuário" placeholder="ex: seunome123" value={username} onChangeText={setUsername} autoCapitalize="none" />
+            <Input label="Como quer ser chamado?" placeholder="Nome completo" value={name} onChangeText={(text) => { setName(text); setNameError(''); }} error={nameError} maxLength={100} />
+            <Input label="Nome de usuário" placeholder="ex: seunome123" value={username} onChangeText={setUsername} autoCapitalize="none" maxLength={100} />
             <Input label="Data de nascimento" placeholder="DD/MM/AAAA" value={birthDate} onChangeText={handleDateChange} keyboardType="numeric" maxLength={10} />
           </>
         )}
