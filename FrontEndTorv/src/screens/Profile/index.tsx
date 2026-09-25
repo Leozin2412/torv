@@ -49,8 +49,10 @@ export default function Profile() {
     useCallback(() => {
       async function loadData() {
         try {
-          // Fetch diet data
-          const dietResponse = await api.get('/diet/summary');
+          const [dietResponse, profileResponse] = await Promise.all([
+            api.get('/diet/summary'),
+            api.get('/profile'),
+          ]);
           if (dietResponse.data && dietResponse.data.logs) {
             const formattedLogs = dietResponse.data.logs.map((log: any) => ({
               id: String(log.id),
@@ -62,8 +64,6 @@ export default function Profile() {
             setFoodLogs([]);
           }
 
-          // Fetch profile data
-          const profileResponse = await api.get('/profile');
           if (profileResponse.data) {
             setProfileData(profileResponse.data);
             if (profileResponse.data.photo_url) {
