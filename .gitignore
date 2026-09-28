@@ -15,6 +15,9 @@ yarn-error.log*
 *.sqlite
 *.db
 
+# User uploads (profile photos)
+BackEndTorv/profilePhotos/
+
 # Build and OS files
 .DS_Store
 dist/
