@@ -1,18 +1,21 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Plus, X, Edit2, Trash2, UtensilsCrossed, Calendar, Sparkles, ChevronRight } from 'lucide-react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { ProgressBar } from '../../components/ProgressBar';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { NutritionSuggestionModal, type NutritionSuggestion } from '../../components/NutritionSuggestionModal';
+import { DatePickerModal } from '../../components/DatePickerModal';
 import api from '../../services/api';
+import { toISODate, parseLocalDate } from '../../utils/date';
 import { colors } from '../../theme/tokens';
 import { styles } from './styles';
+
+const MIN_DIET_DATE = '2026-01-01';
 
 interface MacroState {
   current: number;
@@ -35,9 +38,6 @@ interface MealMacros {
   fat?: number;
   fats?: number;
 }
-
-const toISODate = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 export default function MyDiet() {
   const [modalVisible, setModalVisible] = useState(false);
@@ -92,11 +92,6 @@ export default function MyDiet() {
     return dates;
   };
 
-  const parseLocalDate = (dateStr: string) => {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  };
-
   const getWeekOf = (dateStr: string) => {
     const anchor = parseLocalDate(dateStr);
     const sunday = new Date(anchor);
@@ -115,7 +110,7 @@ export default function MyDiet() {
 
   const [pendingSuggestion, setPendingSuggestion] = useState<NutritionSuggestion | null>(null);
   const [showSuggestion, setShowSuggestion] = useState(false);
-  const displayedDates = filterDate ? getWeekOf(filterDate) : getLastFiveDays();
+  const displayedDates = (filterDate ? getWeekOf(filterDate) : getLastFiveDays()).filter((d) => d.fullDate >= MIN_DIET_DATE);
 
   const updateDietMetrics = (data: any) => {
     const targets = data.targets || { daily_calories: 2400, protein_g: 150, carbs_g: 250, fat_g: 75 };
@@ -328,40 +323,18 @@ export default function MyDiet() {
         </View>
       </View>
 
-      {pickerVisible && Platform.select({
-        web: (
-          <input
-            type="date"
-            aria-label="Filtrar por data"
-            value={filterDate ?? selectedDate}
-            max={toISODate(new Date())}
-            onChange={(e) => {
-              setPickerVisible(false);
-              const value = e.target.value;
-              if (value) {
-                setFilterDate(value);
-                setSelectedDate(value);
-              }
-            }}
-            style={{ marginBottom: 12 }}
-          />
-        ),
-        default: (
-          <DateTimePicker
-            value={filterDate ? parseLocalDate(filterDate) : new Date()}
-            mode="date"
-            maximumDate={new Date()}
-            onChange={(_event, date) => {
-              setPickerVisible(false);
-              if (date) {
-                const dateStr = toISODate(date);
-                setFilterDate(dateStr);
-                setSelectedDate(dateStr);
-              }
-            }}
-          />
-        ),
-      })}
+      <DatePickerModal
+        visible={pickerVisible}
+        value={filterDate ?? selectedDate}
+        minDate={MIN_DIET_DATE}
+        maxDate={toISODate(new Date())}
+        onClose={() => setPickerVisible(false)}
+        onConfirm={(d) => {
+          setPickerVisible(false);
+          setFilterDate(d);
+          setSelectedDate(d);
+        }}
+      />
 
       <ScrollView ref={stripRef} horizontal showsHorizontalScrollIndicator={false} style={styles.dateSelector}>
         {displayedDates.map((item) => {
