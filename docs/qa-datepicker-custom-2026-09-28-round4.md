@@ -9,7 +9,8 @@
 - Os 8 itens do roteiro passaram, conferidos no código e ao vivo.
 - Não há achado bloqueante.
 - Ficam **2 LOW, ambos só em telas de 320 pt**. Veja a tabela abaixo.
-- A **correção dos 320 px pedida pelo usuário no round 3 não está neste diff**: `styles.ts:30` continua com `day: { width: 38, height: 38 }`.
+- A **correção dos 320 px sugerida no round 3 não está neste diff**: `styles.ts:30` continua com `day: { width: 38, height: 38 }`.
+- **Correção deste relatório (feita depois do commit original):** a primeira versão dizia que o usuário tinha pedido essa correção. Eu tirei isso de um texto que vi na linha de prompt do terminal do Maestro, sem confirmar se tinha sido enviado. O Maestro esclareceu que foi só uma oferta dele.
 
 ---
 
@@ -17,7 +18,7 @@
 
 | # | Sev. | Onde | Achado |
 |---|---|---|---|
-| 1 | LOW (aberto desde o round 1; o usuário pediu a correção) | `FrontEndTorv/src/components/DatePickerModal/styles.ts:30` | **Continua igual ao round 3.** Em 320 px, o botão do dia (38 px) é maior que a célula (32,9 px), e os dias vizinhos se sobrepõem **5,1 px**. Sugestão: `day: { width: '100%', maxWidth: 38, aspectRatio: 1 }`. |
+| 1 | LOW (aberto desde o round 1) | `FrontEndTorv/src/components/DatePickerModal/styles.ts:30` | **Continua igual ao round 3.** Em 320 px, o botão do dia (38 px) é maior que a célula (32,9 px), e os dias vizinhos se sobrepõem **5,1 px**. Sugestão: `day: { width: '100%', maxWidth: 38, aspectRatio: 1 }`. |
 | 2 | LOW (**entrou no v2/round 3** e eu não peguei lá; segue no v3) | `FrontEndTorv/src/components/DatePickerModal/styles.ts:22` (`modeToggle` com `padding: 8`, `gap: 4` e o chevron de 16 px) + `styles.ts:20-21` | Em 320 px, **no modo dias**, o rótulo `Setembro de 2026 ▾` fica com 189 px e não cabe entre as setas (sobram 154 px). A seta **"Próximo mês" passa da borda direita do card em 14 px** (seta 272..310, card até 296). Com `Fevereiro de 2026`, passa 9 px. Nos modos meses e anos a seta fica em 237..275, então **ela anda 35 px ao alternar de modo** em 320 px, e a garantia de "setas fixas" do round 2 quebra nessa largura. Em 360 px e 390 px cabe (a seta fica em 277..315 e 308..346 nos três modos). No round 3 eu medi só as grades em 320 px, não a linha de navegação. **Sugestão:** o toggle com `flexShrink: 1` e o `Text` com `numberOfLines={1}`, ou menos padding horizontal no toggle e nas setas em telas estreitas. Vale corrigir junto com o #1, no mesmo passe de 320 px. |
 | INFO | só web | `index.tsx:185` e `:220` | (Igual ao round 3.) `aria-selected` em `role="button"` não é previsto no ARIA. No nativo é anunciado. |
 | INFO | contrato | `index.tsx:29` e `:94` | Sem `maxDate`, `anchor` vira o ano de hoje e "Próximos anos" fica desabilitado a partir da página que termina nele. Os modos dias e meses, sem `maxDate`, deixam ir para o futuro. É inconsistente, mas o único chamador (MyDiet) sempre passa `maxDate`. Não há ação agora. |
@@ -67,7 +68,7 @@
 
 **PASS.** Libera para o **Torv Security** com o diff completo da feature.
 
-Recomendação: aplicar a correção de 320 px que o usuário já pediu (achado #1) **junto com o #2**, porque os dois são da mesma largura e o reteste é o mesmo (medir em 320 e 360 px).
+Recomendação: aplicar a correção de 320 px (achado #1) **junto com o #2**, porque os dois são da mesma largura e o reteste é o mesmo (medir em 320 e 360 px).
 
 Não coberto (igual aos rounds anteriores): execução em iOS/Android nativo.
 
