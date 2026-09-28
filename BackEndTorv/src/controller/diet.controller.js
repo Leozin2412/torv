@@ -1,6 +1,8 @@
 const dietRepository = require('../repository/diet.repository');
 const { computeForUser, ensureTargets, buildSuggestion, pickTargets } = require('../lib/nutritionSuggestion');
 
+const MIN_DIET_DATE = '2026-01-01';
+
 // fn_get_diet_summary sempre devolve linha; isto é só pra não virar TypeError se algum dia não devolver.
 const EMPTY_SUMMARY = {
   GoalCalories: 2000, GoalProtein: 150, GoalCarbs: 250, GoalFat: 65,
@@ -93,6 +95,10 @@ class DietController {
         const parsedDate = new Date(logged_date);
         if (isNaN(parsedDate.getTime())) {
           return reply.status(400).send({ error: 'Invalid logged_date' });
+        }
+        // Schema Ajv (format: 'date') já garante YYYY-MM-DD, então comparar strings é seguro.
+        if (logged_date < MIN_DIET_DATE) {
+          return reply.status(400).send({ error: 'logged_date cannot be before 2026-01-01' });
         }
         if (parsedDate.getTime() > Date.now() + 24 * 60 * 60 * 1000) {
           return reply.status(400).send({ error: 'logged_date cannot be more than 1 day in the future' });
