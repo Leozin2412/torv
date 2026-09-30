@@ -72,6 +72,17 @@ npm start # ou expo start
 
 ---
 
+## 📱 Rotas do Front-end
+
+A navegação fica em `FrontEndTorv/src/routes`, separada em rotas públicas e privadas. O componente `Routes` (`routes/index.tsx`) lê o estado global `signed` do `AuthContext` e escolhe qual conjunto renderizar:
+
+- `routes/PublicRoutes` - rotas públicas (Stack): `Login` e `Register`. Exibidas quando não há sessão.
+- `routes/PrivateRoutes` - rotas privadas (Bottom Tabs): `Home`, `MyDiet` e `Profile`. Só acessíveis com o usuário logado.
+
+Ao fazer logout ou quando a sessão expira, `signed` volta para `false` e o app retorna automaticamente para o login.
+
+---
+
 ## 🛣️ Rotas do Back-end
 
 O Back-end está dividido em contextos para facilitar a manutenção. Abaixo está o detalhamento de como cada rota funciona:
