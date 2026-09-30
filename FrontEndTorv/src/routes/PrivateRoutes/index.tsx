@@ -1,14 +1,19 @@
 import React from 'react';
 import { View, Text, Image } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, ClipboardList, User } from 'lucide-react-native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Home, ClipboardList, User, Dumbbell } from 'lucide-react-native';
 
 import { colors } from '../../theme/tokens';
 import HomeScreen from '../../screens/Home';
+import WorkoutsScreen from '../../screens/Workouts';
 import MyDietScreen from '../../screens/MyDiet';
 import ProfileScreen from '../../screens/Profile';
+import RoutineEditorScreen from '../../screens/RoutineEditor';
+import type { AppStackParamList, TabParamList } from '../types';
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<TabParamList>();
+const Stack = createNativeStackNavigator<AppStackParamList>();
 
 const TabIcon = ({ focused, icon: Icon, label, photoUrl }: any) => {
   return (
@@ -17,20 +22,20 @@ const TabIcon = ({ focused, icon: Icon, label, photoUrl }: any) => {
       justifyContent: 'center',
       backgroundColor: focused ? 'rgba(140, 198, 63, 0.15)' : 'transparent',
       paddingVertical: 6,
-      paddingHorizontal: 16,
+      paddingHorizontal: 12,
       borderRadius: 20,
-      minWidth: 80,
+      minWidth: 64,
     }}>
       {photoUrl ? (
-        <Image 
-          source={{ uri: photoUrl }} 
+        <Image
+          source={{ uri: photoUrl }}
           style={{
-            width: 24, 
-            height: 24, 
-            borderRadius: 12, 
-            borderWidth: focused ? 2 : 0, 
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            borderWidth: focused ? 2 : 0,
             borderColor: '#8CC63F'
-          }} 
+          }}
         />
       ) : (
         <Icon color={focused ? colors.brand : colors.textSecondary} size={24} />
@@ -47,7 +52,7 @@ const TabIcon = ({ focused, icon: Icon, label, photoUrl }: any) => {
   );
 };
 
-export const PrivateRoutes = ({ user }: { user: any }) => (
+const Tabs = ({ user }: { user: any }) => (
   <Tab.Navigator
     screenOptions={{
       headerShown: false,
@@ -84,6 +89,13 @@ export const PrivateRoutes = ({ user }: { user: any }) => (
       }}
     />
     <Tab.Screen
+      name="Workouts"
+      component={WorkoutsScreen}
+      options={{
+        tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon={Dumbbell} label="Treinos" />,
+      }}
+    />
+    <Tab.Screen
       name="MyDiet"
       component={MyDietScreen}
       options={{
@@ -98,4 +110,12 @@ export const PrivateRoutes = ({ user }: { user: any }) => (
       }}
     />
   </Tab.Navigator>
+);
+
+// Telas empilhadas acima das abas cobrem a tab bar.
+export const PrivateRoutes = ({ user }: { user: any }) => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="Tabs">{() => <Tabs user={user} />}</Stack.Screen>
+    <Stack.Screen name="RoutineEditor" component={RoutineEditorScreen} />
+  </Stack.Navigator>
 );
