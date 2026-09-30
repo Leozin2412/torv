@@ -19,6 +19,7 @@ model users {
   user_streaks      user_streaks?
   activities        activities[]
   workout_routines  workout_routines[]
+  exercises         exercises[]
   nutrition_targets nutrition_targets?
   food_logs         food_logs[]
 
@@ -37,6 +38,8 @@ model user_profiles {
   photo_url     String?   @db.VarChar(500)
   birth_date    DateTime? @db.Date
   gender        String?   @db.VarChar(50)
+  // basis {fitness_level, goals, gender} da última geração/decisão do plano default; NULL = nunca gerado
+  workout_plan_basis Json? @db.JsonB
 
   user          users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
@@ -111,9 +114,13 @@ model activities {
   duration_sec      Int?
   calories          Int?
   distance_m        Decimal?           @db.Decimal(10, 2)
+  routine_id        String?            @db.Uuid
 
   user              users              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  routine           workout_routines?  @relation(fields: [routine_id], references: [id], onDelete: SetNull)
   activity_gps_data activity_gps_data?
+  workout_sets      workout_sets[]
+  // + índice único parcial (user_id, start_time) WHERE activity_type = 'STRENGTH', só no SQL da migration
 }
 
 model activity_gps_data {
@@ -127,29 +134,75 @@ model workout_routines {
   id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id           String              @db.Uuid
   name              String              @db.VarChar(100)
-  day_of_week       String?             @db.VarChar(50)
+  is_default        Boolean             @default(false)
+  position          Int
+  created_at        DateTime?           @default(now()) @db.Timestamptz
 
   user              users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
   routine_exercises routine_exercises[]
+  activities        activities[]
+
+  @@index([user_id])
 }
 
+// Catálogo global (slug, owner_user_id NULL) + exercícios próprios (owner_user_id, slug NULL).
+// CHECKs de muscle_group e catálogo-ou-próprio ficam só no SQL da migration.
 model exercises {
   id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name              String              @db.VarChar(100)
-  muscle_group      String?             @db.VarChar(100)
+  muscle_group      String              @db.VarChar(100)
+  slug              String?             @unique @db.VarChar(80)
+  owner_user_id     String?             @db.Uuid
 
+  owner             users?              @relation(fields: [owner_user_id], references: [id], onDelete: Cascade)
   routine_exercises routine_exercises[]
+  workout_sets      workout_sets[]
+
+  @@index([owner_user_id])
 }
 
 model routine_exercises {
-  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  routine_id  String           @db.Uuid
-  exercise_id String           @db.Uuid
-  sets        Int?
-  reps        Int?
+  id          String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  routine_id  String                  @db.Uuid
+  exercise_id String                  @db.Uuid
+  position    Int
+  reps_min    Int
+  reps_max    Int
+  rest_sec    Int
 
-  routine     workout_routines @relation(fields: [routine_id], references: [id], onDelete: Cascade)
-  exercise    exercises        @relation(fields: [exercise_id], references: [id], onDelete: Cascade)
+  routine     workout_routines        @relation(fields: [routine_id], references: [id], onDelete: Cascade)
+  exercise    exercises               @relation(fields: [exercise_id], references: [id], onDelete: Cascade)
+  sets        routine_exercise_sets[]
+
+  @@index([routine_id])
+}
+
+model routine_exercise_sets {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  routine_exercise_id String            @db.Uuid
+  set_number          Int
+  weight_kg           Decimal?          @db.Decimal(6, 2)
+
+  routine_exercise    routine_exercises @relation(fields: [routine_exercise_id], references: [id], onDelete: Cascade)
+
+  @@unique([routine_exercise_id, set_number])
+}
+
+// Séries de um treino finalizado (activities.activity_type = 'STRENGTH'). Só tempos; exercise_name é cópia.
+model workout_sets {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  activity_id     String     @db.Uuid
+  exercise_id     String?    @db.Uuid
+  exercise_name   String     @db.VarChar(100)
+  position        Int
+  set_number      Int
+  duration_sec    Int
+  rest_before_sec Int?
+
+  activity        activities @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  exercise        exercises? @relation(fields: [exercise_id], references: [id], onDelete: SetNull)
+
+  @@index([activity_id])
 }
 
 model nutrition_targets {
