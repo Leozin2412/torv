@@ -19,7 +19,9 @@ const RoutineBody = Type.Object({
     reps_max: Type.Integer({ minimum: 1, maximum: 100 }),
     rest_sec: Type.Integer({ minimum: 0, maximum: 600 }),
     sets: Type.Array(
-      Type.Object({ weight_kg: Type.Union([Type.Number({ minimum: 0, maximum: 999.99 }), Type.Null()]) }),
+      // type array, não Union: com coerceTypes o Ajv coage no 1º ramo do anyOf (Number: null→0; Null: 0→null).
+      // Com type ['number','null'] só coage o que não for nenhum dos dois.
+      Type.Object({ weight_kg: Type.Unsafe({ type: ['number', 'null'], minimum: 0, maximum: 999.99 }) }),
       { minItems: 1, maxItems: 10 },
     ),
   }), { minItems: 1, maxItems: 20 }),

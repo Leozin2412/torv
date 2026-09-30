@@ -94,6 +94,17 @@ test('POST /routines 201: nome aparado, exercícios visíveis', async (t) => {
   assert.equal(res.json().id, ID);
 });
 
+test('POST /routines: weight_kg null chega null, 0 e 5 chegam como número (sem coerceTypes)', async (t) => {
+  t.mock.method(workoutRepository, 'countVisibleExercises', async () => 1);
+  const create = t.mock.method(workoutRepository, 'createRoutine', async () => ID);
+  t.mock.method(workoutRepository, 'getRoutine', async () => routineRow);
+  const app = await build(t);
+  const sets = [{ weight_kg: null }, { weight_kg: 0 }, { weight_kg: 5 }];
+  const res = await call(app, 'POST', '/workouts/routines', { ...validRoutine, exercises: [{ ...validRoutine.exercises[0], sets }] });
+  assert.equal(res.statusCode, 201);
+  assert.deepEqual(create.mock.calls[0].arguments[1].exercises[0].sets, sets);
+});
+
 test('POST /routines 400: limites, regras cruzadas e exercício alheio', async (t) => {
   t.mock.method(workoutRepository, 'countVisibleExercises', async () => 1);
   const create = t.mock.method(workoutRepository, 'createRoutine', async () => ID);
