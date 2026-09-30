@@ -1,0 +1,51 @@
+import { StyleSheet } from 'react-native';
+import { colors, radius, fontFamily } from '../../theme/tokens';
+
+const TOUCH = 44;
+
+export const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 20, paddingTop: 40, paddingBottom: 24 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginRight: -12 },
+  title: { flex: 1, color: colors.text, fontFamily: fontFamily.extraBold, fontSize: 22 },
+  error: { color: colors.error, fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 18, marginBottom: 8 },
+  label: { color: colors.textMuted, fontFamily: fontFamily.semiBold, fontSize: 14, marginBottom: 8 },
+  chipsScroll: { flexGrow: 0, marginBottom: 4, marginHorizontal: -20 },
+  chipsRow: { gap: 8, paddingHorizontal: 20 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  chip: {
+    minHeight: TOUCH,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  chipActive: { borderColor: colors.brand, backgroundColor: colors.brandTint },
+  chipText: { color: colors.textSecondary, fontFamily: fontFamily.semiBold, fontSize: 13 },
+  chipTextActive: { color: colors.brand },
+  createButton: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 52, borderBottomWidth: 1, borderBottomColor: colors.border },
+  createText: { color: colors.brand, fontFamily: fontFamily.semiBold, fontSize: 15 },
+  loading: { marginTop: 24 },
+  row: { flexDirection: 'row', alignItems: 'center', minHeight: 60, borderBottomWidth: 1, borderBottomColor: colors.border },
+  rowMain: { flex: 1, paddingVertical: 12 },
+  rowName: { color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 15, lineHeight: 20 },
+  rowMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  rowGroup: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13 },
+  customTag: {
+    color: colors.brand,
+    backgroundColor: colors.brandTint,
+    fontFamily: fontFamily.semiBold,
+    fontSize: 11,
+    borderRadius: radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 1,
+    overflow: 'hidden',
+  },
+  iconButton: { width: TOUCH, height: TOUCH, alignItems: 'center', justifyContent: 'center' },
+  empty: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, textAlign: 'center', marginTop: 24 },
+  deleteBar: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.error, padding: 16, marginTop: 8 },
+  deleteText: { color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 14, lineHeight: 20 },
+  deleteActions: { flexDirection: 'row', gap: 8 },
+  deleteButton: { flex: 1 },
+});
