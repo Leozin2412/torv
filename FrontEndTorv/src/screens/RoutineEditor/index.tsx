@@ -40,6 +40,9 @@ export default function RoutineEditor() {
       .finally(() => setLoading(false));
   }, [routineId]);
 
+  // Erros de validação somem assim que o campo fica válido, sem esperar o próximo salvar.
+  const clearError = (...messages: string[]) => setError((e) => (messages.includes(e) ? '' : e));
+
   const update = (key: string, patch: Partial<FormExercise>) =>
     setItems((list) => list.map((it) => (it.key === key ? { ...it, ...patch } : it)));
 
@@ -96,7 +99,7 @@ export default function RoutineEditor() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <Input label="Nome da rotina" value={name} maxLength={LIMITS.name} onChangeText={setName} placeholder="Ex.: Peito e tríceps" />
+          <Input label="Nome da rotina" value={name} maxLength={LIMITS.name} onChangeText={(v) => { setName(v); if (v.trim()) clearError('Dê um nome para a rotina.', 'O nome pode ter no máximo 100 caracteres.'); }} placeholder="Ex.: Peito e tríceps" />
 
           {items.map((it, index) => (
             <Card key={it.key}>
@@ -194,6 +197,7 @@ export default function RoutineEditor() {
         onClose={() => setPickerOpen(false)}
         onPick={(e) => {
           setItems((l) => [...l, newFormExercise(e)]);
+          clearError('Adicione pelo menos um exercício.');
           setPickerOpen(false);
         }}
       />

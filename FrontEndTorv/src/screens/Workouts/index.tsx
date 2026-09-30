@@ -103,7 +103,7 @@ export default function Workouts() {
                     {r.is_default && <Text style={styles.defaultTag}>Padrão</Text>}
                   </View>
                   <Text style={styles.routineName}>{r.name}</Text>
-                  <Text style={styles.routineMeta}>{r.exercise_count} exercícios · {r.set_count} séries</Text>
+                  <Text style={styles.routineMeta}>{r.exercise_count} {r.exercise_count === 1 ? 'exercício' : 'exercícios'} · {r.set_count} {r.set_count === 1 ? 'série' : 'séries'}</Text>
                 </View>
                 <ChevronRight color={colors.textSecondary} size={20} />
               </Card>

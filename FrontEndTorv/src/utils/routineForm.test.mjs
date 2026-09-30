@@ -17,7 +17,7 @@ test('formFromDetail converte números em texto e null em vazio', () => {
     id: 'r', name: 'R', is_default: false,
     exercises: [{ id: 're', exercise_id: 'e1', name: 'Supino', muscle_group: 'Peito', position: 1, reps_min: 6, reps_max: 10, rest_sec: 90, sets: [{ set_number: 1, weight_kg: 42.5 }, { set_number: 2, weight_kg: null }] }],
   });
-  assert.deepEqual([ex.reps_min, ex.reps_max, ex.rest_sec, ex.weights], ['6', '10', 90, ['42.5', '']]);
+  assert.deepEqual([ex.reps_min, ex.reps_max, ex.rest_sec, ex.weights], ['6', '10', 90, ['42,5', '']]);
 });
 
 test('parseWeight aceita vírgula, vazio vira null e lixo vira NaN', () => {

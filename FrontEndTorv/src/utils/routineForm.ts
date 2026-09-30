@@ -27,7 +27,7 @@ export const formFromDetail = (d: RoutineDetail): FormExercise[] => d.exercises.
   reps_min: String(e.reps_min),
   reps_max: String(e.reps_max),
   rest_sec: e.rest_sec,
-  weights: e.sets.map((s) => (s.weight_kg === null ? '' : String(s.weight_kg))),
+  weights: e.sets.map((s) => (s.weight_kg === null ? '' : String(s.weight_kg).replace('.', ','))),
 }));
 
 // Padrão ao adicionar: 3 séries sem carga, 8–12 reps, 60s de descanso.

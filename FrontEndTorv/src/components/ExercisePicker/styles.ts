@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
   title: { flex: 1, color: colors.text, fontFamily: fontFamily.extraBold, fontSize: 22 },
   error: { color: colors.error, fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 18, marginBottom: 8 },
   label: { color: colors.textMuted, fontFamily: fontFamily.semiBold, fontSize: 14, marginBottom: 8 },
-  chipsScroll: { flexGrow: 0, marginBottom: 4, marginHorizontal: -20 },
+  chipsScroll: { flexGrow: 0, flexShrink: 0, marginBottom: 4, marginHorizontal: -20 },
   chipsRow: { gap: 8, paddingHorizontal: 20 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   chip: {
