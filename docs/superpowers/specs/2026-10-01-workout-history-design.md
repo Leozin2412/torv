@@ -114,7 +114,7 @@
   - `RoutineSummary` ganha `completed_recently: boolean`.
   - Saem `listSessions` e `SessionSummary`. O Perfil passa a usar `ActivityItem`.
 - **`utils/activities.ts`:** `ACTIVITY_LABELS`.
-- **`utils/historyGroups.ts`:** função pura `groupByDay(items, now)` → `[{ key, title, data }]`, no fuso local, com os rótulos "Hoje", "Ontem" e `ddd, dd/mm`, em pt-BR e sem `Intl` de locale (dias da semana em tabela fixa). Tem teste `historyGroups.test.mjs`.
+- **`utils/historyGroups.ts`:** função pura `groupByDay(items, now)` → `[{ key, title, data }]`, no fuso local, com os rótulos "Hoje", "Ontem" e `ddd, dd/mm` (com `/aaaa` quando não for o ano atual), em pt-BR e sem `Intl` de locale (dias da semana em tabela fixa). Tem teste `historyGroups.test.mjs`.
 - **Perfil:** a seção "Atividade Física" passa a usar `activitiesApi.list({ limit: 5 })`, sem mudança visual.
 - **`/frontend-design`:** controle segmentado, chips, itens do histórico, cabeçalhos de dia e selo. Precisa caber em 320 px.
 
