@@ -61,7 +61,11 @@ test('GET /activities: página cheia → next_before = start_time do último; ty
 test('GET /activities 400: type, limit e before inválidos não chegam ao repository', async (t) => {
   const list = t.mock.method(activitiesRepository, 'listActivities', async () => []);
   const app = await build(t);
-  for (const qs of ['type=RUN', 'type=strength', 'limit=0', 'limit=51', 'limit=abc', 'before=ontem', 'before=2026-10-01']) {
+  for (const qs of [
+    'type=RUN', 'type=strength', 'limit=0', 'limit=51', 'limit=abc', 'before=ontem', 'before=2026-10-01',
+    // Passam no date-time do ajv-formats, mas o Date do JS não parseia (fuso só com hora, segundo bissexto). %2B = '+'.
+    'before=2026-10-01T10:00:00-03', 'before=2026-06-30T23:59:60Z', 'before=2026-10-01T02:59:60%2B03:00',
+  ]) {
     assert.equal((await get(app, `/activities?${qs}`)).statusCode, 400, qs);
   }
   assert.equal(list.mock.callCount(), 0);
