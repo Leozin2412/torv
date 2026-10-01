@@ -8,6 +8,11 @@ export const styles = StyleSheet.create({
   loading: { marginTop: 32 },
   error: { color: colors.error, fontFamily: fontFamily.regular, fontSize: 14, marginBottom: 16 },
 
+  // Âmbar = treino em andamento; não confunde com o verde da sugestão de plano.
+  draftCard: { borderColor: colors.accentIntermediate, borderLeftWidth: 4, backgroundColor: 'rgba(232, 163, 61, 0.08)' },
+  draftTitle: { color: colors.accentIntermediate, fontFamily: fontFamily.semiBold, fontSize: 13 },
+  draftName: { color: colors.text, fontFamily: fontFamily.extraBold, fontSize: 18, lineHeight: 24, marginTop: 4 },
+
   suggestionCard: { borderColor: colors.brand, backgroundColor: colors.brandTint },
   suggestionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   suggestionTitle: { color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 15 },
@@ -23,6 +28,8 @@ export const styles = StyleSheet.create({
   defaultTag: { color: colors.textSecondary, borderColor: colors.border, borderWidth: 1, fontFamily: fontFamily.semiBold, fontSize: 11, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 1, overflow: 'hidden' },
   routineName: { color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 16, lineHeight: 22, marginTop: 6 },
   routineMeta: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13, marginTop: 2 },
+  // paddingLeft centraliza o triângulo opticamente.
+  playButton: { width: 48, height: 48, borderRadius: 24, paddingLeft: 3, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
 
   emptyCard: { alignItems: 'center', gap: 8, paddingVertical: 28 },
   emptyText: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14 },

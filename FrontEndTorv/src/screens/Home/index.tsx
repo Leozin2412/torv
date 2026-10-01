@@ -10,11 +10,13 @@ import { Card } from '../../components/Card';
 import { AuthContext } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import { workoutsApi } from '../../services/workouts';
+import { loadDraft } from '../../utils/workoutDraft';
+import type { AppNavigation } from '../../routes/types';
 import { colors } from '../../theme/tokens';
 import { styles } from './styles';
 
 export default function Home() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<AppNavigation>();
   const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -23,23 +25,34 @@ export default function Home() {
   const [remaining, setRemaining] = useState(0);
   // undefined = carregando/erro; null = sem rotinas
   const [nextRoutine, setNextRoutine] = useState<{ id: string; name: string } | null | undefined>(undefined);
+  const [hasDraft, setHasDraft] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       loadDietSummary();
       loadWorkout();
-    }, [])
+    }, [user?.id])
   );
 
   // 1ª chamada depois do login gera o treino padrão no backend.
   const loadWorkout = async () => {
     try {
-      const list = await workoutsApi.listRoutines();
+      const [list, draft] = await Promise.all([
+        workoutsApi.listRoutines(),
+        user?.id ? loadDraft(user.id) : Promise.resolve(null),
+      ]);
       setNextRoutine(list.routines.find((r) => r.id === list.next_routine_id) ?? null);
+      setHasDraft(!!draft);
     } catch (error) {
       console.log('Failed to load workouts', error);
       setNextRoutine(undefined);
     }
+  };
+
+  const onWorkoutPress = () => {
+    if (hasDraft) navigation.navigate('WorkoutSession', { resume: true });
+    else if (nextRoutine) navigation.navigate('WorkoutSession', { routineId: nextRoutine.id });
+    else navigation.navigate('Workouts' as never);
   };
 
   const loadDietSummary = async () => {
@@ -111,11 +124,11 @@ export default function Home() {
           <Card style={styles.workoutCard}>
             <Text style={styles.workoutTitle}>Treino de hoje</Text>
             <Text style={styles.workoutValue} numberOfLines={2}>
-              {nextRoutine ? nextRoutine.name : nextRoutine === null ? 'Monte seu treino' : 'Treinos'}
+              {hasDraft ? 'Treino em andamento' : nextRoutine ? nextRoutine.name : nextRoutine === null ? 'Monte seu treino' : 'Treinos'}
             </Text>
-            <TouchableOpacity style={styles.workoutAction} onPress={() => navigation.navigate('Workouts' as never)} accessibilityRole="button">
+            <TouchableOpacity style={styles.workoutAction} onPress={onWorkoutPress} accessibilityRole="button">
               <Play color={colors.brand} size={14} fill={colors.brand} />
-              <Text style={styles.workoutActionText}>Ver treinos</Text>
+              <Text style={styles.workoutActionText}>{hasDraft ? 'Continuar treino' : nextRoutine ? 'Iniciar' : 'Ver treinos'}</Text>
             </TouchableOpacity>
           </Card>
         </View>

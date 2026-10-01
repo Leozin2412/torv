@@ -2,7 +2,7 @@ import React, { useContext, useState, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { LogOut, Edit2, ChevronRight, User as UserIcon, Plus, X, Flame, Dumbbell, Watch, Footprints, UtensilsCrossed, Activity, Scale } from 'lucide-react-native';
+import { LogOut, Edit2, ChevronRight, User as UserIcon, Plus, X, Flame, Dumbbell, Watch, UtensilsCrossed, Activity, Scale } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -14,17 +14,25 @@ import { GoalConflictWarning } from '../../components/GoalConflictWarning';
 import { NutritionSuggestionModal, type NutritionSuggestion } from '../../components/NutritionSuggestionModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import api from '../../services/api';
+import { workoutsApi, type SessionSummary } from '../../services/workouts';
+import type { AppNavigation } from '../../routes/types';
 import { colors } from '../../theme/tokens';
 import { FITNESS_LEVELS, GOAL_OPTIONS, fitnessLevelLabel } from '../../utils/profileOptions';
 import { styles } from './styles';
 
+const formatDayMonth = (iso: string) => {
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
 export default function Profile() {
   const { user, logout } = useContext(AuthContext);
-  const navigation = useNavigation();
+  const navigation = useNavigation<AppNavigation>();
 
   const [avatarUri, setAvatarUri] = useState<string | null>(user?.photo_url || null);
   const [foodLogs, setFoodLogs] = useState<any[]>([]);
   const [profileData, setProfileData] = useState<any>(null);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loadingAvatar, setLoadingAvatar] = useState(false);
 
   // Edit States
@@ -49,10 +57,12 @@ export default function Profile() {
     useCallback(() => {
       async function loadData() {
         try {
-          const [dietResponse, profileResponse] = await Promise.all([
+          const [dietResponse, profileResponse, recentSessions] = await Promise.all([
             api.get('/diet/summary'),
             api.get('/profile'),
+            workoutsApi.listSessions(5).catch(() => [] as SessionSummary[]),
           ]);
+          setSessions(recentSessions);
           if (dietResponse.data && dietResponse.data.logs) {
             const formattedLogs = dietResponse.data.logs.map((log: any) => ({
               id: String(log.id),
@@ -366,16 +376,39 @@ export default function Profile() {
         {/* Histórico de hoje */}
         <Text style={styles.sectionTitle}>Atividade Física</Text>
 
-        {/* Mocked Activity */}
-        <Card style={styles.listCard}>
-          <View style={styles.listCardIconContainer}>
-            <Footprints color={colors.brand} size={22} />
-          </View>
-          <View style={styles.listCardContent}>
-            <Text style={styles.listCardTitle}>Caminhada</Text>
-            <Text style={styles.listCardSubtitle}>07:15 · 32 min · 180kcal · via relógio</Text>
-          </View>
-        </Card>
+        {sessions.length > 0 ? (
+          sessions.map((s) => (
+            <TouchableOpacity
+              key={s.id}
+              onPress={() => navigation.navigate('WorkoutSummary', { sessionId: s.id })}
+              accessibilityRole="button"
+              accessibilityLabel={`Ver treino ${s.title}`}
+            >
+              <Card style={styles.listCard}>
+                <View style={styles.listCardIconContainer}>
+                  <Dumbbell color={colors.brand} size={22} />
+                </View>
+                <View style={styles.listCardContent}>
+                  <Text style={styles.listCardTitle}>{s.title}</Text>
+                  <Text style={styles.listCardSubtitle}>
+                    {formatDayMonth(s.start_time)} · {Math.max(1, Math.round(s.duration_sec / 60))} min · {s.set_count} séries
+                  </Text>
+                </View>
+                <ChevronRight color={colors.textSecondary} size={20} style={styles.listCardRight} />
+              </Card>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <Card style={styles.listCard}>
+            <View style={styles.listCardIconContainer}>
+              <Dumbbell color={colors.textSecondary} size={22} />
+            </View>
+            <View style={styles.listCardContent}>
+              <Text style={styles.listCardTitle}>Nenhum treino ainda</Text>
+              <Text style={styles.listCardSubtitle}>Seus treinos finalizados aparecem aqui.</Text>
+            </View>
+          </Card>
+        )}
 
         <Text style={styles.sectionTitle}>Alimentação</Text>
 

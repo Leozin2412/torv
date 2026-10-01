@@ -1,13 +1,16 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useContext, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { Plus, Sparkles, Dumbbell, ChevronRight } from 'lucide-react-native';
+import { Play, Plus, Sparkles, Dumbbell, ChevronRight } from 'lucide-react-native';
 
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { AuthContext } from '../../contexts/AuthContext';
 import { workoutsApi, type RoutineList } from '../../services/workouts';
+import { loadDraft, clearDraft } from '../../utils/workoutDraft';
+import type { SessionState } from '../../utils/workoutSession';
 import type { AppNavigation } from '../../routes/types';
 import { colors } from '../../theme/tokens';
 import { styles } from './styles';
@@ -20,17 +23,25 @@ const REASONS: Record<string, string> = {
 
 export default function Workouts() {
   const navigation = useNavigation<AppNavigation>();
+  const { user } = useContext(AuthContext);
   const [data, setData] = useState<RoutineList | null>(null);
+  const [draft, setDraft] = useState<SessionState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setError('');
     try {
-      setData(await workoutsApi.listRoutines());
+      const [list, saved] = await Promise.all([
+        workoutsApi.listRoutines(),
+        user?.id ? loadDraft(user.id) : Promise.resolve(null),
+      ]);
+      setData(list);
+      setDraft(saved);
     } catch {
       setError('Não foi possível carregar seus treinos.');
     } finally {
@@ -38,7 +49,7 @@ export default function Workouts() {
     }
   };
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  useFocusEffect(useCallback(() => { load(); }, [user?.id]));
 
   const regenerate = async () => {
     setBusy(true);
@@ -58,6 +69,12 @@ export default function Workouts() {
     await workoutsApi.dismissPlan().catch(() => {});
   };
 
+  const discardDraft = async () => {
+    if (user?.id) await clearDraft(user.id);
+    setDraft(null);
+    setConfirmDiscard(false);
+  };
+
   const suggestion = data?.plan_suggestion;
   const reasons = [...new Set((suggestion?.changed ?? []).map((k) => REASONS[k]).filter(Boolean))];
 
@@ -65,6 +82,17 @@ export default function Workouts() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Treinos</Text>
+
+        {draft && (
+          <Card style={styles.draftCard}>
+            <Text style={styles.draftTitle}>Treino em andamento</Text>
+            <Text style={styles.draftName}>{draft.routine_name}</Text>
+            <View style={styles.bannerActions}>
+              <Button title="Continuar" style={styles.bannerButton} onPress={() => navigation.navigate('WorkoutSession', { resume: true })} />
+              <Button title="Descartar" outline danger style={styles.bannerButton} onPress={() => setConfirmDiscard(true)} />
+            </View>
+          </Card>
+        )}
 
         {suggestion?.has_suggestion && (
           <Card style={styles.suggestionCard}>
@@ -105,7 +133,19 @@ export default function Workouts() {
                   <Text style={styles.routineName}>{r.name}</Text>
                   <Text style={styles.routineMeta}>{r.exercise_count} {r.exercise_count === 1 ? 'exercício' : 'exercícios'} · {r.set_count} {r.set_count === 1 ? 'série' : 'séries'}</Text>
                 </View>
-                <ChevronRight color={colors.textSecondary} size={20} />
+                {/* Com treino em andamento, só o banner continua/descarta: nada de 2 treinos ao mesmo tempo. */}
+                {draft ? (
+                  <ChevronRight color={colors.textSecondary} size={20} />
+                ) : (
+                  <TouchableOpacity
+                    style={styles.playButton}
+                    onPress={() => navigation.navigate('WorkoutSession', { routineId: r.id })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Iniciar ${r.name}`}
+                  >
+                    <Play color={colors.background} size={18} fill={colors.background} />
+                  </TouchableOpacity>
+                )}
               </Card>
             </TouchableOpacity>
           ))
@@ -132,6 +172,15 @@ export default function Workouts() {
         loading={busy}
         onConfirm={regenerate}
         onCancel={() => setConfirmRegenerate(false)}
+      />
+      <ConfirmModal
+        visible={confirmDiscard}
+        title="Descartar treino?"
+        message="As séries feitas neste treino serão perdidas."
+        confirmLabel="Descartar"
+        danger
+        onConfirm={discardDraft}
+        onCancel={() => setConfirmDiscard(false)}
       />
     </SafeAreaView>
   );
