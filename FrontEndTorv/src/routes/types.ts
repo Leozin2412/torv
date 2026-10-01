@@ -12,6 +12,8 @@ export type TabParamList = {
 export type AppStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
   RoutineEditor: { routineId?: string };
+  WorkoutSession: { routineId?: string; resume?: boolean };
+  WorkoutSummary: { sessionId?: string }; // sem sessionId: treino recém-finalizado (rascunho)
 };
 
 export type AppNavigation = NativeStackNavigationProp<AppStackParamList>;

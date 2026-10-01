@@ -10,6 +10,8 @@ import WorkoutsScreen from '../../screens/Workouts';
 import MyDietScreen from '../../screens/MyDiet';
 import ProfileScreen from '../../screens/Profile';
 import RoutineEditorScreen from '../../screens/RoutineEditor';
+import WorkoutSessionScreen from '../../screens/WorkoutSession';
+import WorkoutSummaryScreen from '../../screens/WorkoutSummary';
 import type { AppStackParamList, TabParamList } from '../types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -117,5 +119,7 @@ export const PrivateRoutes = ({ user }: { user: any }) => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Tabs">{() => <Tabs user={user} />}</Stack.Screen>
     <Stack.Screen name="RoutineEditor" component={RoutineEditorScreen} />
+    <Stack.Screen name="WorkoutSession" component={WorkoutSessionScreen} options={{ gestureEnabled: false }} />
+    <Stack.Screen name="WorkoutSummary" component={WorkoutSummaryScreen} options={{ gestureEnabled: false }} />
   </Stack.Navigator>
 );
