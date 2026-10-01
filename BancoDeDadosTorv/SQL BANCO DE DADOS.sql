@@ -6,6 +6,9 @@
 --   20260924171548_nutrition_targets_basis - basis_json / updated_at em nutrition_targets
 --   20260925180000_lock_down_public_schema - privilégios + RLS (ver Gestao_e_Performance.sql, passo 1.3)
 --   20260925210000_revoke_global_function_execute - tira o EXECUTE global de PUBLIC em functions novas (ver Gestao_e_Performance.sql, passo 1.3)
+--   20260930200000_workout_module      - módulo de treinos: catálogo + exercícios próprios, rotinas com séries, treinos finalizados (workout_sets)
+--   20261001150000_workout_generator_rules - regras do gerador de treino no banco (type/min_level/catalog_order + workout_template_slots)
+-- CHECKs ficam em "Regras BD.sql"; RLS e índices não-únicos em Gestao_e_Performance.sql.
 -- This file has no runtime effect; it exists for readability/presentation only.
 -- No CREATE DATABASE / USE statement here: Supabase already scopes a project to
 -- one database, unlike SQL Server's multi-database-per-server model.
@@ -29,7 +32,11 @@ CREATE TABLE user_profiles (
     goal VARCHAR(100),
     photo_url VARCHAR(500),
     birth_date DATE,
-    gender VARCHAR(50)
+    gender VARCHAR(50),
+    -- basis (nível, objetivos, sexo) da última geração/aceite do plano de treino
+    -- default; comparar com o perfil atual gera a sugestão de novo plano.
+    -- NULL = plano default nunca gerado.
+    workout_plan_basis JSONB
 );
 
 -- Os CHECKs abaixo saíram do antigo authController.register e viraram regra do
@@ -92,7 +99,10 @@ CREATE TABLE activities (
     start_time TIMESTAMPTZ,
     duration_sec INT,
     calories INT,
-    distance_m DECIMAL(10,2)
+    distance_m DECIMAL(10,2),
+    -- Rotina que originou o treino (activity_type = 'STRENGTH'); NULL = treino livre
+    -- ou rotina apagada depois.
+    routine_id UUID
 );
 
 CREATE TABLE activity_gps_data (
@@ -103,25 +113,79 @@ CREATE TABLE activity_gps_data (
 
 --Modulo Musuculação
 
+-- day_of_week saiu em 20260930200000_workout_module: a ordem agora é position.
+-- is_default = rotina criada pelo plano default (gerador de treino).
 CREATE TABLE workout_routines (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     name VARCHAR(100) NOT NULL,
-    day_of_week VARCHAR(50)
+    is_default BOOLEAN NOT NULL DEFAULT false,
+    position INT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Catálogo global (slug preenchido, owner_user_id NULL) + exercícios próprios do
+-- usuário (owner_user_id preenchido, slug NULL). O catálogo (71 exercícios) é
+-- semeado pela migration 20260930200000_workout_module; type, min_level e
+-- catalog_order (ordem de preferência do gerador) só existem no catálogo e são
+-- preenchidos por 20261001150000_workout_generator_rules.
 CREATE TABLE exercises (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
-    muscle_group VARCHAR(100)
+    muscle_group VARCHAR(100) NOT NULL,
+    slug VARCHAR(80),
+    owner_user_id UUID,
+    type VARCHAR(10),
+    min_level VARCHAR(20),
+    catalog_order SMALLINT
 );
 
+-- sets/reps saíram em 20260930200000_workout_module: reps viram faixa
+-- (reps_min..reps_max) e cada série vira uma linha em routine_exercise_sets.
 CREATE TABLE routine_exercises (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     routine_id UUID NOT NULL,
     exercise_id UUID NOT NULL,
-    sets INT,
-    reps INT
+    position INT NOT NULL,
+    reps_min INT NOT NULL,
+    reps_max INT NOT NULL,
+    rest_sec INT NOT NULL
+);
+
+-- Carga por série do exercício na rotina (NULL = sem carga definida).
+CREATE TABLE routine_exercise_sets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    routine_exercise_id UUID NOT NULL,
+    set_number INT NOT NULL,
+    weight_kg DECIMAL(6,2)
+);
+
+-- Séries de um treino finalizado (activities.activity_type = 'STRENGTH'). Só tempos;
+-- exercise_name é cópia do nome no momento do treino (sobrevive ao exercício apagado).
+CREATE TABLE workout_sets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    activity_id UUID NOT NULL,
+    exercise_id UUID,
+    exercise_name VARCHAR(100) NOT NULL,
+    position INT NOT NULL,
+    set_number INT NOT NULL,
+    duration_sec INT NOT NULL,
+    rest_before_sec INT
+);
+
+-- Aba Sessoes do gerador de treino: os slots do plano default por frequência
+-- semanal. position = ordem do slot dentro do dia (a ordem importa pro algoritmo).
+-- Os 101 slots são semeados pela migration 20261001150000_workout_generator_rules.
+CREATE TABLE workout_template_slots (
+    days_per_week SMALLINT NOT NULL,
+    day SMALLINT NOT NULL,
+    session_name VARCHAR(50) NOT NULL,
+    position SMALLINT NOT NULL,
+    muscle_group VARCHAR(100) NOT NULL,
+    type VARCHAR(10) NOT NULL,
+    min_level VARCHAR(20) NOT NULL,
+    sex VARCHAR(5) NOT NULL,
+    PRIMARY KEY (days_per_week, day, position)
 );
 
 
@@ -158,6 +222,11 @@ CREATE TABLE food_logs (
 
 CREATE UNIQUE INDEX users_email_key ON users(email);
 CREATE UNIQUE INDEX user_profiles_username_key ON user_profiles(username);
+CREATE UNIQUE INDEX exercises_slug_key ON exercises(slug);
+CREATE UNIQUE INDEX exercises_catalog_order_key ON exercises(catalog_order);
+CREATE UNIQUE INDEX routine_exercise_sets_routine_exercise_id_set_number_key ON routine_exercise_sets(routine_exercise_id, set_number);
+-- O único parcial activities_strength_user_start_key (idempotência do treino) está
+-- em Gestao_e_Performance.sql, passo 2.4.
 
 
 -- Foreign keys
@@ -177,9 +246,16 @@ ALTER TABLE group_members ADD CONSTRAINT group_members_user_id_fkey FOREIGN KEY 
 ALTER TABLE group_rankings ADD CONSTRAINT group_rankings_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE group_rankings ADD CONSTRAINT group_rankings_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE activities ADD CONSTRAINT activities_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE activities ADD CONSTRAINT activities_routine_id_fkey FOREIGN KEY (routine_id) REFERENCES workout_routines(id) ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE activity_gps_data ADD CONSTRAINT activity_gps_data_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE workout_routines ADD CONSTRAINT workout_routines_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE routine_exercises ADD CONSTRAINT routine_exercises_routine_id_fkey FOREIGN KEY (routine_id) REFERENCES workout_routines(id) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE routine_exercises ADD CONSTRAINT routine_exercises_exercise_id_fkey FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE ON UPDATE CASCADE;
+-- Apagar o usuário apaga os exercícios próprios dele (e, por cascata, as linhas de rotina).
+ALTER TABLE exercises ADD CONSTRAINT exercises_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE routine_exercise_sets ADD CONSTRAINT routine_exercise_sets_routine_exercise_id_fkey FOREIGN KEY (routine_exercise_id) REFERENCES routine_exercises(id) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE ON UPDATE CASCADE;
+-- SET NULL: o histórico do treino sobrevive ao exercício apagado (exercise_name guarda o nome).
+ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_exercise_id_fkey FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE nutrition_targets ADD CONSTRAINT nutrition_targets_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE food_logs ADD CONSTRAINT food_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;

@@ -1,11 +1,13 @@
--- Postgres (Supabase) — documentation copy of the functions, views and triggers
--- actually deployed. Source of truth: BackEndTorv/prisma/migrations/, refletindo
+-- Postgres (Supabase) — documentation copy of the functions, views, triggers and
+-- CHECK rules actually deployed. Source of truth: BackEndTorv/prisma/migrations/, refletindo
 -- todas as migrations aplicadas até aqui:
 --   20260915170948_init_postgres        - functions, views e triggers base
 --   20260918165833_supabase_auth_link   - remove fn_register_new_user, adiciona handle_new_user
 --   20260924171548_nutrition_targets_basis - só colunas, não mexe em function/trigger
 --   20260925180000_lock_down_public_schema - revoga EXECUTE de PUBLIC/anon/authenticated (ver Gestao_e_Performance.sql, passo 1.3)
 --   20260925210000_revoke_global_function_execute - tira o EXECUTE global de PUBLIC em functions novas (ver Gestao_e_Performance.sql, passo 1.3)
+--   20260930200000_workout_module      - não mexe em function/trigger; CHECKs do módulo de treinos (ver "Regras (CHECKs)" no fim)
+--   20261001150000_workout_generator_rules - idem: CHECKs de type/min_level/catálogo em exercises e de workout_template_slots
 -- This file has no runtime effect; it exists for readability/presentation only.
 
 --UDFs
@@ -291,3 +293,47 @@ CREATE TRIGGER trg_add_points_to_group_ranking
 AFTER INSERT ON activities
 FOR EACH ROW
 EXECUTE FUNCTION trg_fn_add_points_to_group_ranking();
+
+
+
+--Regras (CHECKs)
+-- Regras de domínio que o banco garante para qualquer escritor (app, seed ou SQL
+-- manual). Na migration elas nascem junto com a coluna/tabela; aqui ficam como
+-- ALTER TABLE para ler num lugar só. Os CHECKs de user_measurements continuam
+-- inline em "SQL BANCO DE DADOS.sql".
+
+--Exercícios (20260930200000_workout_module + 20261001150000_workout_generator_rules)
+-- Os 12 grupos musculares do app (mesma lista em workout_template_slots).
+ALTER TABLE exercises ADD CONSTRAINT exercises_muscle_group_check CHECK (muscle_group IN ('Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Quadríceps', 'Posterior de coxa', 'Glúteos', 'Panturrilha', 'Abdômen', 'Lombar', 'Antebraço'));
+-- Ou é do catálogo (slug) ou é próprio (owner_user_id), nunca os dois.
+ALTER TABLE exercises ADD CONSTRAINT exercises_catalog_or_owned_check CHECK (slug IS NULL OR owner_user_id IS NULL);
+ALTER TABLE exercises ADD CONSTRAINT exercises_type_check CHECK (type IN ('COMPOSTO', 'ISOLADO'));
+ALTER TABLE exercises ADD CONSTRAINT exercises_min_level_check CHECK (min_level IN ('INICIANTE', 'INTERMEDIÁRIO', 'AVANÇADO'));
+-- Catálogo (sem dono) tem type, min_level e catalog_order; exercício próprio tem os 3 NULL.
+-- catalog_order também é único (exercises_catalog_order_key).
+ALTER TABLE exercises ADD CONSTRAINT exercises_catalog_rules_check CHECK (
+  (owner_user_id IS NULL AND type IS NOT NULL AND min_level IS NOT NULL AND catalog_order IS NOT NULL)
+  OR (owner_user_id IS NOT NULL AND type IS NULL AND min_level IS NULL AND catalog_order IS NULL)
+);
+
+--Rotinas (20260930200000_workout_module)
+ALTER TABLE routine_exercises ADD CONSTRAINT routine_exercises_reps_check CHECK (reps_min BETWEEN 1 AND 100 AND reps_max BETWEEN 1 AND 100 AND reps_min <= reps_max);
+ALTER TABLE routine_exercises ADD CONSTRAINT routine_exercises_rest_sec_check CHECK (rest_sec BETWEEN 0 AND 600);
+ALTER TABLE routine_exercise_sets ADD CONSTRAINT routine_exercise_sets_set_number_check CHECK (set_number BETWEEN 1 AND 10);
+ALTER TABLE routine_exercise_sets ADD CONSTRAINT routine_exercise_sets_weight_kg_check CHECK (weight_kg IS NULL OR weight_kg BETWEEN 0 AND 999.99);
+
+--Treinos finalizados (20260930200000_workout_module)
+-- rest_before_sec NULL = primeira série do treino. A idempotência do treino
+-- (um STRENGTH por usuário + start_time) é o índice único parcial
+-- activities_strength_user_start_key, em Gestao_e_Performance.sql, passo 2.4.
+ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_duration_sec_check CHECK (duration_sec BETWEEN 0 AND 3600);
+ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_rest_before_sec_check CHECK (rest_before_sec IS NULL OR rest_before_sec BETWEEN 0 AND 7200);
+
+--Slots do gerador de treino (20261001150000_workout_generator_rules)
+ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_day_check CHECK (day BETWEEN 1 AND days_per_week);
+ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_position_check CHECK (position >= 1);
+ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_muscle_group_check CHECK (muscle_group IN ('Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Quadríceps', 'Posterior de coxa', 'Glúteos', 'Panturrilha', 'Abdômen', 'Lombar', 'Antebraço'));
+ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_type_check CHECK (type IN ('COMPOSTO', 'ISOLADO'));
+ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_min_level_check CHECK (min_level IN ('INICIANTE', 'INTERMEDIÁRIO', 'AVANÇADO'));
+-- TODOS = vale para qualquer sexo; M/F/N = só para quem tem esse sexo no perfil.
+ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_sex_check CHECK (sex IN ('TODOS', 'M', 'F', 'N'));

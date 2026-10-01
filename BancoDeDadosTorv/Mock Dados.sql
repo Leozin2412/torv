@@ -105,26 +105,52 @@ INSERT INTO group_rankings (group_id, user_id, total_points, activities_count) V
 ('B2000000-0000-0000-0000-000000000003', 'A1000000-0000-0000-0000-000000000004', 500, 2);
 
 -- 1.3 Módulo de Tracking e Rotinas
-INSERT INTO exercises (id, name, muscle_group) VALUES
-('C3000000-0000-0000-0000-000000000001', 'Supino Reto', 'Peito'),
-('C3000000-0000-0000-0000-000000000002', 'Agachamento Livre', 'Pernas'),
-('C3000000-0000-0000-0000-000000000003', 'Puxada Frontal', 'Costas'),
-('C3000000-0000-0000-0000-000000000004', 'Rosca Direta', 'Bíceps'),
-('C3000000-0000-0000-0000-000000000005', 'Tríceps Testa', 'Tríceps');
+-- Schema de 20260930200000_workout_module + 20261001150000_workout_generator_rules.
+-- O catálogo de exercícios (71, com type/min_level/catalog_order) e os 101 slots de
+-- workout_template_slots já vêm semeados por essas migrations — este mock NÃO os
+-- repete: as rotinas abaixo usam o catálogo pelo slug.
+-- Aqui entram só exercícios PRÓPRIOS: owner_user_id preenchido e slug, type,
+-- min_level e catalog_order NULL (exercises_catalog_rules_check em "Regras BD.sql").
+-- muscle_group tem que ser um dos 12 grupos (exercises_muscle_group_check).
+INSERT INTO exercises (id, name, muscle_group, owner_user_id) VALUES
+('C3000000-0000-0000-0000-000000000001', 'Rosca 21', 'Bíceps', 'A1000000-0000-0000-0000-000000000001'),
+('C3000000-0000-0000-0000-000000000002', 'Agachamento no banco', 'Quadríceps', 'A1000000-0000-0000-0000-000000000002'),
+('C3000000-0000-0000-0000-000000000003', 'Remada cavalinho', 'Costas', 'A1000000-0000-0000-0000-000000000003'),
+('C3000000-0000-0000-0000-000000000004', 'Supino na máquina articulada', 'Peito', 'A1000000-0000-0000-0000-000000000003'),
+('C3000000-0000-0000-0000-000000000005', 'Tríceps coice', 'Tríceps', 'A1000000-0000-0000-0000-000000000004');
 
-INSERT INTO workout_routines (id, user_id, name, day_of_week) VALUES
-('D4000000-0000-0000-0000-000000000001', 'A1000000-0000-0000-0000-000000000001', 'Peito & Tríceps', 'Segunda'),
-('D4000000-0000-0000-0000-000000000002', 'A1000000-0000-0000-0000-000000000001', 'Costas & Bíceps', 'Terça'),
-('D4000000-0000-0000-0000-000000000003', 'A1000000-0000-0000-0000-000000000002', 'Pernas & Glúteos', 'Quarta'),
-('D4000000-0000-0000-0000-000000000004', 'A1000000-0000-0000-0000-000000000003', 'Full Body', 'Quinta'),
-('D4000000-0000-0000-0000-000000000005', 'A1000000-0000-0000-0000-000000000004', 'Cardio HIIT', 'Sexta');
+-- Rotinas criadas pelo usuário (is_default = false), em ordem (position) por usuário.
+-- As rotinas do plano default (is_default = true) o backend gera sozinho no primeiro
+-- GET /workouts/routines a partir de workout_template_slots + catálogo; por isso
+-- user_profiles.workout_plan_basis fica NULL no mock (plano default nunca gerado).
+INSERT INTO workout_routines (id, user_id, name, is_default, position) VALUES
+('D4000000-0000-0000-0000-000000000001', 'A1000000-0000-0000-0000-000000000001', 'Peito & Tríceps', false, 1),
+('D4000000-0000-0000-0000-000000000002', 'A1000000-0000-0000-0000-000000000001', 'Costas & Bíceps', false, 2),
+('D4000000-0000-0000-0000-000000000003', 'A1000000-0000-0000-0000-000000000002', 'Pernas & Glúteos', false, 1),
+('D4000000-0000-0000-0000-000000000004', 'A1000000-0000-0000-0000-000000000003', 'Full Body', false, 1),
+('D4000000-0000-0000-0000-000000000005', 'A1000000-0000-0000-0000-000000000004', 'Cardio HIIT', false, 1);
 
-INSERT INTO routine_exercises (routine_id, exercise_id, sets, reps) VALUES
-('D4000000-0000-0000-0000-000000000001', 'C3000000-0000-0000-0000-000000000001', 4, 10),
-('D4000000-0000-0000-0000-000000000001', 'C3000000-0000-0000-0000-000000000005', 3, 12),
-('D4000000-0000-0000-0000-000000000002', 'C3000000-0000-0000-0000-000000000003', 4, 12),
-('D4000000-0000-0000-0000-000000000002', 'C3000000-0000-0000-0000-000000000004', 3, 15),
-('D4000000-0000-0000-0000-000000000003', 'C3000000-0000-0000-0000-000000000002', 4, 8);
+-- Reps viram faixa (reps_min..reps_max) e o descanso fica por exercício. Exercício
+-- próprio só entra em rotina do próprio dono (o backend valida; ver Rosca 21).
+INSERT INTO routine_exercises (id, routine_id, exercise_id, position, reps_min, reps_max, rest_sec) VALUES
+('E5000000-0000-0000-0000-000000000001', 'D4000000-0000-0000-0000-000000000001', (SELECT id FROM exercises WHERE slug = 'supino-reto-com-barra'), 1, 8, 10, 120),
+('E5000000-0000-0000-0000-000000000002', 'D4000000-0000-0000-0000-000000000001', (SELECT id FROM exercises WHERE slug = 'triceps-testa'), 2, 10, 12, 60),
+('E5000000-0000-0000-0000-000000000003', 'D4000000-0000-0000-0000-000000000002', (SELECT id FROM exercises WHERE slug = 'puxada-frontal-na-polia'), 1, 10, 12, 90),
+('E5000000-0000-0000-0000-000000000004', 'D4000000-0000-0000-0000-000000000002', 'C3000000-0000-0000-0000-000000000001', 2, 12, 15, 60),
+('E5000000-0000-0000-0000-000000000005', 'D4000000-0000-0000-0000-000000000003', (SELECT id FROM exercises WHERE slug = 'agachamento-livre-com-barra'), 1, 6, 8, 120);
+
+-- Uma linha por série (antes era a coluna routine_exercises.sets), com a carga da
+-- série. weight_kg NULL = sem carga definida (é como o plano default nasce).
+INSERT INTO routine_exercise_sets (routine_exercise_id, set_number, weight_kg)
+SELECT v.routine_exercise_id, n, v.weight_kg
+FROM (VALUES
+  ('E5000000-0000-0000-0000-000000000001'::uuid, 4, 60.00),
+  ('E5000000-0000-0000-0000-000000000002'::uuid, 3, 20.00),
+  ('E5000000-0000-0000-0000-000000000003'::uuid, 4, 50.00),
+  ('E5000000-0000-0000-0000-000000000004'::uuid, 3, NULL),
+  ('E5000000-0000-0000-0000-000000000005'::uuid, 4, 80.00)
+) v(routine_exercise_id, sets, weight_kg)
+CROSS JOIN generate_series(1, v.sets) n;
 
 -- 1.4 Módulo de Nutrição
 -- basis_json e updated_at (20260924171548_nutrition_targets_basis) ficam NULL aqui
@@ -148,6 +174,20 @@ INSERT INTO food_logs (user_id, food_name, calories, logged_date, macros_json) V
 INSERT INTO activities (id, user_id, activity_type, title, start_time, duration_sec, calories, distance_m) VALUES
 (gen_random_uuid(), 'A1000000-0000-0000-0000-000000000001', 'Caminhada', 'Caminhada Matinal', now() - interval '1 day', 1920, 180, 3200),
 (gen_random_uuid(), 'A1000000-0000-0000-0000-000000000002', 'Corrida', 'Corrida ao ar livre', now() - interval '1 day', 1692, 312, 5400),
-(gen_random_uuid(), 'A1000000-0000-0000-0000-000000000003', 'Musculação', 'Supino Reto - PR', now() - interval '5 days', 3600, 480, NULL),
 (gen_random_uuid(), 'A1000000-0000-0000-0000-000000000004', 'Yoga', 'Yoga Flow', now() - interval '1 day', 1800, 150, NULL),
 (gen_random_uuid(), 'A1000000-0000-0000-0000-000000000005', 'Ciclismo', 'Pedalada noturna', now(), 3600, 500, 15000);
+
+-- Treino de musculação finalizado no app: activity_type = 'STRENGTH', title = nome da
+-- rotina, routine_id = rotina usada. Só um STRENGTH por (user_id, start_time)
+-- (activities_strength_user_start_key, em Gestao_e_Performance.sql).
+INSERT INTO activities (id, user_id, activity_type, title, start_time, duration_sec, calories, routine_id) VALUES
+('F6000000-0000-0000-0000-000000000001', 'A1000000-0000-0000-0000-000000000003', 'STRENGTH', 'Full Body', now() - interval '5 days', 3600, 480, 'D4000000-0000-0000-0000-000000000004');
+
+-- Séries desse treino: só tempos. exercise_name é cópia do nome no momento do treino;
+-- rest_before_sec NULL na primeira série.
+INSERT INTO workout_sets (activity_id, exercise_id, exercise_name, position, set_number, duration_sec, rest_before_sec) VALUES
+('F6000000-0000-0000-0000-000000000001', (SELECT id FROM exercises WHERE slug = 'agachamento-livre-com-barra'), 'Agachamento livre com barra', 1, 1, 50, NULL),
+('F6000000-0000-0000-0000-000000000001', (SELECT id FROM exercises WHERE slug = 'agachamento-livre-com-barra'), 'Agachamento livre com barra', 1, 2, 48, 120),
+('F6000000-0000-0000-0000-000000000001', 'C3000000-0000-0000-0000-000000000003', 'Remada cavalinho', 2, 1, 40, 150),
+('F6000000-0000-0000-0000-000000000001', 'C3000000-0000-0000-0000-000000000003', 'Remada cavalinho', 2, 2, 42, 90),
+('F6000000-0000-0000-0000-000000000001', 'C3000000-0000-0000-0000-000000000004', 'Supino na máquina articulada', 3, 1, 38, 140);

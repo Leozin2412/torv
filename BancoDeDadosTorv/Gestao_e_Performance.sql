@@ -3,7 +3,8 @@
 -- OBJETIVO: Demonstrar os entregáveis acadêmicos aplicados ao escopo atual
 -- Postgres (Supabase) — documentation copy of what's actually deployed.
 -- Source of truth: BackEndTorv/prisma/migrations/ (init_postgres + supabase_auth_link
--- + nutrition_targets_basis + lock_down_public_schema + revoke_global_function_execute); ver o cabeçalho de "SQL BANCO DE DADOS.sql".
+-- + nutrition_targets_basis + lock_down_public_schema + revoke_global_function_execute
+-- + workout_module + workout_generator_rules); ver o cabeçalho de "SQL BANCO DE DADOS.sql".
 -- This file has no runtime effect; it exists for readability/presentation only.
 -- =======================================================================
 
@@ -101,6 +102,16 @@ ALTER TABLE food_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY torv_api_full_access ON food_logs TO torv_api USING (true) WITH CHECK (true);
 ALTER TABLE nutrition_targets ENABLE ROW LEVEL SECURITY;
 CREATE POLICY torv_api_full_access ON nutrition_targets TO torv_api USING (true) WITH CHECK (true);
+-- Tabelas criadas depois do lock-down: cada migration traz o próprio ENABLE + policy,
+-- e anon/authenticated já nascem sem grant pelos default privileges acima.
+-- 20260930200000_workout_module
+ALTER TABLE routine_exercise_sets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY torv_api_full_access ON routine_exercise_sets TO torv_api USING (true) WITH CHECK (true);
+ALTER TABLE workout_sets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY torv_api_full_access ON workout_sets TO torv_api USING (true) WITH CHECK (true);
+-- 20261001150000_workout_generator_rules
+ALTER TABLE workout_template_slots ENABLE ROW LEVEL SECURITY;
+CREATE POLICY torv_api_full_access ON workout_template_slots TO torv_api USING (true) WITH CHECK (true);
 
 
 -- =======================================================================
@@ -128,6 +139,24 @@ ON user_profiles (user_id);
 
 CREATE INDEX ix_activities_user_id
 ON activities (user_id);
+
+-- Passo 2.3: Índices do módulo de treinos (20260930200000_workout_module)
+-- Mesmo motivo do passo 2.2: as listas do app filtram por essas FKs (exercícios
+-- próprios do usuário, rotinas do usuário, exercícios da rotina, séries do treino).
+CREATE INDEX exercises_owner_user_id_idx ON exercises (owner_user_id);
+CREATE INDEX workout_routines_user_id_idx ON workout_routines (user_id);
+CREATE INDEX routine_exercises_routine_id_idx ON routine_exercises (routine_id);
+CREATE INDEX workout_sets_activity_id_idx ON workout_sets (activity_id);
+
+-- Passo 2.4: Índice único PARCIAL para idempotência do treino (20260930200000_workout_module)
+-- Se o app reenviar o mesmo treino (POST /workouts/sessions após falha de rede),
+-- o segundo INSERT bate neste índice e o backend devolve o treino já gravado.
+-- Só vale para activity_type = 'STRENGTH': outras atividades podem repetir
+-- start_time. O Prisma 6 não modela índice parcial, por isso ele só existe no SQL
+-- da migration (mesma situação do INCLUDE do passo 2.1).
+CREATE UNIQUE INDEX activities_strength_user_start_key
+ON activities (user_id, start_time)
+WHERE activity_type = 'STRENGTH';
 
 -- =======================================================================
 -- 3. GESTÃO DE ARMAZENAMENTO FÍSICO (MANUTENÇÃO)
