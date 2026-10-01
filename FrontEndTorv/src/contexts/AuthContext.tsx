@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import api, { authApi, refreshSession, setOnSessionExpired } from '../services/api';
 import { getSession, setSession, clearSession, Session } from '../services/session';
+import { clearDraft } from '../utils/workoutDraft';
 
 interface Profile {
   id: string;
@@ -97,6 +98,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         headers: { Authorization: `Bearer ${current.access_token}` },
       }).catch(() => {});
     }
+    // Treino em andamento não fica no aparelho depois do logout (aparelho compartilhado).
+    if (user?.id) await clearDraft(user.id).catch(() => {});
     await clearSession();
     setSigned(false);
     setUser(null);

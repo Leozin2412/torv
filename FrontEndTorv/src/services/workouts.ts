@@ -68,6 +68,41 @@ export interface ExerciseInput {
   muscle_group: string;
 }
 
+export interface SessionPayload {
+  routine_id: string | null;
+  started_at: string; // ISO
+  duration_sec: number;
+  sets: {
+    exercise_id: string;
+    position: number;
+    set_number: number;
+    duration_sec: number;
+    rest_before_sec: number | null;
+  }[];
+}
+
+export interface SessionSummary {
+  id: string;
+  title: string;
+  start_time: string;
+  duration_sec: number;
+  set_count: number;
+}
+
+export interface SessionDetail {
+  id: string;
+  title: string;
+  start_time: string;
+  duration_sec: number;
+  sets: {
+    exercise_name: string;
+    position: number;
+    set_number: number;
+    duration_sec: number;
+    rest_before_sec: number | null;
+  }[];
+}
+
 export const workoutsApi = {
   listRoutines: () => api.get<RoutineList>('/workouts/routines').then((r) => r.data),
   getRoutine: (id: string) => api.get<RoutineDetail>(`/workouts/routines/${id}`).then((r) => r.data),
@@ -80,4 +115,7 @@ export const workoutsApi = {
   createExercise: (body: ExerciseInput) => api.post<Exercise>('/workouts/exercises', body).then((r) => r.data),
   updateExercise: (id: string, body: ExerciseInput) => api.put<Exercise>(`/workouts/exercises/${id}`, body).then((r) => r.data),
   deleteExercise: (id: string) => api.delete(`/workouts/exercises/${id}`),
+  saveSession: (body: SessionPayload) => api.post<{ activity_id: string }>('/workouts/sessions', body).then((r) => r.data),
+  listSessions: (limit = 10) => api.get<{ sessions: SessionSummary[] }>(`/workouts/sessions?limit=${limit}`).then((r) => r.data.sessions),
+  getSession: (id: string) => api.get<SessionDetail>(`/workouts/sessions/${id}`).then((r) => r.data),
 };
