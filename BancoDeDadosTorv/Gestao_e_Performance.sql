@@ -14,6 +14,7 @@
 -- Mesmo o projeto estando no início, a arquitetura de segurança já foi desenhada.
 -- Não utilizaremos o usuário 'postgres' (superuser) na conexão da API por motivos
 -- de segurança. Criamos roles com o Princípio do Menor Privilégio.
+
 --
 -- Postgres não separa LOGIN e USER como o SQL Server: uma ROLE com a opção LOGIN
 -- já cumpre os dois papéis.
