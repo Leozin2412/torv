@@ -1,11 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const { generatePlan, buildBasis, diffPlanBasis, CATALOG, SLOTS } = require('../workoutGenerator');
+const { generatePlan: generate, buildBasis, diffPlanBasis } = require('../workoutGenerator');
+const rules = require('./workoutRules');
 
+const generatePlan = (input) => generate(input, rules);
 const slugs = (plan) => plan.routines.map((r) => r.exercises.map((e) => e.slug));
-const minLevelOf = Object.fromEntries(CATALOG.map((e) => [e.slug, e.minLevel]));
+const minLevelOf = Object.fromEntries(rules.catalog.map((e) => [e.slug, e.min_level]));
 
 // Aba Gerador da planilha (exemplo Masculino, Avançado, Ganhar Massa Muscular).
 const GERADOR_M_AVANCADO = [
@@ -26,6 +26,7 @@ test('Masculino, AVANÇADO, Ganhar Massa = aba Gerador da planilha', () => {
   for (const r of plan.routines) {
     assert.deepEqual(r.exercises.map((e) => e.position), r.exercises.map((_, i) => i + 1));
     for (const e of r.exercises) {
+      assert.equal(e.exercise_id, `id:${e.slug}`); // id do catálogo carregado: o savePlan não busca por slug
       assert.equal(e.set_count, 4);
       assert.equal(e.reps_min, 6);
       assert.equal(e.reps_max, 12);
@@ -51,7 +52,7 @@ test('INICIANTE: 3 rotinas, 3 séries, só exercícios de nível Iniciante', () 
       assert.equal(e.set_count, 3);
       assert.equal(e.reps_min, 8);
       assert.equal(e.reps_max, 15);
-      assert.equal(minLevelOf[e.slug], 0, e.slug);
+      assert.equal(minLevelOf[e.slug], 'INICIANTE', e.slug);
     }
   }
 });
@@ -92,17 +93,15 @@ test('diffPlanBasis lista só os campos que mudaram', () => {
   assert.deepEqual(diffPlanBasis(saved, buildBasis({ gender: 'Feminino', fitnessLevel: 'INICIANTE', goals: 'Perder Peso, Criar uma Rotina' })), ['goals', 'gender']);
 });
 
-test('catálogo: 71 slugs únicos e todo grupo+tipo de slot tem exercício', () => {
-  assert.equal(CATALOG.length, 71);
-  assert.equal(new Set(CATALOG.map((e) => e.slug)).size, 71);
-  const keys = new Set(CATALOG.map((e) => `${e.group}|${e.type}`));
-  for (const s of SLOTS) assert.ok(keys.has(`${s.group}|${s.type}`), `${s.group}|${s.type}`);
+test('catálogo: 71 slugs únicos, 101 slots e todo grupo+tipo de slot tem exercício', () => {
+  assert.equal(rules.catalog.length, 71);
+  assert.equal(new Set(rules.catalog.map((e) => e.slug)).size, 71);
+  assert.equal(rules.slots.length, 101);
+  const keys = new Set(rules.catalog.map((e) => `${e.muscle_group}|${e.type}`));
+  for (const s of rules.slots) assert.ok(keys.has(`${s.muscle_group}|${s.type}`), `${s.muscle_group}|${s.type}`);
 });
 
-test('seed da migration tem exatamente os slugs do CATALOG', () => {
-  const dir = path.join(__dirname, '../../../prisma/migrations');
-  const folder = fs.readdirSync(dir).find((d) => d.endsWith('_workout_module'));
-  const sql = fs.readFileSync(path.join(dir, folder, 'migration.sql'), 'utf8');
-  const seeded = [...sql.matchAll(/\('([a-z0-9-]+)', '/g)].map((m) => m[1]);
-  assert.deepEqual(seeded, CATALOG.map((e) => e.slug));
+test('as 71 tuplas da migration de regras cobrem exatamente os slugs do seed da 20260930200000', () => {
+  assert.equal(rules.seed.length, 71);
+  assert.deepEqual(rules.catalog.map((e) => e.slug).sort(), rules.seed.map((e) => e.slug).sort());
 });

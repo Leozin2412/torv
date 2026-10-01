@@ -11,6 +11,7 @@ require.cache[authPath] = {
 };
 
 const workoutRepository = require('../repository/workout.repository');
+const rules = require('../lib/tests/workoutRules');
 
 const ID = '22222222-2222-4222-8222-222222222222';
 const EX = '33333333-3333-4333-8333-333333333333';
@@ -38,6 +39,7 @@ const call = (app, method, url, payload) => app.inject({ method, url, payload })
 
 test('GET /routines: gera plano na 1ª vez e monta lista, próximo e sugestão', async (t) => {
   t.mock.method(workoutRepository, 'getPlanInputs', async () => ({ ...inputs, savedBasis: null }));
+  t.mock.method(workoutRepository, 'getGeneratorRules', async () => rules);
   const save = t.mock.method(workoutRepository, 'savePlan', async () => true);
   t.mock.method(workoutRepository, 'listRoutines', async () => [
     { id: 'a', name: 'Dia 1', is_default: true, routine_exercises: [{ _count: { sets: 3 } }, { _count: { sets: 3 } }] },
@@ -160,6 +162,7 @@ test('DELETE /routines/:id: alheia → 404; própria → 204', async (t) => {
 
 test('POST /plan/accept troca em modo replace; /plan/dismiss grava basis', async (t) => {
   t.mock.method(workoutRepository, 'getPlanInputs', async () => ({ ...inputs, fitnessLevel: 'AVANÇADO' }));
+  t.mock.method(workoutRepository, 'getGeneratorRules', async () => rules);
   const save = t.mock.method(workoutRepository, 'savePlan', async () => true);
   const setBasis = t.mock.method(workoutRepository, 'setPlanBasis', async () => {});
   t.mock.method(workoutRepository, 'listRoutines', async () => []);

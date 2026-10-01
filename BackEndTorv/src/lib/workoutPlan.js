@@ -6,7 +6,7 @@ const { generatePlan, buildBasis, diffPlanBasis } = require('./workoutGenerator'
 async function ensureDefaultPlan(userId) {
   const inputs = await workoutRepository.getPlanInputs(userId);
   if (!inputs || inputs.savedBasis) return inputs;
-  const { basis, routines } = generatePlan(inputs);
+  const { basis, routines } = generatePlan(inputs, await workoutRepository.getGeneratorRules());
   await workoutRepository.savePlan(userId, basis, routines, 'create');
   return { ...inputs, savedBasis: basis };
 }
@@ -21,7 +21,7 @@ function planSuggestion(inputs) {
 async function acceptPlan(userId) {
   const inputs = await workoutRepository.getPlanInputs(userId);
   if (!inputs) return;
-  const { basis, routines } = generatePlan(inputs);
+  const { basis, routines } = generatePlan(inputs, await workoutRepository.getGeneratorRules());
   await workoutRepository.savePlan(userId, basis, routines, 'replace');
 }
 

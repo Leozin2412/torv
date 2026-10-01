@@ -52,6 +52,20 @@ class WorkoutRepository {
     return p && { gender: p.gender, fitnessLevel: p.fitness_level, goals: p.goal, savedBasis: p.workout_plan_basis };
   }
 
+  // Regras do workoutGenerator.generatePlan: catálogo (owner_user_id NULL) na ordem de preferência e slots na ordem do dia.
+  async getGeneratorRules() {
+    const [catalog, slots] = await Promise.all([
+      prisma.exercises.findMany({
+        where: { owner_user_id: null },
+        orderBy: { catalog_order: 'asc' },
+        select: { id: true, slug: true, muscle_group: true, type: true, min_level: true },
+      }),
+      prisma.workout_template_slots.findMany({ orderBy: [{ days_per_week: 'asc' }, { day: 'asc' }, { position: 'asc' }] }),
+    ]);
+    return { catalog, slots };
+  }
+
+  // routines: saída do generatePlan (exercises com exercise_id).
   // mode 'create': só grava se o plano nunca foi gerado. 'replace': só se o basis mudou, e troca as
   // rotinas default. O UPDATE condicional trava a linha do perfil: a 2ª request concorrente reavalia o
   // WHERE, afeta 0 linhas e sai sem inserir (retorna false).
@@ -64,14 +78,10 @@ class WorkoutRepository {
       if (updated === 0) return false;
       if (mode === 'replace') await tx.workout_routines.deleteMany({ where: { user_id: userId, is_default: true } });
 
-      const slugs = [...new Set(routines.flatMap((r) => r.exercises.map((e) => e.slug)))];
-      const catalog = await tx.exercises.findMany({ where: { slug: { in: slugs } }, select: { id: true, slug: true } });
-      const idBySlug = new Map(catalog.map((c) => [c.slug, c.id]));
-
       const routineRows = routines.map((r) => ({ id: randomUUID(), user_id: userId, name: r.name, is_default: true, position: r.position }));
       await tx.workout_routines.createMany({ data: routineRows });
       await insertExercises(tx, routines.map((r, i) => exerciseRows(routineRows[i].id, r.exercises.map((e) => ({
-        exercise_id: idBySlug.get(e.slug),
+        exercise_id: e.exercise_id,
         reps_min: e.reps_min,
         reps_max: e.reps_max,
         rest_sec: e.rest_sec,
