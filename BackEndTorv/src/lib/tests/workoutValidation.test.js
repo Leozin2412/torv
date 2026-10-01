@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { checkRoutineBody, checkExerciseBody, checkSessionBody } = require('./workoutValidation');
+const { checkRoutineBody, checkExerciseBody, checkSessionBody } = require('../workoutValidation');
 
 const exercise = (over = {}) => ({ exercise_id: 'x', reps_min: 8, reps_max: 12, rest_sec: 60, sets: [{ weight_kg: null }], ...over });
 

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { validateProfileUpdate } = require('./profileValidation');
+const { validateProfileUpdate } = require('../profileValidation');
 
 test('nada enviado → erro', () => {
   assert.ok(validateProfileUpdate({}).error);

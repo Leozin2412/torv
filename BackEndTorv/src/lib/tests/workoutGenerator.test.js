@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { generatePlan, buildBasis, diffPlanBasis, CATALOG, SLOTS } = require('./workoutGenerator');
+const { generatePlan, buildBasis, diffPlanBasis, CATALOG, SLOTS } = require('../workoutGenerator');
 
 const slugs = (plan) => plan.routines.map((r) => r.exercises.map((e) => e.slug));
 const minLevelOf = Object.fromEntries(CATALOG.map((e) => [e.slug, e.minLevel]));
@@ -100,7 +100,7 @@ test('catálogo: 71 slugs únicos e todo grupo+tipo de slot tem exercício', () 
 });
 
 test('seed da migration tem exatamente os slugs do CATALOG', () => {
-  const dir = path.join(__dirname, '../../prisma/migrations');
+  const dir = path.join(__dirname, '../../../prisma/migrations');
   const folder = fs.readdirSync(dir).find((d) => d.endsWith('_workout_module'));
   const sql = fs.readFileSync(path.join(dir, folder, 'migration.sql'), 'utf8');
   const seeded = [...sql.matchAll(/\('([a-z0-9-]+)', '/g)].map((m) => m[1]);

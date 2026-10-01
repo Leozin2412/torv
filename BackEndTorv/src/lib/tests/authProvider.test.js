@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 
 process.env.SUPABASE_URL = 'https://proj.supabase.co';
 process.env.PUBLISHABLE_KEY = 'pk_test';
-const authProvider = require('./authProvider');
+const authProvider = require('../authProvider');
 
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 

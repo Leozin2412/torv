@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { calculateTargets, ageOn, diffBasis } = require('./nutritionCalculator');
+const { calculateTargets, ageOn, diffBasis } = require('../nutritionCalculator');
 
 const TODAY = new Date('2026-09-24T12:00:00Z');
 const base = {

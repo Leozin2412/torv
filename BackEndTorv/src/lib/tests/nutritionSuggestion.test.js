@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const dietRepository = require('../repository/diet.repository');
-const { buildSuggestion } = require('./nutritionSuggestion');
+const dietRepository = require('../../repository/diet.repository');
+const { buildSuggestion } = require('../nutritionSuggestion');
 
 // Perfil fixo: só o basis salvo muda entre os casos. O 'today' atravessa getCalcInputs ->
 // computeForUser -> calculateTargets, então a idade (e os números esperados) não dependem do relógio.

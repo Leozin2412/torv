@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const workoutRepository = require('../repository/workout.repository');
-const { ensureDefaultPlan, planSuggestion, acceptPlan, dismissPlan, nextRoutineId } = require('./workoutPlan');
+const workoutRepository = require('../../repository/workout.repository');
+const { ensureDefaultPlan, planSuggestion, acceptPlan, dismissPlan, nextRoutineId } = require('../workoutPlan');
 
 const profile = { gender: 'Masculino', fitnessLevel: 'INICIANTE', goals: 'Perder Peso' };
 const basis = { fitness_level: 'INICIANTE', goals: ['Perder Peso'], gender: 'M' };
