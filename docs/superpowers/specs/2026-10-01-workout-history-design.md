@@ -55,7 +55,7 @@
 
 ### `completed_recently`
 
-- Cada item de `routines` em `GET /workouts/routines`, `POST /workouts/plan/accept` e `POST /workouts/plan/dismiss` ganha `completed_recently: boolean`. Todas essas rotas devolvem o mesmo `RoutineList`.
+- Cada item de `routines` em `GET /workouts/routines` e em `POST /workouts/plan/accept` ganha `completed_recently: boolean`. As duas rotas devolvem o mesmo `RoutineList`, montado por `routinesPayload`. O `plan/dismiss` devolve `{ message }` e não muda.
 - **Repository:** novo `recentRoutineIds(userId, since)`, com uma query só: `activities` STRENGTH desse usuário com `routine_id` não nulo e `start_time >= since`, `distinct` por `routine_id`, `select { routine_id }`.
 - **Controller:** `routinesPayload` passa a chamar `recentRoutineIds(userId, new Date(Date.now() - 7 * 24 * 3600 * 1000))` junto com as outras duas queries (`Promise.all`). `completed_recently = ids.has(r.id)`.
 
