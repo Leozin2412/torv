@@ -1,6 +1,6 @@
 const workoutRepository = require('../repository/workout.repository');
 const { ensureDefaultPlan, planSuggestion, acceptPlan, dismissPlan, nextRoutineId } = require('../lib/workoutPlan');
-const { checkRoutineBody, checkExerciseBody } = require('../lib/workoutValidation');
+const { checkRoutineBody, checkExerciseBody, checkSessionBody } = require('../lib/workoutValidation');
 
 // Recurso de outro usuário (ou do catálogo tratado como próprio) → 404, nunca 403: não revela que existe.
 const NOT_FOUND = { error: 'Not found' };
@@ -127,6 +127,45 @@ class WorkoutController {
   async deleteExercise(request, reply) {
     const deleted = await workoutRepository.deleteExercise(request.user.userId, request.params.id);
     return deleted ? reply.status(204).send() : reply.status(404).send(NOT_FOUND);
+  }
+
+  // Idempotente por started_at: reenvio depois de falha de rede devolve 200 com o mesmo id,
+  // sem inserir de novo (streak/ranking contam uma vez só).
+  async createSession(request, reply) {
+    const { userId } = request.user;
+    const error = checkSessionBody(request.body);
+    if (error) return reply.status(400).send({ error });
+    const startedAt = new Date(request.body.started_at);
+
+    const existing = await workoutRepository.findSessionByStart(userId, startedAt);
+    if (existing) return reply.send({ activity_id: existing });
+    try {
+      const id = await workoutRepository.createSession(userId, { ...request.body, started_at: startedAt });
+      return reply.status(201).send({ activity_id: id });
+    } catch (err) {
+      if (err.code !== 'P2002') throw err;
+      // Corrida: outra request com o mesmo started_at gravou entre o check e o insert.
+      return reply.send({ activity_id: await workoutRepository.findSessionByStart(userId, startedAt) });
+    }
+  }
+
+  async listSessions(request, reply) {
+    const rows = await workoutRepository.listSessions(request.user.userId, request.query.limit ?? 10);
+    return reply.send({
+      sessions: rows.map((s) => ({
+        id: s.id,
+        title: s.title,
+        start_time: s.start_time.toISOString(),
+        duration_sec: s.duration_sec,
+        set_count: s._count.workout_sets,
+      })),
+    });
+  }
+
+  async getSession(request, reply) {
+    const s = await workoutRepository.getSession(request.user.userId, request.params.id);
+    if (!s) return reply.status(404).send(NOT_FOUND);
+    return reply.send({ id: s.id, title: s.title, start_time: s.start_time.toISOString(), duration_sec: s.duration_sec, sets: s.workout_sets });
   }
 }
 

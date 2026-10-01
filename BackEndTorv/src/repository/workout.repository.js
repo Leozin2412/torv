@@ -158,6 +158,76 @@ class WorkoutRepository {
     const { count } = await prisma.exercises.deleteMany({ where: { id, owner_user_id: userId } });
     return count > 0;
   }
+
+  async findSessionByStart(userId, startedAt) {
+    const row = await prisma.activities.findFirst({
+      where: { user_id: userId, activity_type: 'STRENGTH', start_time: startedAt },
+      select: { id: true },
+    });
+    return row?.id ?? null;
+  }
+
+  // Rotina/exercício que não é do usuário (ou foi apagado no meio do treino) não é vinculado nem
+  // tem o nome exposto: vira "Treino livre" / "Exercício removido".
+  async createSession(userId, { routine_id, started_at, duration_sec, sets }) {
+    const ids = [...new Set(sets.map((s) => s.exercise_id))];
+    const [routine, exercises] = await Promise.all([
+      routine_id ? prisma.workout_routines.findFirst({ where: { id: routine_id, user_id: userId }, select: { id: true, name: true } }) : null,
+      prisma.exercises.findMany({ where: { id: { in: ids }, ...visibleExercise(userId) }, select: { id: true, name: true } }),
+    ]);
+    const nameById = new Map(exercises.map((e) => [e.id, e.name]));
+
+    return prisma.$transaction(async (tx) => {
+      const activity = await tx.activities.create({
+        data: {
+          user_id: userId,
+          activity_type: 'STRENGTH',
+          title: routine?.name ?? 'Treino livre',
+          start_time: started_at,
+          duration_sec,
+          routine_id: routine?.id ?? null,
+        },
+        select: { id: true },
+      });
+      await tx.workout_sets.createMany({
+        data: sets.map((s) => ({
+          activity_id: activity.id,
+          exercise_id: nameById.has(s.exercise_id) ? s.exercise_id : null,
+          exercise_name: nameById.get(s.exercise_id) ?? 'Exercício removido',
+          position: s.position,
+          set_number: s.set_number,
+          duration_sec: s.duration_sec,
+          rest_before_sec: s.rest_before_sec,
+        })),
+      });
+      return activity.id;
+    }, TX);
+  }
+
+  async listSessions(userId, limit) {
+    return prisma.activities.findMany({
+      where: { user_id: userId, activity_type: 'STRENGTH' },
+      orderBy: { start_time: 'desc' },
+      take: limit,
+      select: { id: true, title: true, start_time: true, duration_sec: true, _count: { select: { workout_sets: true } } },
+    });
+  }
+
+  async getSession(userId, id) {
+    return prisma.activities.findFirst({
+      where: { id, user_id: userId, activity_type: 'STRENGTH' },
+      select: {
+        id: true,
+        title: true,
+        start_time: true,
+        duration_sec: true,
+        workout_sets: {
+          orderBy: [{ position: 'asc' }, { set_number: 'asc' }],
+          select: { exercise_name: true, position: true, set_number: true, duration_sec: true, rest_before_sec: true },
+        },
+      },
+    });
+  }
 }
 
 module.exports = new WorkoutRepository();

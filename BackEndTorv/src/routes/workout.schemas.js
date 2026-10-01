@@ -73,6 +73,43 @@ const Exercise = Type.Object({
   is_custom: Type.Boolean(),
 });
 
+// Nullable em corpo: type array, não Union (coerceTypes coage o null no 1º ramo; ver weight_kg acima).
+const SessionBody = Type.Object({
+  routine_id: Type.Optional(Type.Unsafe({ type: ['string', 'null'], format: 'uuid' })),
+  started_at: Type.String({ format: 'date-time' }),
+  duration_sec: Type.Integer({ minimum: 1, maximum: 21600 }),
+  sets: Type.Array(Type.Object({
+    exercise_id: Uuid,
+    position: Type.Integer({ minimum: 1, maximum: 20 }),
+    set_number: Type.Integer({ minimum: 1, maximum: 10 }),
+    duration_sec: Type.Integer({ minimum: 0, maximum: 3600 }),
+    rest_before_sec: Type.Unsafe({ type: ['integer', 'null'], minimum: 0, maximum: 7200 }),
+  }), { minItems: 1, maxItems: 200 }),
+});
+
+const SessionSummary = Type.Object({
+  id: Type.String(),
+  title: Type.String(),
+  start_time: Type.String(),
+  duration_sec: Type.Integer(),
+  set_count: Type.Integer(),
+});
+
+const SessionDetail = Type.Object({
+  id: Type.String(),
+  title: Type.String(),
+  start_time: Type.String(),
+  duration_sec: Type.Integer(),
+  sets: Type.Array(Type.Object({
+    exercise_name: Type.String(),
+    position: Type.Integer(),
+    set_number: Type.Integer(),
+    duration_sec: Type.Integer(),
+    rest_before_sec: Type.Union([Type.Integer(), Type.Null()]),
+  })),
+});
+
 module.exports = {
-  MUSCLE_GROUPS, errors, IdParams, RoutineBody, RoutineList, RoutineDetail, ExerciseBody, Exercise,
+  MUSCLE_GROUPS, errors, IdParams, RoutineBody, RoutineList, RoutineDetail,
+  ExerciseBody, Exercise, SessionBody, SessionSummary, SessionDetail,
 };

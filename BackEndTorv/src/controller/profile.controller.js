@@ -57,10 +57,10 @@ class ProfileController {
         age: profile.birth_date ? ageOn(profile.birth_date, new Date()) : null,
         streak: streaks.current_streak || 0,
         longest_streak: streaks.longest_streak || 0,
-        workouts_in_month: 0,
+        workouts_in_month: user.workout_counts.month,
         followers: 0,
         following: 0,
-        total_workouts: 0,
+        total_workouts: user.workout_counts.total,
       });
     } catch (error) {
       request.log.error(error);
