@@ -86,7 +86,7 @@ export default function WorkoutSummary() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        {status !== 'history' && (
+        {status === 'saved' && (
           <View style={styles.hero}>
             <CheckCircle2 color={colors.brand} size={40} />
             <Text style={styles.heroTitle}>Treino concluído</Text>

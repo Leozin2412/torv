@@ -118,13 +118,14 @@ export default function Workouts() {
           <ActivityIndicator color={colors.brand} style={styles.loading} />
         ) : (
           data?.routines.map((r) => (
-            <TouchableOpacity
-              key={r.id}
-              onPress={() => navigation.navigate('RoutineEditor', { routineId: r.id })}
-              accessibilityRole="button"
-              accessibilityLabel={`Editar ${r.name}`}
-            >
-              <Card style={[styles.routineCard, r.id === data.next_routine_id && styles.routineCardNext]}>
+            // Card e ▶ são irmãos: botão dentro de botão quebra no web (<button> em <button>).
+            <Card key={r.id} style={[styles.routineCard, r.id === data.next_routine_id && styles.routineCardNext]}>
+              <TouchableOpacity
+                style={styles.routineEdit}
+                onPress={() => navigation.navigate('RoutineEditor', { routineId: r.id })}
+                accessibilityRole="button"
+                accessibilityLabel={`Editar ${r.name}`}
+              >
                 <View style={styles.routineInfo}>
                   <View style={styles.tags}>
                     {r.id === data.next_routine_id && <Text style={styles.nextTag}>Próximo</Text>}
@@ -134,20 +135,19 @@ export default function Workouts() {
                   <Text style={styles.routineMeta}>{r.exercise_count} {r.exercise_count === 1 ? 'exercício' : 'exercícios'} · {r.set_count} {r.set_count === 1 ? 'série' : 'séries'}</Text>
                 </View>
                 {/* Com treino em andamento, só o banner continua/descarta: nada de 2 treinos ao mesmo tempo. */}
-                {draft ? (
-                  <ChevronRight color={colors.textSecondary} size={20} />
-                ) : (
-                  <TouchableOpacity
-                    style={styles.playButton}
-                    onPress={() => navigation.navigate('WorkoutSession', { routineId: r.id })}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Iniciar ${r.name}`}
-                  >
-                    <Play color={colors.background} size={18} fill={colors.background} />
-                  </TouchableOpacity>
-                )}
-              </Card>
-            </TouchableOpacity>
+                {draft && <ChevronRight color={colors.textSecondary} size={20} />}
+              </TouchableOpacity>
+              {!draft && (
+                <TouchableOpacity
+                  style={styles.playButton}
+                  onPress={() => navigation.navigate('WorkoutSession', { routineId: r.id })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Iniciar ${r.name}`}
+                >
+                  <Play color={colors.background} size={18} fill={colors.background} />
+                </TouchableOpacity>
+              )}
+            </Card>
           ))
         )}
 

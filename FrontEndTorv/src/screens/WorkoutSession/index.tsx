@@ -64,6 +64,11 @@ export default function WorkoutSession() {
     if (!state || !userId) return;
     const next = transition(state, Date.now());
     if (next === state) return;
+    // Pular até o fim sem nenhuma série = mesmo caminho do "Finalizar" com 0 séries: confirmar descarte, sem POST.
+    if (next.phase === 'done' && next.sets.length === 0) {
+      setConfirmFinish(true);
+      return;
+    }
     setState(next);
     setNow(Date.now());
     // O resumo lê o rascunho: grava antes de navegar.
@@ -162,7 +167,7 @@ export default function WorkoutSession() {
           <View style={styles.upcoming}>
             <Text style={styles.upcomingTitle}>A seguir</Text>
             {upcoming.map((e, i) => (
-              <Text key={`${e.exercise_id}-${i}`} style={styles.upcomingItem}>{e.name} · {e.weights.length} séries</Text>
+              <Text key={`${e.exercise_id}-${i}`} style={styles.upcomingItem}>{e.name} · {e.weights.length} {e.weights.length === 1 ? 'série' : 'séries'}</Text>
             ))}
           </View>
         )}

@@ -20,7 +20,8 @@ export const styles = StyleSheet.create({
   bannerActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
   bannerButton: { flex: 1 },
 
-  routineCard: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 76, marginBottom: 12 },
+  routineCard: { flexDirection: 'row', alignItems: 'center', minHeight: 76, marginBottom: 12, padding: 0 },
+  routineEdit: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
   routineCardNext: { borderColor: colors.brand },
   routineInfo: { flex: 1 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
@@ -29,7 +30,7 @@ export const styles = StyleSheet.create({
   routineName: { color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 16, lineHeight: 22, marginTop: 6 },
   routineMeta: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13, marginTop: 2 },
   // paddingLeft centraliza o triângulo opticamente.
-  playButton: { width: 48, height: 48, borderRadius: 24, paddingLeft: 3, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
+  playButton: { width: 48, height: 48, borderRadius: 24, marginRight: 16, paddingLeft: 3, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
 
   emptyCard: { alignItems: 'center', gap: 8, paddingVertical: 28 },
   emptyText: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14 },

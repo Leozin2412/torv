@@ -391,7 +391,7 @@ export default function Profile() {
                 <View style={styles.listCardContent}>
                   <Text style={styles.listCardTitle}>{s.title}</Text>
                   <Text style={styles.listCardSubtitle}>
-                    {formatDayMonth(s.start_time)} · {Math.max(1, Math.round(s.duration_sec / 60))} min · {s.set_count} séries
+                    {formatDayMonth(s.start_time)} · {Math.max(1, Math.round(s.duration_sec / 60))} min · {s.set_count} {s.set_count === 1 ? 'série' : 'séries'}
                   </Text>
                 </View>
                 <ChevronRight color={colors.textSecondary} size={20} style={styles.listCardRight} />
