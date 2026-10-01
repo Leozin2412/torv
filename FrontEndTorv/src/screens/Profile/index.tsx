@@ -14,7 +14,7 @@ import { GoalConflictWarning } from '../../components/GoalConflictWarning';
 import { NutritionSuggestionModal, type NutritionSuggestion } from '../../components/NutritionSuggestionModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import api from '../../services/api';
-import { workoutsApi, type SessionSummary } from '../../services/workouts';
+import { activitiesApi, type ActivityItem } from '../../services/activities';
 import type { AppNavigation } from '../../routes/types';
 import { colors } from '../../theme/tokens';
 import { FITNESS_LEVELS, GOAL_OPTIONS, fitnessLevelLabel } from '../../utils/profileOptions';
@@ -32,7 +32,7 @@ export default function Profile() {
   const [avatarUri, setAvatarUri] = useState<string | null>(user?.photo_url || null);
   const [foodLogs, setFoodLogs] = useState<any[]>([]);
   const [profileData, setProfileData] = useState<any>(null);
-  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [sessions, setSessions] = useState<ActivityItem[]>([]);
   const [loadingAvatar, setLoadingAvatar] = useState(false);
 
   // Edit States
@@ -60,7 +60,7 @@ export default function Profile() {
           const [dietResponse, profileResponse, recentSessions] = await Promise.all([
             api.get('/diet/summary'),
             api.get('/profile'),
-            workoutsApi.listSessions(5).catch(() => [] as SessionSummary[]),
+            activitiesApi.list({ limit: 5 }).then((p) => p.activities).catch(() => [] as ActivityItem[]),
           ]);
           setSessions(recentSessions);
           if (dietResponse.data && dietResponse.data.logs) {

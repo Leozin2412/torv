@@ -3,8 +3,17 @@ import { colors, radius, fontFamily } from '../../theme/tokens';
 
 export const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scroll: { paddingHorizontal: 20, paddingTop: 48, paddingBottom: 120 },
-  title: { color: colors.text, fontFamily: fontFamily.extraBold, fontSize: 32, marginBottom: 20 },
+  header: { paddingHorizontal: 20, paddingTop: 48 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 120 },
+  title: { color: colors.text, fontFamily: fontFamily.extraBold, fontSize: 32, marginBottom: 16 },
+
+  // Meus treinos | Histórico
+  segmented: { flexDirection: 'row', padding: 4, marginBottom: 16, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  segment: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
+  // Tinta = onde você está (como a barra de abas); verde sólido fica para ação (▶).
+  segmentActive: { backgroundColor: colors.brandTint },
+  segmentText: { color: colors.textSecondary, fontFamily: fontFamily.semiBold, fontSize: 14 },
+  segmentTextActive: { color: colors.brand },
   loading: { marginTop: 32 },
   error: { color: colors.error, fontFamily: fontFamily.regular, fontSize: 14, marginBottom: 16 },
 
@@ -27,6 +36,8 @@ export const styles = StyleSheet.create({
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   nextTag: { color: colors.background, backgroundColor: colors.brand, fontFamily: fontFamily.semiBold, fontSize: 11, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 1, overflow: 'hidden' },
   defaultTag: { color: colors.textSecondary, borderColor: colors.border, borderWidth: 1, fontFamily: fontFamily.semiBold, fontSize: 11, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 1, overflow: 'hidden' },
+  // Próximo = sólido, Padrão = contorno cinza, Concluído = tinta (estado passado, mais quieto). Borda da cor do fundo: mesma altura das outras.
+  doneTag: { color: colors.brand, backgroundColor: colors.brandTint, borderColor: colors.brandTint, borderWidth: 1, fontFamily: fontFamily.semiBold, fontSize: 11, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 1, overflow: 'hidden' },
   routineName: { color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 16, lineHeight: 22, marginTop: 6 },
   routineMeta: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13, marginTop: 2 },
   // paddingLeft centraliza o triângulo opticamente.

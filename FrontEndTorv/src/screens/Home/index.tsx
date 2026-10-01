@@ -7,9 +7,10 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 import { ProgressBar } from '../../components/ProgressBar';
 import { Card } from '../../components/Card';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import api from '../../services/api';
-import { workoutsApi } from '../../services/workouts';
+import { workoutsApi, type RoutineSummary } from '../../services/workouts';
 import { loadDraft } from '../../utils/workoutDraft';
 import type { AppNavigation } from '../../routes/types';
 import { colors } from '../../theme/tokens';
@@ -24,7 +25,8 @@ export default function Home() {
   const [goal, setGoal] = useState(user?.goalCalories || 2400);
   const [remaining, setRemaining] = useState(0);
   // undefined = carregando/erro; null = sem rotinas
-  const [nextRoutine, setNextRoutine] = useState<{ id: string; name: string } | null | undefined>(undefined);
+  const [nextRoutine, setNextRoutine] = useState<RoutineSummary | null | undefined>(undefined);
+  const [confirmRepeat, setConfirmRepeat] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
 
   useFocusEffect(
@@ -49,9 +51,16 @@ export default function Home() {
     }
   };
 
+  const startNext = () => {
+    setConfirmRepeat(false);
+    if (nextRoutine) navigation.navigate('WorkoutSession', { routineId: nextRoutine.id });
+  };
+
+  // Treino feito nos últimos 7 dias: mesmo aviso da aba Treinos, sem impedir.
   const onWorkoutPress = () => {
     if (hasDraft) navigation.navigate('WorkoutSession', { resume: true });
-    else if (nextRoutine) navigation.navigate('WorkoutSession', { routineId: nextRoutine.id });
+    else if (nextRoutine?.completed_recently) setConfirmRepeat(true);
+    else if (nextRoutine) startNext();
     else navigation.navigate('Workouts' as never);
   };
 
@@ -283,6 +292,14 @@ export default function Home() {
         </Card>
 
       </ScrollView>
+      <ConfirmModal
+        visible={confirmRepeat}
+        title="Treino já concluído"
+        message="Você já fez esse treino nos últimos 7 dias. O ideal é dar de 48 a 72 horas para o músculo se recuperar."
+        confirmLabel="Treinar mesmo assim"
+        onConfirm={startNext}
+        onCancel={() => setConfirmRepeat(false)}
+      />
     </SafeAreaView>
   );
 }

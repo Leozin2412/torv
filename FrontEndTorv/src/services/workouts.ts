@@ -13,6 +13,7 @@ export interface RoutineSummary {
   is_default: boolean;
   exercise_count: number;
   set_count: number;
+  completed_recently: boolean; // treino feito nos últimos 7 dias → selo "Concluído"
 }
 
 export interface PlanSuggestion {
@@ -81,14 +82,6 @@ export interface SessionPayload {
   }[];
 }
 
-export interface SessionSummary {
-  id: string;
-  title: string;
-  start_time: string;
-  duration_sec: number;
-  set_count: number;
-}
-
 export interface SessionDetail {
   id: string;
   title: string;
@@ -116,6 +109,5 @@ export const workoutsApi = {
   updateExercise: (id: string, body: ExerciseInput) => api.put<Exercise>(`/workouts/exercises/${id}`, body).then((r) => r.data),
   deleteExercise: (id: string) => api.delete(`/workouts/exercises/${id}`),
   saveSession: (body: SessionPayload) => api.post<{ activity_id: string }>('/workouts/sessions', body).then((r) => r.data),
-  listSessions: (limit = 10) => api.get<{ sessions: SessionSummary[] }>(`/workouts/sessions?limit=${limit}`).then((r) => r.data.sessions),
   getSession: (id: string) => api.get<SessionDetail>(`/workouts/sessions/${id}`).then((r) => r.data),
 };
