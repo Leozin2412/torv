@@ -79,6 +79,7 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
             onPress={() => setType(t)}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
+            aria-selected={active} // react-native-web ignora accessibilityState
           >
             <Text style={[styles.chipText, active && styles.chipTextActive]}>{t ? ACTIVITY_LABELS[t] : 'Todos'}</Text>
           </TouchableOpacity>
@@ -120,7 +121,7 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
               <Dumbbell color={colors.brand} size={20} />
             </View>
             <View style={styles.itemInfo}>
-              <Text style={styles.itemTitle} numberOfLines={1}>{title}</Text>
+              <Text style={styles.itemTitle} numberOfLines={2}>{title}</Text>
               <Text style={styles.itemMeta}>
                 {timeOf(item.start_time)} · {formatClock(item.duration_sec)} · {item.set_count} {item.set_count === 1 ? 'série' : 'séries'}
               </Text>

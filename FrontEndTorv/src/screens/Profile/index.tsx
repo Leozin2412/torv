@@ -60,7 +60,7 @@ export default function Profile() {
           const [dietResponse, profileResponse, recentSessions] = await Promise.all([
             api.get('/diet/summary'),
             api.get('/profile'),
-            activitiesApi.list({ limit: 5 }).then((p) => p.activities).catch(() => [] as ActivityItem[]),
+            activitiesApi.list({ type: 'STRENGTH', limit: 5 }).then((p) => p.activities).catch(() => [] as ActivityItem[]),
           ]);
           setSessions(recentSessions);
           if (dietResponse.data && dietResponse.data.logs) {

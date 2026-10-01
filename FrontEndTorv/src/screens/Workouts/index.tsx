@@ -114,6 +114,7 @@ export default function Workouts() {
                 onPress={() => setView(v.key)}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
+                aria-selected={active} // react-native-web ignora accessibilityState
               >
                 <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{v.label}</Text>
               </TouchableOpacity>
