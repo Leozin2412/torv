@@ -34,10 +34,18 @@ function routineDetail(r) {
   };
 }
 
+// Janela do selo "Concluído": treino feito nos últimos 7 dias (corridos, relógio do servidor).
+const RECENT_MS = 7 * 24 * 3600 * 1000;
+
 async function routinesPayload(userId, inputs) {
-  const [routines, last] = await Promise.all([workoutRepository.listRoutines(userId), workoutRepository.lastRoutineId(userId)]);
+  const [routines, last, recent] = await Promise.all([
+    workoutRepository.listRoutines(userId),
+    workoutRepository.lastRoutineId(userId),
+    workoutRepository.recentRoutineIds(userId, new Date(Date.now() - RECENT_MS)),
+  ]);
+  const done = new Set(recent);
   return {
-    routines: routines.map(routineSummary),
+    routines: routines.map((r) => ({ ...routineSummary(r), completed_recently: done.has(r.id) })),
     next_routine_id: nextRoutineId(routines, last),
     plan_suggestion: planSuggestion(inputs),
   };
@@ -147,19 +155,6 @@ class WorkoutController {
       // Corrida: outra request com o mesmo started_at gravou entre o check e o insert.
       return reply.send({ activity_id: await workoutRepository.findSessionByStart(userId, startedAt) });
     }
-  }
-
-  async listSessions(request, reply) {
-    const rows = await workoutRepository.listSessions(request.user.userId, request.query.limit ?? 10);
-    return reply.send({
-      sessions: rows.map((s) => ({
-        id: s.id,
-        title: s.title,
-        start_time: s.start_time.toISOString(),
-        duration_sec: s.duration_sec,
-        set_count: s._count.workout_sets,
-      })),
-    });
   }
 
   async getSession(request, reply) {

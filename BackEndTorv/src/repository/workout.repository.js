@@ -112,6 +112,16 @@ class WorkoutRepository {
     return last?.routine_id ?? null;
   }
 
+  // Rotinas com treino desde `since` (selo "Concluído" na lista de rotinas).
+  async recentRoutineIds(userId, since) {
+    const rows = await prisma.activities.findMany({
+      where: { user_id: userId, activity_type: 'STRENGTH', routine_id: { not: null }, start_time: { gte: since } },
+      distinct: ['routine_id'],
+      select: { routine_id: true },
+    });
+    return rows.map((r) => r.routine_id);
+  }
+
   async getRoutine(userId, id) {
     return prisma.workout_routines.findFirst({ where: { id, user_id: userId }, select: routineDetailSelect });
   }
@@ -212,15 +222,6 @@ class WorkoutRepository {
       });
       return activity.id;
     }, TX);
-  }
-
-  async listSessions(userId, limit) {
-    return prisma.activities.findMany({
-      where: { user_id: userId, activity_type: 'STRENGTH' },
-      orderBy: { start_time: 'desc' },
-      take: limit,
-      select: { id: true, title: true, start_time: true, duration_sec: true, _count: { select: { workout_sets: true } } },
-    });
   }
 
   async getSession(userId, id) {

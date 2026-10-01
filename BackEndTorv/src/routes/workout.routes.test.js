@@ -46,14 +46,18 @@ test('GET /routines: gera plano na 1ª vez e monta lista, próximo e sugestão',
     { id: 'b', name: 'Dia 2', is_default: true, routine_exercises: [{ _count: { sets: 4 } }] },
   ]);
   t.mock.method(workoutRepository, 'lastRoutineId', async () => 'a');
+  const recent = t.mock.method(workoutRepository, 'recentRoutineIds', async () => ['a']);
   const app = await build(t);
   const res = await call(app, 'GET', '/workouts/routines');
   assert.equal(res.statusCode, 200);
   assert.equal(save.mock.callCount(), 1);
+  const [recentUser, since] = recent.mock.calls[0].arguments;
+  assert.equal(recentUser, USER);
+  assert.ok(Math.abs(Date.now() - 7 * 24 * 3600 * 1000 - since.getTime()) < 5000, 'janela de 7 dias');
   assert.deepEqual(res.json(), {
     routines: [
-      { id: 'a', name: 'Dia 1', is_default: true, exercise_count: 2, set_count: 6 },
-      { id: 'b', name: 'Dia 2', is_default: true, exercise_count: 1, set_count: 4 },
+      { id: 'a', name: 'Dia 1', is_default: true, exercise_count: 2, set_count: 6, completed_recently: true },
+      { id: 'b', name: 'Dia 2', is_default: true, exercise_count: 1, set_count: 4, completed_recently: false },
     ],
     next_routine_id: 'b',
     plan_suggestion: { has_suggestion: false, changed: [] },
@@ -64,6 +68,7 @@ test('GET /routines: perfil mudou → plan_suggestion com changed', async (t) =>
   t.mock.method(workoutRepository, 'getPlanInputs', async () => ({ ...inputs, fitnessLevel: 'AVANÇADO' }));
   t.mock.method(workoutRepository, 'listRoutines', async () => []);
   t.mock.method(workoutRepository, 'lastRoutineId', async () => null);
+  t.mock.method(workoutRepository, 'recentRoutineIds', async () => []);
   const app = await build(t);
   const res = await call(app, 'GET', '/workouts/routines');
   assert.deepEqual(res.json().plan_suggestion, { has_suggestion: true, changed: ['fitness_level'] });
@@ -167,6 +172,7 @@ test('POST /plan/accept troca em modo replace; /plan/dismiss grava basis', async
   const setBasis = t.mock.method(workoutRepository, 'setPlanBasis', async () => {});
   t.mock.method(workoutRepository, 'listRoutines', async () => []);
   t.mock.method(workoutRepository, 'lastRoutineId', async () => null);
+  t.mock.method(workoutRepository, 'recentRoutineIds', async () => []);
   const app = await build(t);
   assert.equal((await call(app, 'POST', '/workouts/plan/accept')).statusCode, 200);
   assert.equal(save.mock.calls[0].arguments[3], 'replace');

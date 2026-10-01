@@ -98,20 +98,6 @@ test('POST /sessions 400: limites e datas', async (t) => {
   assert.equal(create.mock.callCount(), 0);
 });
 
-test('GET /sessions: limite padrão 10, máx 50; datas em ISO', async (t) => {
-  const list = t.mock.method(workoutRepository, 'listSessions', async () => [
-    { id: ACT, title: 'Dia 1 — Corpo todo A', start_time: new Date(startedAt), duration_sec: 3000, _count: { workout_sets: 2 } },
-  ]);
-  const app = await build(t);
-  const res = await call(app, 'GET', '/workouts/sessions');
-  assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.json(), { sessions: [{ id: ACT, title: 'Dia 1 — Corpo todo A', start_time: startedAt, duration_sec: 3000, set_count: 2 }] });
-  assert.deepEqual(list.mock.calls[0].arguments, [USER, 10]);
-  await call(app, 'GET', '/workouts/sessions?limit=5');
-  assert.equal(list.mock.calls[1].arguments[1], 5);
-  assert.equal((await call(app, 'GET', '/workouts/sessions?limit=51')).statusCode, 400);
-});
-
 test('GET /sessions/:id: própria → séries; alheia → 404', async (t) => {
   const get = t.mock.method(workoutRepository, 'getSession', async () => ({
     id: ACT, title: 'Treino livre', start_time: new Date(startedAt), duration_sec: 3000,

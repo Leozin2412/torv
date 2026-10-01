@@ -3,7 +3,7 @@ const workoutController = require('../controller/workout.controller');
 const authenticateToken = require('../middlewares/auth.middleware');
 const {
   errors, IdParams, RoutineBody, RoutineList, RoutineDetail,
-  ExerciseBody, Exercise, SessionBody, SessionSummary, SessionDetail,
+  ExerciseBody, Exercise, SessionBody, SessionDetail,
 } = require('./workout.schemas');
 
 const tags = ['Workouts'];
@@ -75,14 +75,6 @@ async function workoutRoutes(fastify) {
       response: { 200: Type.Object({ activity_id: Type.String() }), 201: Type.Object({ activity_id: Type.String() }), ...errors(400, 401, 403) },
     },
   }, workoutController.createSession);
-
-  fastify.get('/sessions', {
-    schema: {
-      tags, security,
-      querystring: Type.Object({ limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })) }),
-      response: { 200: Type.Object({ sessions: Type.Array(SessionSummary) }), ...errors(400, 401, 403) },
-    },
-  }, workoutController.listSessions);
 
   fastify.get('/sessions/:id', {
     schema: { tags, security, params: IdParams, response: { 200: SessionDetail, ...errors(400, 401, 403, 404) } },

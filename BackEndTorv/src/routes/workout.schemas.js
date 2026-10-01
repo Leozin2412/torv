@@ -39,6 +39,7 @@ const RoutineList = Type.Object({
     is_default: Type.Boolean(),
     exercise_count: Type.Integer(),
     set_count: Type.Integer(),
+    completed_recently: Type.Boolean(),
   })),
   next_routine_id: Type.Union([Type.String(), Type.Null()]),
   plan_suggestion: PlanSuggestion,
@@ -87,14 +88,6 @@ const SessionBody = Type.Object({
   }), { minItems: 1, maxItems: 200 }),
 });
 
-const SessionSummary = Type.Object({
-  id: Type.String(),
-  title: Type.String(),
-  start_time: Type.String(),
-  duration_sec: Type.Integer(),
-  set_count: Type.Integer(),
-});
-
 const SessionDetail = Type.Object({
   id: Type.String(),
   title: Type.String(),
@@ -111,5 +104,5 @@ const SessionDetail = Type.Object({
 
 module.exports = {
   MUSCLE_GROUPS, errors, IdParams, RoutineBody, RoutineList, RoutineDetail,
-  ExerciseBody, Exercise, SessionBody, SessionSummary, SessionDetail,
+  ExerciseBody, Exercise, SessionBody, SessionDetail,
 };
