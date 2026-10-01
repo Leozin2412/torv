@@ -146,19 +146,38 @@ model workout_routines {
 }
 
 // Catálogo global (slug, owner_user_id NULL) + exercícios próprios (owner_user_id, slug NULL).
-// CHECKs de muscle_group e catálogo-ou-próprio ficam só no SQL da migration.
+// type/min_level/catalog_order: preenchidos só no catálogo (catalog_order = preferência do gerador).
+// CHECKs de muscle_group, type, min_level, catálogo-ou-próprio e regras do catálogo ficam só no SQL da migration.
 model exercises {
   id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name              String              @db.VarChar(100)
   muscle_group      String              @db.VarChar(100)
   slug              String?             @unique @db.VarChar(80)
   owner_user_id     String?             @db.Uuid
+  type              String?             @db.VarChar(10)
+  min_level         String?             @db.VarChar(20)
+  catalog_order     Int?                @unique @db.SmallInt
 
   owner             users?              @relation(fields: [owner_user_id], references: [id], onDelete: Cascade)
   routine_exercises routine_exercises[]
   workout_sets      workout_sets[]
 
   @@index([owner_user_id])
+}
+
+// Aba Sessoes do gerador de treino: slots do plano default, position = ordem dentro do dia.
+// CHECKs (day, position, muscle_group, type, min_level, sex) ficam só no SQL da migration.
+model workout_template_slots {
+  days_per_week Int    @db.SmallInt
+  day           Int    @db.SmallInt
+  session_name  String @db.VarChar(50)
+  position      Int    @db.SmallInt
+  muscle_group  String @db.VarChar(100)
+  type          String @db.VarChar(10)
+  min_level     String @db.VarChar(20)
+  sex           String @db.VarChar(5)
+
+  @@id([days_per_week, day, position])
 }
 
 model routine_exercises {
