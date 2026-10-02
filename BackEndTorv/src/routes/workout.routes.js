@@ -3,7 +3,7 @@ const workoutController = require('../controller/workout.controller');
 const authenticateToken = require('../middlewares/auth.middleware');
 const {
   errors, IdParams, RoutineBody, RoutineList, RoutineDetail,
-  ExerciseBody, Exercise, SessionBody, SessionDetail,
+  ExerciseBody, Exercise, SessionBody, SessionDetail, RoutineWeightsBody,
 } = require('./workout.schemas');
 
 const tags = ['Workouts'];
@@ -35,6 +35,14 @@ async function workoutRoutes(fastify) {
       response: { 200: RoutineDetail, ...errors(400, 401, 403, 404) },
     },
   }, workoutController.updateRoutine);
+
+  fastify.patch('/routines/:id/weights', {
+    schema: {
+      description: 'Atualiza só as cargas das séries que ainda batem com a rotina (posição + exercício + nº da série)',
+      tags, security, params: IdParams, body: RoutineWeightsBody,
+      response: { 200: Type.Object({ updated: Type.Integer() }), ...errors(400, 401, 403, 404) },
+    },
+  }, workoutController.updateRoutineWeights);
 
   fastify.delete('/routines/:id', {
     schema: { tags, security, params: IdParams, response: { 204: Type.Null(), ...errors(400, 401, 403, 404) } },

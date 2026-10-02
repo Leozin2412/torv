@@ -10,6 +10,9 @@ const ErrorBody = Type.Object({ error: Type.String() });
 const errors = (...codes) => Object.fromEntries(codes.map((c) => [c, ErrorBody]));
 const IdParams = Type.Object({ id: Uuid });
 const MuscleGroup = Type.Union(MUSCLE_GROUPS.map((g) => Type.Literal(g)));
+// Carga nullable num corpo: type array, não Union. Com coerceTypes o Ajv coage no 1º ramo do anyOf
+// (Number: null→0; Null: 0→null); com type ['number','null'] só coage o que não for nenhum dos dois.
+const Weight = Type.Unsafe({ type: ['number', 'null'], minimum: 0, maximum: 999.99 });
 
 const RoutineBody = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 100 }),
@@ -18,12 +21,7 @@ const RoutineBody = Type.Object({
     reps_min: Type.Integer({ minimum: 1, maximum: 100 }),
     reps_max: Type.Integer({ minimum: 1, maximum: 100 }),
     rest_sec: Type.Integer({ minimum: 0, maximum: 600 }),
-    sets: Type.Array(
-      // type array, não Union: com coerceTypes o Ajv coage no 1º ramo do anyOf (Number: null→0; Null: 0→null).
-      // Com type ['number','null'] só coage o que não for nenhum dos dois.
-      Type.Object({ weight_kg: Type.Unsafe({ type: ['number', 'null'], minimum: 0, maximum: 999.99 }) }),
-      { minItems: 1, maxItems: 10 },
-    ),
+    sets: Type.Array(Type.Object({ weight_kg: Weight }), { minItems: 1, maxItems: 10 }),
   }), { minItems: 1, maxItems: 20 }),
 });
 
@@ -85,6 +83,7 @@ const SessionBody = Type.Object({
     set_number: Type.Integer({ minimum: 1, maximum: 10 }),
     duration_sec: Type.Integer({ minimum: 0, maximum: 3600 }),
     rest_before_sec: Type.Unsafe({ type: ['integer', 'null'], minimum: 0, maximum: 7200 }),
+    weight_kg: Type.Optional(Weight), // ausente (app antigo) → grava null
   }), { minItems: 1, maxItems: 200 }),
 });
 
@@ -99,10 +98,21 @@ const SessionDetail = Type.Object({
     set_number: Type.Integer(),
     duration_sec: Type.Integer(),
     rest_before_sec: Type.Union([Type.Integer(), Type.Null()]),
+    weight_kg: Type.Union([Type.Number(), Type.Null()]),
   })),
+});
+
+// Cargas feitas no treino → rotina. Série que não bate com a rotina atual (posição + exercício + nº) é ignorada.
+const RoutineWeightsBody = Type.Object({
+  sets: Type.Array(Type.Object({
+    position: Type.Integer({ minimum: 1, maximum: 20 }),
+    exercise_id: Uuid,
+    set_number: Type.Integer({ minimum: 1, maximum: 10 }),
+    weight_kg: Weight,
+  }), { minItems: 1, maxItems: 200 }),
 });
 
 module.exports = {
   MUSCLE_GROUPS, errors, IdParams, RoutineBody, RoutineList, RoutineDetail,
-  ExerciseBody, Exercise, SessionBody, SessionDetail,
+  ExerciseBody, Exercise, SessionBody, SessionDetail, RoutineWeightsBody,
 };

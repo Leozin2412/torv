@@ -205,3 +205,37 @@ test('exercícios: lista marca is_custom; criar valida grupo e nome; alheio → 
   assert.equal((await call(app, 'PUT', `/workouts/exercises/${EX}`, { name: 'Y', muscle_group: 'Costas' })).statusCode, 200);
   assert.equal((await call(app, 'DELETE', `/workouts/exercises/${EX}`)).statusCode, 204);
 });
+
+test('PATCH /routines/:id/weights: repassa userId, id e séries (null e 0 intactos); null do repository → 404', async (t) => {
+  const update = t.mock.method(workoutRepository, 'updateRoutineWeights', async () => 3);
+  const app = await build(t);
+  const sets = [
+    { position: 1, exercise_id: EX, set_number: 1, weight_kg: 42.5 },
+    { position: 1, exercise_id: EX, set_number: 2, weight_kg: null },
+    { position: 1, exercise_id: EX, set_number: 3, weight_kg: 0 },
+  ];
+  const res = await call(app, 'PATCH', `/workouts/routines/${ID}/weights`, { sets });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { updated: 3 });
+  assert.deepEqual(update.mock.calls[0].arguments, [USER, ID, sets]);
+  update.mock.mockImplementation(async () => null);
+  assert.equal((await call(app, 'PATCH', `/workouts/routines/${ID}/weights`, { sets })).statusCode, 404);
+});
+
+test('PATCH /routines/:id/weights 400: corpo e id inválidos não chegam ao repository', async (t) => {
+  const update = t.mock.method(workoutRepository, 'updateRoutineWeights', async () => 0);
+  const app = await build(t);
+  const set = { position: 1, exercise_id: EX, set_number: 1, weight_kg: 40 };
+  const { weight_kg, ...noWeight } = set;
+  for (const body of [
+    {}, { sets: [] }, { sets: Array(201).fill(set) },
+    { sets: [{ ...set, position: 0 }] }, { sets: [{ ...set, position: 21 }] },
+    { sets: [{ ...set, set_number: 0 }] }, { sets: [{ ...set, set_number: 11 }] },
+    { sets: [{ ...set, weight_kg: -1 }] }, { sets: [{ ...set, weight_kg: 1000 }] },
+    { sets: [{ ...set, exercise_id: 'nope' }] }, { sets: [noWeight] },
+  ]) {
+    assert.equal((await call(app, 'PATCH', `/workouts/routines/${ID}/weights`, body)).statusCode, 400, JSON.stringify(body).slice(0, 80));
+  }
+  assert.equal((await call(app, 'PATCH', '/workouts/routines/nope/weights', { sets: [set] })).statusCode, 400);
+  assert.equal(update.mock.callCount(), 0);
+});

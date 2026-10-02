@@ -151,6 +151,31 @@ class WorkoutRepository {
     }, TX);
   }
 
+  // Só as séries que ainda batem com a rotina (posição + exercício + nº da série) mudam: rotina editada no
+  // meio do treino não recebe carga no lugar errado. null = rotina não é do usuário.
+  // ponytail: 1 UPDATE por série (≤ 200, em geral poucas); um UPDATE ... FROM (VALUES ...) se pesar.
+  async updateRoutineWeights(userId, routineId, sets) {
+    return prisma.$transaction(async (tx) => {
+      const routine = await tx.workout_routines.findFirst({
+        where: { id: routineId, user_id: userId },
+        select: { routine_exercises: { select: { id: true, position: true, exercise_id: true } } },
+      });
+      if (!routine) return null;
+      const byPosition = new Map(routine.routine_exercises.map((e) => [e.position, e]));
+      let updated = 0;
+      for (const s of sets) {
+        const ex = byPosition.get(s.position);
+        if (!ex || ex.exercise_id !== s.exercise_id) continue;
+        const { count } = await tx.routine_exercise_sets.updateMany({
+          where: { routine_exercise_id: ex.id, set_number: s.set_number },
+          data: { weight_kg: s.weight_kg },
+        });
+        updated += count;
+      }
+      return updated;
+    }, TX);
+  }
+
   async deleteRoutine(userId, id) {
     const { count } = await prisma.workout_routines.deleteMany({ where: { id, user_id: userId } });
     return count > 0;
@@ -218,6 +243,7 @@ class WorkoutRepository {
           set_number: s.set_number,
           duration_sec: s.duration_sec,
           rest_before_sec: s.rest_before_sec,
+          weight_kg: s.weight_kg ?? null,
         })),
       });
       return activity.id;
@@ -234,7 +260,7 @@ class WorkoutRepository {
         duration_sec: true,
         workout_sets: {
           orderBy: [{ position: 'asc' }, { set_number: 'asc' }],
-          select: { exercise_name: true, position: true, set_number: true, duration_sec: true, rest_before_sec: true },
+          select: { exercise_name: true, position: true, set_number: true, duration_sec: true, rest_before_sec: true, weight_kg: true },
         },
       },
     });

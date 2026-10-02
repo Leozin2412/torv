@@ -136,3 +136,37 @@ test('POST /sessions: null fica null, 0 fica 0 (rest_before_sec e routine_id)', 
   }
   assert.equal(create.mock.callCount(), 2);
 });
+
+test('POST /sessions: weight_kg número, 0, null e ausente chegam ao repository; fora da faixa → 400', async (t) => {
+  t.mock.method(workoutRepository, 'findSessionByStart', async () => null);
+  const create = t.mock.method(workoutRepository, 'createSession', async () => ACT);
+  const app = await build(t);
+  const [a, b] = validSession.sets;
+  const sets = [
+    { ...a, weight_kg: 62.5 },
+    { ...b, weight_kg: 0 },
+    { ...b, set_number: 3, weight_kg: null },
+    { ...b, set_number: 4 }, // app antigo: sem o campo
+  ];
+  assert.equal((await call(app, 'POST', '/workouts/sessions', { ...validSession, sets })).statusCode, 201);
+  assert.deepEqual(create.mock.calls[0].arguments[1].sets.map((s) => s.weight_kg), [62.5, 0, null, undefined]);
+  for (const weight_kg of [-1, 1000, '60kg']) {
+    const res = await call(app, 'POST', '/workouts/sessions', { ...validSession, sets: [{ ...a, weight_kg }] });
+    assert.equal(res.statusCode, 400, String(weight_kg));
+  }
+  assert.equal(create.mock.callCount(), 1);
+});
+
+test('GET /sessions/:id: weight_kg Decimal vira número; null fica null', async (t) => {
+  t.mock.method(workoutRepository, 'getSession', async () => ({
+    id: ACT, title: 'Peito', start_time: new Date(startedAt), duration_sec: 3000,
+    workout_sets: [
+      { exercise_name: 'Supino', position: 1, set_number: 1, duration_sec: 40, rest_before_sec: null, weight_kg: '62.50' },
+      { exercise_name: 'Supino', position: 1, set_number: 2, duration_sec: 40, rest_before_sec: 90, weight_kg: null },
+    ],
+  }));
+  const app = await build(t);
+  const res = await call(app, 'GET', `/workouts/sessions/${ACT}`);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json().sets.map((s) => s.weight_kg), [62.5, null]);
+});

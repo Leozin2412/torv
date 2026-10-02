@@ -94,6 +94,11 @@ class WorkoutController {
     return reply.send(routineDetail(await workoutRepository.getRoutine(userId, id)));
   }
 
+  async updateRoutineWeights(request, reply) {
+    const updated = await workoutRepository.updateRoutineWeights(request.user.userId, request.params.id, request.body.sets);
+    return updated === null ? reply.status(404).send(NOT_FOUND) : reply.send({ updated });
+  }
+
   async deleteRoutine(request, reply) {
     const deleted = await workoutRepository.deleteRoutine(request.user.userId, request.params.id);
     return deleted ? reply.status(204).send() : reply.status(404).send(NOT_FOUND);
@@ -160,7 +165,13 @@ class WorkoutController {
   async getSession(request, reply) {
     const s = await workoutRepository.getSession(request.user.userId, request.params.id);
     if (!s) return reply.status(404).send(NOT_FOUND);
-    return reply.send({ id: s.id, title: s.title, start_time: s.start_time.toISOString(), duration_sec: s.duration_sec, sets: s.workout_sets });
+    return reply.send({
+      id: s.id,
+      title: s.title,
+      start_time: s.start_time.toISOString(),
+      duration_sec: s.duration_sec,
+      sets: s.workout_sets.map((w) => ({ ...w, weight_kg: w.weight_kg == null ? null : Number(w.weight_kg) })),
+    });
   }
 }
 
