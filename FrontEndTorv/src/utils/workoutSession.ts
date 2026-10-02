@@ -13,7 +13,8 @@ export interface SessionExercise {
   reps_min: number;
   reps_max: number;
   rest_sec: number;
-  weights: (number | null)[]; // carga de cada série; length = nº de séries
+  weights: (number | null)[]; // carga atual de cada série (muda no treino com setWeight); length = nº de séries
+  planned_weights: (number | null)[]; // carga da rotina no início do treino: base de weightChanges
 }
 
 export interface DoneSet {
@@ -23,6 +24,7 @@ export interface DoneSet {
   duration_sec: number;
   rest_before_sec: number | null; // null na 1ª série do treino
   rest_target_sec: number | null; // alvo desse descanso; só pro resumo (não vai pro servidor)
+  weight_kg: number | null; // carga com que a série foi feita; null = sem carga
 }
 
 export interface SessionState {
@@ -44,6 +46,8 @@ export interface SessionState {
 export const MAX_TOTAL_SEC = 21600;
 export const MAX_SET_SEC = 3600;
 export const MAX_REST_SEC = 7200;
+export const MAX_WEIGHT = 999.99;
+export const WEIGHT_STEP = 2.5;
 
 const secondsBetween = (from: number, to: number) => Math.max(0, Math.round((to - from) / 1000));
 const canSkip = (s: SessionState) => s.phase === 'ready' || s.phase === 'resting';
@@ -60,6 +64,7 @@ export function createSession(routine: RoutineDetail, now: number): SessionState
       reps_max: e.reps_max,
       rest_sec: e.rest_sec,
       weights: e.sets.map((s) => s.weight_kg),
+      planned_weights: e.sets.map((s) => s.weight_kg),
     })),
     started_at: now,
     finished_at: null,
@@ -105,6 +110,7 @@ export function finishSet(s: SessionState, now: number): SessionState {
     duration_sec: secondsBetween(s.phase_started_at, now),
     rest_before_sec: s.pending_rest_sec,
     rest_target_sec: s.pending_rest_sec === null ? null : s.rest_target_sec,
+    weight_kg: ex.weights[s.set_index] ?? null,
   }];
   const next = after(s, s.exercise_index, s.set_index);
   if (!next) return done({ ...s, sets }, now);
@@ -124,6 +130,27 @@ export function skipExercise(s: SessionState, now: number): SessionState {
   const e = s.exercise_index + 1;
   return e < s.exercises.length ? { ...s, exercise_index: e, set_index: 0 } : done(s, now);
 }
+
+// Carga da série atual (a em andamento ou, no descanso, a próxima). Só ela muda: as seguintes continuam
+// com a carga da rotina. Limita a 0–999,99 com 2 casas; NaN (texto inválido) não muda nada.
+export function setWeight(s: SessionState, kg: number | null): SessionState {
+  if (s.phase === 'done' || Number.isNaN(kg)) return s;
+  const value = kg === null ? null : Math.round(Math.min(MAX_WEIGHT, Math.max(0, kg)) * 100) / 100;
+  const ex = s.exercises[s.exercise_index];
+  if (ex.weights[s.set_index] === value) return s;
+  const weights = ex.weights.map((w, i) => (i === s.set_index ? value : w));
+  return { ...s, exercises: s.exercises.map((e, i) => (i === s.exercise_index ? { ...e, weights } : e)) };
+}
+
+// Botões −/+ (passo de 2,5 kg): de 2,5 o "−" vai para sem carga (null); de sem carga o "+" vai para 2,5.
+export function stepWeight(kg: number | null, dir: 1 | -1): number | null {
+  if (kg === null) return dir > 0 ? WEIGHT_STEP : null;
+  const next = Math.round((kg + dir * WEIGHT_STEP) * 100) / 100;
+  return next <= 0 ? null : Math.min(MAX_WEIGHT, next);
+}
+
+// "7,5 kg"; null = "Sem carga".
+export const formatWeight = (kg: number | null) => (kg === null ? 'Sem carga' : `${String(kg).replace('.', ',')} kg`);
 
 // "Finalizar treino": série em andamento conta como feita.
 export function finish(s: SessionState, now: number): SessionState {
@@ -148,8 +175,36 @@ export function toSessionPayload(s: SessionState): SessionPayload {
       set_number: set.set_number,
       duration_sec: Math.min(set.duration_sec, MAX_SET_SEC),
       rest_before_sec: set.rest_before_sec === null ? null : Math.min(set.rest_before_sec, MAX_REST_SEC),
+      weight_kg: set.weight_kg,
     })),
   };
+}
+
+// Rascunho gravado antes da carga por série: sem planned_weights (vira a carga atual) e séries sem weight_kg.
+export const upgradeState = (s: SessionState): SessionState => ({
+  ...s,
+  exercises: s.exercises.map((e) => ({ ...e, planned_weights: e.planned_weights ?? e.weights })),
+  sets: s.sets.map((set) => ({ ...set, weight_kg: set.weight_kg ?? null })),
+});
+
+export interface WeightChange {
+  position: number;
+  exercise_id: string;
+  set_number: number;
+  name: string;
+  from: number | null; // carga da rotina no início do treino
+  to: number | null; // carga feita
+}
+
+// Séries feitas com carga diferente da que a rotina tinha no início do treino (pulada não conta).
+export function weightChanges(s: SessionState): WeightChange[] {
+  if (!s.routine_id) return [];
+  return s.sets.flatMap((set) => {
+    const ex = s.exercises[set.position - 1];
+    const from = ex.planned_weights[set.set_number - 1] ?? null;
+    if (set.weight_kg === from) return [];
+    return [{ position: set.position, exercise_id: set.exercise_id, set_number: set.set_number, name: ex.name, from, to: set.weight_kg }];
+  });
 }
 
 // Modelo único do resumo: treino recém-finalizado (rascunho) ou do histórico (servidor).
@@ -160,14 +215,14 @@ export interface SummaryView {
   avg_rest_sec: number | null;
   groups: {
     name: string;
-    sets: { set_number: number; duration_sec: number; rest_before_sec: number | null; overdue: boolean }[];
+    sets: { set_number: number; duration_sec: number; rest_before_sec: number | null; overdue: boolean; weight_kg: number | null }[];
   }[];
 }
 
 function buildSummary(
   title: string,
   total_sec: number,
-  sets: { position: number; name: string; set_number: number; duration_sec: number; rest_before_sec: number | null; overdue: boolean }[],
+  sets: { position: number; name: string; set_number: number; duration_sec: number; rest_before_sec: number | null; overdue: boolean; weight_kg: number | null }[],
 ): SummaryView {
   const rests = sets.map((s) => s.rest_before_sec).filter((r): r is number => r !== null);
   const groups: SummaryView['groups'] = [];
@@ -194,6 +249,7 @@ export const summaryFromState = (s: SessionState) =>
     duration_sec: set.duration_sec,
     rest_before_sec: set.rest_before_sec,
     overdue: set.rest_before_sec !== null && set.rest_target_sec !== null && set.rest_before_sec > set.rest_target_sec,
+    weight_kg: set.weight_kg,
   })));
 
 // Histórico não guarda o alvo do descanso: nada fica em vermelho.
@@ -205,4 +261,5 @@ export const summaryFromDetail = (d: SessionDetail) =>
     duration_sec: set.duration_sec,
     rest_before_sec: set.rest_before_sec,
     overdue: false,
+    weight_kg: set.weight_kg ?? null, // treino anterior à carga por série: null
   })));

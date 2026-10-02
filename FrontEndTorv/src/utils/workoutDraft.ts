@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { SessionState } from './workoutSession';
+import { upgradeState, type SessionState } from './workoutSession';
 
 // Treino em andamento salvo no aparelho, por usuário. Sai após o servidor confirmar o
 // POST /workouts/sessions, ao descartar e no logout (AuthContext).
@@ -9,7 +9,7 @@ export async function loadDraft(userId: string): Promise<SessionState | null> {
   const raw = await AsyncStorage.getItem(key(userId));
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as SessionState;
+    return upgradeState(JSON.parse(raw) as SessionState);
   } catch {
     await AsyncStorage.removeItem(key(userId));
     return null;

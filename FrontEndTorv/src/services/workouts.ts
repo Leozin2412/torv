@@ -79,6 +79,7 @@ export interface SessionPayload {
     set_number: number;
     duration_sec: number;
     rest_before_sec: number | null;
+    weight_kg: number | null;
   }[];
 }
 
@@ -93,7 +94,16 @@ export interface SessionDetail {
     set_number: number;
     duration_sec: number;
     rest_before_sec: number | null;
+    weight_kg: number | null;
   }[];
+}
+
+// PATCH /workouts/routines/:id/weights: série que não bate com a rotina atual (posição + exercício + nº) é ignorada.
+export interface RoutineWeightUpdate {
+  position: number;
+  exercise_id: string;
+  set_number: number;
+  weight_kg: number | null;
 }
 
 export const workoutsApi = {
@@ -102,6 +112,8 @@ export const workoutsApi = {
   createRoutine: (body: RoutineInput) => api.post<RoutineDetail>('/workouts/routines', body).then((r) => r.data),
   updateRoutine: (id: string, body: RoutineInput) => api.put<RoutineDetail>(`/workouts/routines/${id}`, body).then((r) => r.data),
   deleteRoutine: (id: string) => api.delete(`/workouts/routines/${id}`),
+  updateRoutineWeights: (id: string, sets: RoutineWeightUpdate[]) =>
+    api.patch<{ updated: number }>(`/workouts/routines/${id}/weights`, { sets }).then((r) => r.data.updated),
   acceptPlan: () => api.post<RoutineList>('/workouts/plan/accept', {}).then((r) => r.data),
   dismissPlan: () => api.post('/workouts/plan/dismiss', {}),
   listExercises: () => api.get<{ exercises: Exercise[] }>('/workouts/exercises').then((r) => r.data.exercises),
