@@ -1,0 +1,55 @@
+// Filtro de período do Histórico. Os limites saem no fuso do aparelho (o mesmo do agrupamento por dia)
+// e viram ISO para o GET /activities: from inclusivo, before exclusivo.
+
+export type Period =
+  | { kind: 'all' }
+  | { kind: 'days'; days: number } // hoje + os (days - 1) dias anteriores
+  | { kind: 'months'; months: number } // do mesmo dia, N meses atrás
+  | { kind: 'custom'; start: string; end: string }; // YYYY-MM-DD, os dois dias inclusos
+
+export const PERIOD_PRESETS: { label: string; period: Period }[] = [
+  { label: 'Tudo', period: { kind: 'all' } },
+  { label: '7 dias', period: { kind: 'days', days: 7 } },
+  { label: '30 dias', period: { kind: 'days', days: 30 } },
+  { label: '3 meses', period: { kind: 'months', months: 3 } },
+];
+
+// Chave estável para comparar filtros (o mesmo período em objetos diferentes = mesma chave).
+export function periodKey(p: Period): string {
+  switch (p.kind) {
+    case 'all': return 'all';
+    case 'days': return `days:${p.days}`;
+    case 'months': return `months:${p.months}`;
+    case 'custom': return `custom:${p.start}:${p.end}`;
+  }
+}
+
+// Sem import do utils/date: o node --test só resolve import de .ts com extensão, e o tsc do app não aceita a extensão.
+const ymd = (iso: string) => iso.split('-').map(Number);
+
+export function periodRange(p: Period, now: Date): { from?: string; before?: string } {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const d = now.getDate();
+  switch (p.kind) {
+    case 'all':
+      return {};
+    case 'days':
+      return { from: new Date(y, m, d - (p.days - 1)).toISOString() };
+    case 'months': {
+      // 31/05 − 3 meses = 28/02 (ou 29), não 03/03.
+      const lastDay = new Date(y, m - p.months + 1, 0).getDate();
+      return { from: new Date(y, m - p.months, Math.min(d, lastDay)).toISOString() };
+    }
+    case 'custom': {
+      const [sy, sm, sd] = ymd(p.start);
+      const [ey, em, ed] = ymd(p.end);
+      return { from: new Date(sy, sm - 1, sd).toISOString(), before: new Date(ey, em - 1, ed + 1).toISOString() };
+    }
+  }
+}
+
+const dayMonth = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
+// Rótulo do chip "Personalizado" depois de escolher: "12/09 – 30/09".
+export const customLabel = (p: { start: string; end: string }) => `${dayMonth(p.start)} – ${dayMonth(p.end)}`;
