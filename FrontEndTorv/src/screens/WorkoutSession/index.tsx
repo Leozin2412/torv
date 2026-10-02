@@ -1,17 +1,18 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
-import { X, SkipForward, ChevronsRight } from 'lucide-react-native';
+import { X, SkipForward, ChevronsRight, Minus, Plus } from 'lucide-react-native';
 
 import { Button } from '../../components/Button';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import { workoutsApi } from '../../services/workouts';
 import {
-  createSession, startSet, finishSet, skipSet, skipExercise, finish,
-  totalElapsedSec, phaseElapsedSec, isRestOverdue, type SessionState,
+  createSession, startSet, finishSet, skipSet, skipExercise, finish, setWeight, stepWeight, formatWeight,
+  totalElapsedSec, phaseElapsedSec, isRestOverdue, MAX_WEIGHT, type SessionState,
 } from '../../utils/workoutSession';
+import { parseWeight } from '../../utils/routineForm';
 import { formatClock } from '../../utils/clock';
 import { loadDraft, saveDraft, clearDraft } from '../../utils/workoutDraft';
 import type { AppNavigation, AppStackParamList } from '../../routes/types';
@@ -29,6 +30,7 @@ export default function WorkoutSession() {
   const [now, setNow] = useState(Date.now());
   const [error, setError] = useState('');
   const [confirmFinish, setConfirmFinish] = useState(false);
+  const [weightText, setWeightText] = useState<string | null>(null); // digitando a carga; null = mostrando o valor
 
   // Carrega o rascunho (Continuar) ou começa a rotina do zero, sobrescrevendo qualquer rascunho.
   useEffect(() => {
@@ -74,6 +76,14 @@ export default function WorkoutSession() {
     // O resumo lê o rascunho: grava antes de navegar.
     await saveDraft(userId, next).catch(() => {});
     if (next.phase === 'done') navigation.replace('WorkoutSummary', {});
+  };
+
+  // Cada texto válido já vale (o rascunho grava): sair do campo, ou tocar em "Terminei a série" com ele
+  // aberto, não perde nada. Texto inválido ("7,", "abc") só não muda a carga.
+  const typeWeight = (text: string) => {
+    setWeightText(text);
+    const kg = parseWeight(text);
+    if (!Number.isNaN(kg)) apply((s) => setWeight(s, kg));
   };
 
   const discard = async () => {
@@ -142,9 +152,53 @@ export default function WorkoutSession() {
           <Text style={styles.exerciseGroup}>{exercise.muscle_group}</Text>
           <Text style={styles.exerciseName}>{exercise.name}</Text>
           <Text style={styles.setInfo}>Série {state.set_index + 1} de {exercise.weights.length}</Text>
-          <View style={styles.targets}>
-            <Text style={styles.target}>{exercise.reps_min}–{exercise.reps_max} reps</Text>
-            <Text style={styles.target}>{weight === null ? 'Sem carga' : `${weight} kg`}</Text>
+          <Text style={styles.target}>{exercise.reps_min}–{exercise.reps_max} reps</Text>
+
+          <View style={styles.weightRow}>
+            <TouchableOpacity
+              style={[styles.weightStep, weight === null && styles.weightStepDisabled]}
+              onPress={() => apply((s) => setWeight(s, stepWeight(weight, -1)))}
+              disabled={weight === null}
+              accessibilityRole="button"
+              accessibilityLabel="Diminuir carga em 2,5 kg"
+            >
+              <Minus color={colors.text} size={20} />
+            </TouchableOpacity>
+            {weightText === null ? (
+              <TouchableOpacity
+                style={styles.weightValue}
+                onPress={() => setWeightText(weight === null ? '' : String(weight).replace('.', ','))}
+                accessibilityRole="button"
+                accessibilityLabel={`Carga desta série: ${formatWeight(weight)}. Toque para digitar`}
+              >
+                <Text style={styles.weightText}>{formatWeight(weight)}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TextInput
+                style={[styles.weightValue, styles.weightInput]}
+                value={weightText}
+                onChangeText={typeWeight}
+                onBlur={() => setWeightText(null)}
+                onSubmitEditing={() => setWeightText(null)}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                autoFocus
+                selectTextOnFocus
+                maxLength={6}
+                placeholder="Sem carga"
+                placeholderTextColor={colors.textSecondary}
+                accessibilityLabel="Carga desta série em kg"
+              />
+            )}
+            <TouchableOpacity
+              style={[styles.weightStep, weight === MAX_WEIGHT && styles.weightStepDisabled]}
+              onPress={() => apply((s) => setWeight(s, stepWeight(weight, 1)))}
+              disabled={weight === MAX_WEIGHT}
+              accessibilityRole="button"
+              accessibilityLabel="Aumentar carga em 2,5 kg"
+            >
+              <Plus color={colors.text} size={20} />
+            </TouchableOpacity>
           </View>
         </View>
 
