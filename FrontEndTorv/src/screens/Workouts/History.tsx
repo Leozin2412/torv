@@ -38,6 +38,7 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
   const loadFirst = async (filter: ActivityType | undefined, refresh = false) => {
     const id = ++request.current;
     offset.current = 0;
+    loadedType.current = null; // carga em andamento invalida o atalho do foco (troca rápida A→B→A)
     if (refresh) setRefreshing(true);
     else setStatus('loading');
     try {
