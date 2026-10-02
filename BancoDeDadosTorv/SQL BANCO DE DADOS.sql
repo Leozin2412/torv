@@ -8,6 +8,7 @@
 --   20260925210000_revoke_global_function_execute - tira o EXECUTE global de PUBLIC em functions novas (ver Gestao_e_Performance.sql, passo 1.3)
 --   20260930200000_workout_module      - módulo de treinos: catálogo + exercícios próprios, rotinas com séries, treinos finalizados (workout_sets)
 --   20261001150000_workout_generator_rules - regras do gerador de treino no banco (type/min_level/catalog_order + workout_template_slots)
+--   20261002120000_loads_welcome       - carga por série (workout_sets.weight_kg) e boas-vindas (user_profiles.welcomed_at)
 -- CHECKs ficam em "Regras BD.sql"; RLS e índices não-únicos em Gestao_e_Performance.sql.
 -- This file has no runtime effect; it exists for readability/presentation only.
 -- No CREATE DATABASE / USE statement here: Supabase already scopes a project to
@@ -36,7 +37,9 @@ CREATE TABLE user_profiles (
     -- basis (nível, objetivos, sexo) da última geração/aceite do plano de treino
     -- default; comparar com o perfil atual gera a sugestão de novo plano.
     -- NULL = plano default nunca gerado.
-    workout_plan_basis JSONB
+    workout_plan_basis JSONB,
+    -- momento em que a pessoa viu a mensagem de boas-vindas; NULL = ainda não viu
+    welcomed_at TIMESTAMPTZ
 );
 
 -- Os CHECKs abaixo saíram do antigo authController.register e viraram regra do
@@ -160,7 +163,7 @@ CREATE TABLE routine_exercise_sets (
     weight_kg DECIMAL(6,2)
 );
 
--- Séries de um treino finalizado (activities.activity_type = 'STRENGTH'). Só tempos;
+-- Séries de um treino finalizado (activities.activity_type = 'STRENGTH'): tempos e carga;
 -- exercise_name é cópia do nome no momento do treino (sobrevive ao exercício apagado).
 CREATE TABLE workout_sets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -170,7 +173,8 @@ CREATE TABLE workout_sets (
     position INT NOT NULL,
     set_number INT NOT NULL,
     duration_sec INT NOT NULL,
-    rest_before_sec INT
+    rest_before_sec INT,
+    weight_kg DECIMAL(6,2) -- NULL = sem carga (ou treino anterior a 20261002120000_loads_welcome)
 );
 
 -- Aba Sessoes do gerador de treino: os slots do plano default por frequência

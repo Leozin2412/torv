@@ -40,6 +40,8 @@ model user_profiles {
   gender        String?   @db.VarChar(50)
   // basis {fitness_level, goals, gender} da última geração/decisão do plano default; NULL = nunca gerado
   workout_plan_basis Json? @db.JsonB
+  // NULL = ainda não viu a mensagem de boas-vindas
+  welcomed_at   DateTime? @db.Timestamptz
 
   user          users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
@@ -217,6 +219,7 @@ model workout_sets {
   set_number      Int
   duration_sec    Int
   rest_before_sec Int?
+  weight_kg       Decimal?   @db.Decimal(6, 2)
 
   activity        activities @relation(fields: [activity_id], references: [id], onDelete: Cascade)
   exercise        exercises? @relation(fields: [exercise_id], references: [id], onDelete: SetNull)

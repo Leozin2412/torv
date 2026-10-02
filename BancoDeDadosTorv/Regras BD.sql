@@ -329,6 +329,9 @@ ALTER TABLE routine_exercise_sets ADD CONSTRAINT routine_exercise_sets_weight_kg
 ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_duration_sec_check CHECK (duration_sec BETWEEN 0 AND 3600);
 ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_rest_before_sec_check CHECK (rest_before_sec IS NULL OR rest_before_sec BETWEEN 0 AND 7200);
 
+--Carga por série (20261002120000_loads_welcome)
+ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_weight_kg_check CHECK (weight_kg IS NULL OR weight_kg BETWEEN 0 AND 999.99);
+
 --Slots do gerador de treino (20261001150000_workout_generator_rules)
 ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_day_check CHECK (day BETWEEN 1 AND days_per_week);
 ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_position_check CHECK (position >= 1);
