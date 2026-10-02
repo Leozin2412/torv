@@ -12,6 +12,8 @@ interface InputProps extends TextInputProps {
 export const Input: React.FC<InputProps> = ({ label, error, style, ...rest }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [visible, setVisible] = useState(false);
+  // Senha oculta com texto: fonte do sistema, que desenha bolinhas. Na Sora o "•" da máscara é um quadrado.
+  const masked = !!rest.secureTextEntry && !visible && !!rest.value;
 
   return (
     <View style={styles.container}>
@@ -24,6 +26,7 @@ export const Input: React.FC<InputProps> = ({ label, error, style, ...rest }) =>
             error ? { borderColor: colors.error } : null,
             rest.secureTextEntry ? styles.inputWithToggle : null,
             style,
+            masked && styles.inputMasked,
           ]}
           placeholderTextColor={colors.textSecondary}
           onFocus={(e) => {

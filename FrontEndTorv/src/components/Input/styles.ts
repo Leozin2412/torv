@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { colors, radius, fontFamily } from '../../theme/tokens';
 
 export const styles = StyleSheet.create({
@@ -25,6 +25,11 @@ export const styles = StyleSheet.create({
   },
   inputWithToggle: {
     paddingRight: 48,
+  },
+  // Nome explícito: no web o react-native-web traduz 'System' para a pilha de fontes do sistema
+  // (undefined seria ignorado e a Sora continuaria).
+  inputMasked: {
+    fontFamily: Platform.select({ android: 'sans-serif', default: 'System' }),
   },
   toggle: {
     position: 'absolute',
