@@ -30,6 +30,7 @@ async function profileRoutes(fastify) {
         followers: Type.Number(),
         following: Type.Number(),
         total_workouts: Type.Number(),
+        welcome_pending: Type.Boolean(),
       }),
       404: Type.Object({ error: Type.String() }),
       500: Type.Object({ error: Type.String() }),
@@ -37,6 +38,15 @@ async function profileRoutes(fastify) {
   };
 
   fastify.get('/', { schema: getProfileSchema }, profileController.getProfile);
+
+  fastify.post('/welcome', {
+    schema: {
+      description: 'Marca a mensagem de boas-vindas como vista. Idempotente: só a 1ª chamada grava o horário',
+      tags: ['Profile'],
+      security: [{ bearerAuth: [] }],
+      response: { 204: Type.Null() },
+    },
+  }, profileController.markWelcomed);
 
   const uploadPhotoSchema = {
     description: 'Faz upload de uma nova foto de perfil (multipart/form-data, campo "photo")',

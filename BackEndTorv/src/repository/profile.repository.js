@@ -25,6 +25,11 @@ class ProfileRepository {
     };
   }
 
+  // Só a 1ª vez grava: repetir não muda o horário.
+  async markWelcomed(userId) {
+    await prisma.user_profiles.updateMany({ where: { user_id: userId, welcomed_at: null }, data: { welcomed_at: new Date() } });
+  }
+
   async updatePhotoUrl(userId, photoUrl) {
     return await prisma.user_profiles.update({
       where: { user_id: userId },

@@ -61,12 +61,18 @@ class ProfileController {
         followers: 0,
         following: 0,
         total_workouts: user.workout_counts.total,
+        welcome_pending: profile.welcomed_at == null,
       });
     } catch (error) {
       request.log.error(error);
       console.error(error);
       reply.status(500).send({ error: 'Internal server error fetching profile' });
     }
+  }
+
+  async markWelcomed(request, reply) {
+    await profileRepository.markWelcomed(request.user.userId);
+    return reply.status(204).send();
   }
 
   async uploadPhoto(request, reply) {
