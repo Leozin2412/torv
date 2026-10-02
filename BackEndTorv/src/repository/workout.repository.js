@@ -1,4 +1,5 @@
 const { randomUUID } = require('node:crypto');
+const { Prisma } = require('@prisma/client');
 const prisma = require('../lib/prisma');
 
 // Transação interativa + createMany com ids gerados aqui: nested create faria 1 INSERT por linha
@@ -151,29 +152,25 @@ class WorkoutRepository {
     }, TX);
   }
 
-  // Só as séries que ainda batem com a rotina (posição + exercício + nº da série) mudam: rotina editada no
-  // meio do treino não recebe carga no lugar errado. null = rotina não é do usuário.
-  // ponytail: 1 UPDATE por série (≤ 200, em geral poucas); um UPDATE ... FROM (VALUES ...) se pesar.
+  // Um UPDATE só (cada ida ao banco custa ~200 ms; 1 por série estourava o timeout com rotina grande).
+  // Muda a série que ainda bate com a rotina atual (posição + exercício + nº da série): rotina editada no meio
+  // do treino não recebe carga no lugar errado. O dono também vai no WHERE. null = rotina não é do usuário.
   async updateRoutineWeights(userId, routineId, sets) {
-    return prisma.$transaction(async (tx) => {
-      const routine = await tx.workout_routines.findFirst({
-        where: { id: routineId, user_id: userId },
-        select: { routine_exercises: { select: { id: true, position: true, exercise_id: true } } },
-      });
-      if (!routine) return null;
-      const byPosition = new Map(routine.routine_exercises.map((e) => [e.position, e]));
-      let updated = 0;
-      for (const s of sets) {
-        const ex = byPosition.get(s.position);
-        if (!ex || ex.exercise_id !== s.exercise_id) continue;
-        const { count } = await tx.routine_exercise_sets.updateMany({
-          where: { routine_exercise_id: ex.id, set_number: s.set_number },
-          data: { weight_kg: s.weight_kg },
-        });
-        updated += count;
-      }
-      return updated;
-    }, TX);
+    const routine = await prisma.workout_routines.findFirst({ where: { id: routineId, user_id: userId }, select: { id: true } });
+    if (!routine) return null;
+    const values = sets.map((s) => Prisma.sql`(${s.position}::int, ${s.exercise_id}::uuid, ${s.set_number}::int, ${s.weight_kg}::numeric)`);
+    return prisma.$executeRaw(Prisma.sql`
+      UPDATE routine_exercise_sets AS rs
+      SET weight_kg = v.weight_kg
+      FROM routine_exercises AS re, workout_routines AS wr,
+        (VALUES ${Prisma.join(values)}) AS v(position, exercise_id, set_number, weight_kg)
+      WHERE rs.routine_exercise_id = re.id
+        AND re.routine_id = wr.id
+        AND wr.id = ${routineId}::uuid
+        AND wr.user_id = ${userId}::uuid
+        AND re.position = v.position
+        AND re.exercise_id = v.exercise_id
+        AND rs.set_number = v.set_number`);
   }
 
   async deleteRoutine(userId, id) {
