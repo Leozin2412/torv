@@ -20,10 +20,19 @@ export const styles = StyleSheet.create({
   statLabel: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 12, marginTop: 2, textAlign: 'center' },
   groupName: { color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 16, marginBottom: 8 },
   setRow: { flexDirection: 'row', alignItems: 'center', minHeight: 40, borderTopWidth: 1, borderTopColor: colors.border },
-  setLabel: { flex: 1, color: colors.textMuted, fontFamily: fontFamily.regular, fontSize: 14 },
+  // Rótulo e carga empilhados: em 320 px não cabe "Série 1 · 62,5 kg" ao lado da duração e do descanso.
+  setLabelBox: { flex: 1, paddingVertical: 6 },
+  setLabel: { color: colors.textMuted, fontFamily: fontFamily.regular, fontSize: 14 },
+  setWeight: { color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 13, marginTop: 1, fontVariant: ['tabular-nums'] },
   setValue: { width: 56, color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 14, textAlign: 'right', fontVariant: ['tabular-nums'] },
   restValue: { width: 116, color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13, textAlign: 'right', fontVariant: ['tabular-nums'] },
   // Mesmo vermelho da sessão, em negrito pra não depender só da cor.
   overdue: { color: colors.error, fontFamily: fontFamily.semiBold },
   error: { color: colors.error, fontFamily: fontFamily.semiBold, fontSize: 14, textAlign: 'center' },
+
+  changes: { gap: 10, borderWidth: 1, borderColor: colors.brand },
+  changesTitle: { color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 16 },
+  changeItem: { color: colors.textMuted, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20, fontVariant: ['tabular-nums'] },
+  changesOk: { color: colors.brand, fontFamily: fontFamily.semiBold, fontSize: 14 },
+  changesNote: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14 },
 });

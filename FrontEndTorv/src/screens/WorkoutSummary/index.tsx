@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
@@ -9,7 +9,9 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { AuthContext } from '../../contexts/AuthContext';
 import { workoutsApi } from '../../services/workouts';
-import { summaryFromDetail, summaryFromState, toSessionPayload, type SessionState, type SummaryView } from '../../utils/workoutSession';
+import {
+  summaryFromDetail, summaryFromState, toSessionPayload, weightChanges, formatWeight, type SessionState, type SummaryView,
+} from '../../utils/workoutSession';
 import { formatClock } from '../../utils/clock';
 import { loadDraft, clearDraft } from '../../utils/workoutDraft';
 import type { AppNavigation, AppStackParamList } from '../../routes/types';
@@ -18,6 +20,8 @@ import { styles } from './styles';
 
 // saving → saved | retry (rede/5xx: rascunho fica) | invalid (400: só descartar) | history (vindo do Perfil)
 type Status = 'loading' | 'saving' | 'saved' | 'retry' | 'invalid' | 'history' | 'missing';
+// Card "Cargas diferentes da rotina": stale = rotina mudou e nada bateu; gone = rotina apagada (404).
+type WeightsStatus = 'idle' | 'saving' | 'done' | 'stale' | 'gone' | 'error' | 'kept';
 
 export default function WorkoutSummary() {
   const navigation = useNavigation<AppNavigation>();
@@ -27,6 +31,9 @@ export default function WorkoutSummary() {
   const [summary, setSummary] = useState<SummaryView | null>(null);
   const [draft, setDraft] = useState<SessionState | null>(null);
   const [status, setStatus] = useState<Status>('loading');
+  const [weightsStatus, setWeightsStatus] = useState<WeightsStatus>('idle');
+  // Do estado da tela: o clearDraft depois do save não apaga o card.
+  const changes = useMemo(() => (draft ? weightChanges(draft) : []), [draft]);
 
   const save = async (state: SessionState) => {
     if (!userId) return;
@@ -62,6 +69,20 @@ export default function WorkoutSummary() {
       save(state);
     })();
   }, [sessionId, userId]);
+
+  const updateRoutineWeights = async () => {
+    if (!draft) return;
+    setWeightsStatus('saving');
+    try {
+      const updated = await workoutsApi.updateRoutineWeights(
+        draft.routine_id,
+        changes.map(({ position, exercise_id, set_number, to }) => ({ position, exercise_id, set_number, weight_kg: to })),
+      );
+      setWeightsStatus(updated > 0 ? 'done' : 'stale');
+    } catch (error) {
+      setWeightsStatus(axios.isAxiosError(error) && error.response?.status === 404 ? 'gone' : 'error');
+    }
+  };
 
   const discard = async () => {
     if (userId) await clearDraft(userId);
@@ -120,12 +141,40 @@ export default function WorkoutSummary() {
           </View>
         </View>
 
+        {status === 'saved' && changes.length > 0 && weightsStatus !== 'kept' && (
+          <Card style={styles.changes}>
+            <Text style={styles.changesTitle}>Cargas diferentes da rotina</Text>
+            {changes.map((c) => (
+              <Text key={`${c.position}-${c.set_number}`} style={styles.changeItem}>
+                {c.name} · série {c.set_number}: {formatWeight(c.from)} → {formatWeight(c.to)}
+              </Text>
+            ))}
+            {weightsStatus === 'done' && <Text style={styles.changesOk}>Rotina atualizada</Text>}
+            {weightsStatus === 'stale' && <Text style={styles.changesNote}>A rotina mudou e as cargas não foram aplicadas.</Text>}
+            {weightsStatus === 'gone' && <Text style={styles.changesNote}>Essa rotina não existe mais.</Text>}
+            {weightsStatus === 'error' && <Text style={styles.error}>Não foi possível atualizar.</Text>}
+            {(weightsStatus === 'idle' || weightsStatus === 'saving' || weightsStatus === 'error') && (
+              <>
+                <Button
+                  title={weightsStatus === 'error' ? 'Tentar de novo' : 'Atualizar rotina'}
+                  loading={weightsStatus === 'saving'}
+                  onPress={updateRoutineWeights}
+                />
+                <Button title="Manter" outline disabled={weightsStatus === 'saving'} onPress={() => setWeightsStatus('kept')} />
+              </>
+            )}
+          </Card>
+        )}
+
         {summary.groups.map((g, gi) => (
           <Card key={`${g.name}-${gi}`}>
             <Text style={styles.groupName}>{g.name}</Text>
             {g.sets.map((s) => (
               <View key={s.set_number} style={styles.setRow}>
-                <Text style={styles.setLabel}>Série {s.set_number}</Text>
+                <View style={styles.setLabelBox}>
+                  <Text style={styles.setLabel}>Série {s.set_number}</Text>
+                  {s.weight_kg !== null && <Text style={styles.setWeight}>{formatWeight(s.weight_kg)}</Text>}
+                </View>
                 <Text style={styles.setValue}>{formatClock(s.duration_sec)}</Text>
                 <Text style={[styles.restValue, s.overdue && styles.overdue]}>
                   {s.rest_before_sec === null ? '—' : `descanso ${formatClock(s.rest_before_sec)}`}
