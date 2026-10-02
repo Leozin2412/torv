@@ -5,7 +5,10 @@ const MUSCLE_GROUPS = [
   'Posterior de coxa', 'Glúteos', 'Panturrilha', 'Abdômen', 'Lombar', 'Antebraço',
 ];
 
-const Uuid = Type.String({ format: 'uuid' });
+// O format 'uuid' do Ajv aceita o prefixo 'urn:uuid:', que o Prisma aceita mas o ::uuid do SQL cru (PATCH weights)
+// não (500). O pattern recusa o prefixo; o format fica pela documentação OpenAPI.
+const UUID_PATTERN = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
+const Uuid = Type.String({ format: 'uuid', pattern: UUID_PATTERN });
 const ErrorBody = Type.Object({ error: Type.String() });
 const errors = (...codes) => Object.fromEntries(codes.map((c) => [c, ErrorBody]));
 const IdParams = Type.Object({ id: Uuid });
@@ -74,7 +77,7 @@ const Exercise = Type.Object({
 
 // Nullable em corpo: type array, não Union (coerceTypes coage o null no 1º ramo; ver weight_kg acima).
 const SessionBody = Type.Object({
-  routine_id: Type.Optional(Type.Unsafe({ type: ['string', 'null'], format: 'uuid' })),
+  routine_id: Type.Optional(Type.Unsafe({ type: ['string', 'null'], format: 'uuid', pattern: UUID_PATTERN })),
   started_at: Type.String({ format: 'date-time' }),
   duration_sec: Type.Integer({ minimum: 1, maximum: 21600 }),
   sets: Type.Array(Type.Object({

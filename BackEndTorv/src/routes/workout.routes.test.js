@@ -232,10 +232,12 @@ test('PATCH /routines/:id/weights 400: corpo e id inválidos não chegam ao repo
     { sets: [{ ...set, position: 0 }] }, { sets: [{ ...set, position: 21 }] },
     { sets: [{ ...set, set_number: 0 }] }, { sets: [{ ...set, set_number: 11 }] },
     { sets: [{ ...set, weight_kg: -1 }] }, { sets: [{ ...set, weight_kg: 1000 }] },
-    { sets: [{ ...set, exercise_id: 'nope' }] }, { sets: [noWeight] },
+    { sets: [{ ...set, exercise_id: 'nope' }] }, { sets: [{ ...set, exercise_id: `urn:uuid:${EX}` }] }, { sets: [noWeight] },
   ]) {
     assert.equal((await call(app, 'PATCH', `/workouts/routines/${ID}/weights`, body)).statusCode, 400, JSON.stringify(body).slice(0, 80));
   }
   assert.equal((await call(app, 'PATCH', '/workouts/routines/nope/weights', { sets: [set] })).statusCode, 400);
+  // urn:uuid: passa no format do Ajv mas quebra o ::uuid do SQL cru (era 500).
+  assert.equal((await call(app, 'PATCH', `/workouts/routines/urn:uuid:${ID}/weights`, { sets: [set] })).statusCode, 400);
   assert.equal(update.mock.callCount(), 0);
 });

@@ -90,6 +90,8 @@ test('POST /sessions 400: limites e datas', async (t) => {
     { sets: [{ ...set, rest_before_sec: 7201 }] },
     { sets: [{ ...set, exercise_id: 'nope' }] },
     { routine_id: 'nope' },
+    { routine_id: `urn:uuid:${ID}` },
+    { sets: [{ ...set, exercise_id: `urn:uuid:${EX}` }] },
   ];
   for (const override of bad) {
     const res = await call(app, 'POST', '/workouts/sessions', { ...validSession, ...override });
