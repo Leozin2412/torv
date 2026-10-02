@@ -11,6 +11,7 @@ interface Profile {
   goal?: string;
   photo_url?: string;
   goalCalories?: number;
+  welcome_pending?: boolean; // true até a pessoa fechar a mensagem de boas-vindas
 }
 
 export interface RegisterPayload {
@@ -34,6 +35,7 @@ interface AuthContextData {
   // Resolves to true when the account needs e-mail confirmation before login.
   register: (payload: RegisterPayload) => Promise<boolean>;
   logout: () => Promise<void>;
+  dismissWelcome: () => void;
 }
 
 export const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -105,8 +107,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
   };
 
+  // Fecha na hora; o POST é melhor-esforço: se falhar, a mensagem volta no próximo login.
+  const dismissWelcome = () => {
+    setUser((current) => (current ? { ...current, welcome_pending: false } : current));
+    api.post('/profile/welcome', {}).catch(() => {});
+  };
+
   return (
-    <AuthContext.Provider value={{ signed, user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ signed, user, loading, login, register, logout, dismissWelcome }}>
       {children}
     </AuthContext.Provider>
   );

@@ -8,6 +8,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ProgressBar } from '../../components/ProgressBar';
 import { Card } from '../../components/Card';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { WelcomeModal } from '../../components/WelcomeModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import { workoutsApi, type RoutineSummary } from '../../services/workouts';
@@ -18,7 +19,7 @@ import { styles } from './styles';
 
 export default function Home() {
   const navigation = useNavigation<AppNavigation>();
-  const { user } = useContext(AuthContext);
+  const { user, dismissWelcome } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [consumed, setConsumed] = useState(0);
@@ -300,6 +301,7 @@ export default function Home() {
         onConfirm={startNext}
         onCancel={() => setConfirmRepeat(false)}
       />
+      <WelcomeModal visible={!!user?.welcome_pending} name={user?.name} onClose={dismissWelcome} />
     </SafeAreaView>
   );
 }
