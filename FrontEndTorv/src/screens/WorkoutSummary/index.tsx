@@ -1,9 +1,9 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import axios from 'axios';
-import { CheckCircle2 } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle2 } from 'lucide-react-native';
 
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
@@ -68,9 +68,19 @@ export default function WorkoutSummary() {
     navigation.popTo('Tabs', { screen: 'Workouts' });
   };
 
+  // Modo histórico (veio do Histórico ou do Perfil): seta para voltar, também carregando e em "não encontrado".
+  const backHeader = sessionId ? (
+    <View style={styles.header}>
+      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Voltar">
+        <ArrowLeft color={colors.error} size={26} />
+      </TouchableOpacity>
+    </View>
+  ) : null;
+
   if (status === 'loading' || !summary) {
     return (
       <SafeAreaView style={styles.container}>
+        {backHeader}
         {status === 'missing' ? (
           <View style={styles.centered}>
             <Text style={styles.muted}>Treino não encontrado.</Text>
@@ -85,7 +95,8 @@ export default function WorkoutSummary() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      {backHeader}
+      <ScrollView contentContainerStyle={[styles.scroll, !!sessionId && styles.scrollUnderHeader]}>
         {status === 'saved' && (
           <View style={styles.hero}>
             <CheckCircle2 color={colors.brand} size={40} />

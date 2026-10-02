@@ -7,6 +7,10 @@ export const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', padding: 24, gap: 16 },
   muted: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 15, textAlign: 'center' },
   scroll: { paddingHorizontal: 20, paddingTop: 32, paddingBottom: 48, gap: 12 },
+  // Seta de voltar (modo histórico): alvo de 44 px; o padding alinha o traço da seta com o texto (20 px).
+  header: { paddingHorizontal: 8, paddingTop: 8 },
+  back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  scrollUnderHeader: { paddingTop: 8 },
   hero: { alignItems: 'center', gap: 8, marginBottom: 8 },
   heroTitle: { color: colors.brand, fontFamily: fontFamily.extraBold, fontSize: 22 },
   title: { color: colors.text, fontFamily: fontFamily.extraBold, fontSize: 24 },

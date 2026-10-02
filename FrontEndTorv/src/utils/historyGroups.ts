@@ -30,3 +30,11 @@ export function groupByDay<T extends { start_time: string }>(items: T[], now: Da
   }
   return groups;
 }
+
+// Junta a 1ª página recarregada ao que já está na tela: só ids novos, no topo.
+// Nada novo → devolve o mesmo array, e o React não re-renderiza.
+export function prependNew<T extends { id: string }>(prev: T[], fresh: T[]): T[] {
+  const seen = new Set(prev.map((i) => i.id));
+  const added = fresh.filter((i) => !seen.has(i.id));
+  return added.length ? [...added, ...prev] : prev;
+}

@@ -1,7 +1,7 @@
 // Roda com: node --test src/utils/historyGroups.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupByDay, dayTitle } from './historyGroups.ts';
+import { groupByDay, dayTitle, prependNew } from './historyGroups.ts';
 
 // Datas montadas no fuso local: o teste vale em qualquer TZ.
 const at = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min);
@@ -31,4 +31,10 @@ test('dayTitle: virada de mês e de ano', () => {
 
 test('groupByDay: lista vazia', () => {
   assert.deepEqual(groupByDay([], at(2026, 10, 1)), []);
+});
+
+test('prependNew: ids novos no topo; nada novo → o mesmo array (sem re-render)', () => {
+  const prev = [{ id: 'b' }, { id: 'c' }];
+  assert.equal(prependNew(prev, [{ id: 'b' }, { id: 'c' }]), prev);
+  assert.deepEqual(prependNew(prev, [{ id: 'a' }, { id: 'b' }]).map((i) => i.id), ['a', 'b', 'c']);
 });

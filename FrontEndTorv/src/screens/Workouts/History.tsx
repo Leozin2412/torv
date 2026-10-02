@@ -7,7 +7,7 @@ import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
 import { activitiesApi, ACTIVITY_TYPES, type ActivityItem, type ActivityType } from '../../services/activities';
 import { ACTIVITY_LABELS, activityLabel } from '../../utils/activities';
-import { groupByDay } from '../../utils/historyGroups';
+import { groupByDay, prependNew, type DayGroup } from '../../utils/historyGroups';
 import { formatClock } from '../../utils/clock';
 import type { AppNavigation } from '../../routes/types';
 import { colors } from '../../theme/tokens';
@@ -31,9 +31,13 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const request = useRef(0); // resposta de um filtro antigo chega depois → descarta
+  const loadedType = useRef<ActivityType | undefined | null>(null); // filtro da última carga ok; null = nunca carregou ou deu erro
+  const offset = useRef(0); // posição da lista, para voltar do resumo no mesmo ponto
+  const listRef = useRef<SectionList<ActivityItem, DayGroup<ActivityItem>>>(null);
 
   const loadFirst = async (filter: ActivityType | undefined, refresh = false) => {
     const id = ++request.current;
+    offset.current = 0;
     if (refresh) setRefreshing(true);
     else setStatus('loading');
     try {
@@ -42,8 +46,11 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
       setItems(page.activities);
       setNextBefore(page.next_before);
       setStatus('ready');
+      loadedType.current = filter;
     } catch {
-      if (id === request.current) setStatus('error');
+      if (id !== request.current) return;
+      loadedType.current = null;
+      setStatus('error');
     } finally {
       if (id === request.current) setRefreshing(false);
     }
@@ -65,8 +72,31 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
     }
   };
 
-  // Recarrega ao voltar para a aba (ex.: depois de um treino) e ao trocar o filtro.
-  useFocusEffect(useCallback(() => { loadFirst(type); }, [type]));
+  // Volta do resumo (ou de um treino): só traz o que é novo no topo, sem spinner e sem desmontar a lista.
+  // ponytail: mais de PAGE treinos novos fora da tela deixam um buraco entre eles e o resto; puxar para baixo recarrega.
+  const refreshTop = async () => {
+    const id = request.current;
+    try {
+      const page = await activitiesApi.list({ type, limit: PAGE });
+      if (id === request.current) setItems((prev) => prependNew(prev, page.activities));
+    } catch {
+      // Falhou: fica o que já está na tela.
+    }
+  };
+
+  // No web (native-stack) a tela de baixo fica com display:none enquanto o resumo está aberto, e isso zera o scrollTop.
+  const restoreScroll = () => {
+    const y = offset.current;
+    requestAnimationFrame(() => listRef.current?.getScrollResponder()?.scrollTo({ y, animated: false }));
+  };
+
+  // Mesmo filtro já carregado → mantém a lista e a posição; filtro novo (ou 1ª vez, ou erro) → carga do zero.
+  useFocusEffect(useCallback(() => {
+    if (loadedType.current === type) {
+      refreshTop();
+      restoreScroll();
+    } else loadFirst(type);
+  }, [type]));
 
   const chips = (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
@@ -106,6 +136,7 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
 
   return (
     <SectionList
+      ref={listRef}
       style={styles.container}
       contentContainerStyle={styles.list}
       sections={groupByDay(items, new Date())}
@@ -150,6 +181,8 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
       ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.brand} style={styles.footer} /> : null}
       onEndReached={loadMore}
       onEndReachedThreshold={0.3}
+      onScroll={(e) => { offset.current = e.nativeEvent.contentOffset.y; }}
+      scrollEventThrottle={16}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadFirst(type, true)} tintColor={colors.brand} />}
     />
   );
