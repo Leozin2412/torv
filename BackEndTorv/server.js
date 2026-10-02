@@ -13,7 +13,7 @@ fastify.addHook('onResponse', (request, reply, done) => {
 });
 
 fastify.register(require('@fastify/cors'), {
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
 });
 fastify.register(require('@fastify/multipart'));
 fastify.register(require('@fastify/static'), {
