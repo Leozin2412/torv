@@ -25,11 +25,12 @@ async function activitiesRoutes(fastify) {
 
   fastify.get('/', {
     schema: {
-      description: 'Activities do usuário, mais recente primeiro. Próxima página: before = next_before da anterior',
+      description: 'Activities do usuário, mais recente primeiro. Período: from (inclusivo) e before (exclusivo). Próxima página: before = next_before da anterior',
       tags: ['Activities'],
       security: [{ bearerAuth: [] }],
       querystring: Type.Object({
         type: Type.Optional(Type.Union(ACTIVITY_TYPES.map((t) => Type.Literal(t)))),
+        from: Type.Optional(Type.String({ format: 'date-time' })),
         before: Type.Optional(Type.String({ format: 'date-time' })),
         limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
       }),
