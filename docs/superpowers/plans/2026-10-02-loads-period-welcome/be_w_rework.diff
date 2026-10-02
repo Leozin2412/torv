@@ -1,0 +1,143 @@
+diff --git a/BackEndTorv/src/repository/tests/workout.repository.test.js b/BackEndTorv/src/repository/tests/workout.repository.test.js
+index ae6722a..42bf360 100644
+--- a/BackEndTorv/src/repository/tests/workout.repository.test.js
++++ b/BackEndTorv/src/repository/tests/workout.repository.test.js
+@@ -1,13 +1,15 @@
+ const test = require('node:test');
+ const assert = require('node:assert/strict');
+ 
+-// Prisma falso (o client real é um Proxy que o mock.method não alcança): $transaction roda o callback
+-// com a transação do teste em andamento.
+-let tx = null;
++// Prisma falso (o client real é um Proxy que o mock.method não alcança): registra as chamadas do teste em andamento.
++let calls = null;
+ const prismaPath = require.resolve('../../lib/prisma');
+ require.cache[prismaPath] = {
+   id: prismaPath, filename: prismaPath, loaded: true,
+-  exports: { $transaction: async (fn) => fn(tx) },
++  exports: {
++    workout_routines: { findFirst: async (args) => { calls.findFirst.push(args); return calls.routine; } },
++    $executeRaw: async (query) => { calls.executeRaw.push(query); return calls.count; },
++  },
+ };
+ 
+ const workoutRepository = require('../workout.repository');
+@@ -17,48 +19,27 @@ const ROUTINE = '22222222-2222-4222-8222-222222222222';
+ const SUPINO = '33333333-3333-4333-8333-333333333333';
+ const REMADA = '55555555-5555-4555-8555-555555555555';
+ 
+-// Rotina com Supino na posição 1 e Remada na 2, as duas com 3 séries.
+-function useTx(routine) {
+-  const calls = { findFirst: [], updateMany: [] };
+-  tx = {
+-    workout_routines: {
+-      findFirst: async (args) => { calls.findFirst.push(args); return routine; },
+-    },
+-    routine_exercise_sets: {
+-      updateMany: async (args) => { calls.updateMany.push(args); return { count: args.where.set_number <= 3 ? 1 : 0 }; },
+-    },
+-  };
+-  return calls;
+-}
+-
+-const routine = {
+-  routine_exercises: [
+-    { id: 're-supino', position: 1, exercise_id: SUPINO },
+-    { id: 're-remada', position: 2, exercise_id: REMADA },
+-  ],
+-};
+-
+-test('updateRoutineWeights: só muda séries que batem com posição + exercício; conta as atualizadas', async () => {
+-  const calls = useTx(routine);
++// O casamento posição + exercício + nº da série acontece no SQL; o teste ao vivo (QA) cobre o efeito no banco.
++test('updateRoutineWeights: um UPDATE só, preso à rotina e ao dono, com as séries em VALUES', async () => {
++  calls = { findFirst: [], executeRaw: [], routine: { id: ROUTINE }, count: 2 };
+   const updated = await workoutRepository.updateRoutineWeights(USER, ROUTINE, [
+     { position: 1, exercise_id: SUPINO, set_number: 2, weight_kg: 65 },
+     { position: 2, exercise_id: REMADA, set_number: 1, weight_kg: null },
+-    { position: 2, exercise_id: SUPINO, set_number: 1, weight_kg: 50 }, // exercício trocou de lugar na rotina
+-    { position: 3, exercise_id: REMADA, set_number: 1, weight_kg: 50 }, // posição não existe mais
+-    { position: 1, exercise_id: SUPINO, set_number: 4, weight_kg: 70 }, // série removida da rotina: UPDATE conta 0
+   ]);
+   assert.equal(updated, 2);
+   assert.deepEqual(calls.findFirst[0].where, { id: ROUTINE, user_id: USER });
+-  assert.deepEqual(calls.updateMany, [
+-    { where: { routine_exercise_id: 're-supino', set_number: 2 }, data: { weight_kg: 65 } },
+-    { where: { routine_exercise_id: 're-remada', set_number: 1 }, data: { weight_kg: null } },
+-    { where: { routine_exercise_id: 're-supino', set_number: 4 }, data: { weight_kg: 70 } },
+-  ]);
++  assert.equal(calls.executeRaw.length, 1);
++  const [query] = calls.executeRaw;
++  const sql = query.sql.replace(/\s+/g, ' ');
++  assert.match(sql, /UPDATE routine_exercise_sets AS rs SET weight_kg = v\.weight_kg/);
++  assert.match(sql, /wr\.id = \?::uuid AND wr\.user_id = \?::uuid/);
++  assert.match(sql, /re\.position = v\.position AND re\.exercise_id = v\.exercise_id AND rs\.set_number = v\.set_number/);
++  assert.deepEqual(query.values, [1, SUPINO, 2, 65, 2, REMADA, 1, null, ROUTINE, USER]);
+ });
+ 
+ test('updateRoutineWeights: rotina de outro usuário (ou inexistente) → null, sem UPDATE', async () => {
+-  const calls = useTx(null);
++  calls = { findFirst: [], executeRaw: [], routine: null, count: 0 };
+   const sets = [{ position: 1, exercise_id: SUPINO, set_number: 1, weight_kg: 40 }];
+   assert.equal(await workoutRepository.updateRoutineWeights(USER, ROUTINE, sets), null);
+-  assert.equal(calls.updateMany.length, 0);
++  assert.equal(calls.executeRaw.length, 0);
+ });
+diff --git a/BackEndTorv/src/repository/workout.repository.js b/BackEndTorv/src/repository/workout.repository.js
+index e8a1cf4..db70eb8 100644
+--- a/BackEndTorv/src/repository/workout.repository.js
++++ b/BackEndTorv/src/repository/workout.repository.js
+@@ -1,4 +1,5 @@
+ const { randomUUID } = require('node:crypto');
++const { Prisma } = require('@prisma/client');
+ const prisma = require('../lib/prisma');
+ 
+ // Transação interativa + createMany com ids gerados aqui: nested create faria 1 INSERT por linha
+@@ -151,29 +152,25 @@ class WorkoutRepository {
+     }, TX);
+   }
+ 
+-  // Só as séries que ainda batem com a rotina (posição + exercício + nº da série) mudam: rotina editada no
+-  // meio do treino não recebe carga no lugar errado. null = rotina não é do usuário.
+-  // ponytail: 1 UPDATE por série (≤ 200, em geral poucas); um UPDATE ... FROM (VALUES ...) se pesar.
++  // Um UPDATE só (cada ida ao banco custa ~200 ms; 1 por série estourava o timeout com rotina grande).
++  // Muda a série que ainda bate com a rotina atual (posição + exercício + nº da série): rotina editada no meio
++  // do treino não recebe carga no lugar errado. O dono também vai no WHERE. null = rotina não é do usuário.
+   async updateRoutineWeights(userId, routineId, sets) {
+-    return prisma.$transaction(async (tx) => {
+-      const routine = await tx.workout_routines.findFirst({
+-        where: { id: routineId, user_id: userId },
+-        select: { routine_exercises: { select: { id: true, position: true, exercise_id: true } } },
+-      });
+-      if (!routine) return null;
+-      const byPosition = new Map(routine.routine_exercises.map((e) => [e.position, e]));
+-      let updated = 0;
+-      for (const s of sets) {
+-        const ex = byPosition.get(s.position);
+-        if (!ex || ex.exercise_id !== s.exercise_id) continue;
+-        const { count } = await tx.routine_exercise_sets.updateMany({
+-          where: { routine_exercise_id: ex.id, set_number: s.set_number },
+-          data: { weight_kg: s.weight_kg },
+-        });
+-        updated += count;
+-      }
+-      return updated;
+-    }, TX);
++    const routine = await prisma.workout_routines.findFirst({ where: { id: routineId, user_id: userId }, select: { id: true } });
++    if (!routine) return null;
++    const values = sets.map((s) => Prisma.sql`(${s.position}::int, ${s.exercise_id}::uuid, ${s.set_number}::int, ${s.weight_kg}::numeric)`);
++    return prisma.$executeRaw(Prisma.sql`
++      UPDATE routine_exercise_sets AS rs
++      SET weight_kg = v.weight_kg
++      FROM routine_exercises AS re, workout_routines AS wr,
++        (VALUES ${Prisma.join(values)}) AS v(position, exercise_id, set_number, weight_kg)
++      WHERE rs.routine_exercise_id = re.id
++        AND re.routine_id = wr.id
++        AND wr.id = ${routineId}::uuid
++        AND wr.user_id = ${userId}::uuid
++        AND re.position = v.position
++        AND re.exercise_id = v.exercise_id
++        AND rs.set_number = v.set_number`);
+   }
+ 
+   async deleteRoutine(userId, id) {
