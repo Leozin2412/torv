@@ -1,0 +1,154 @@
+diff --git a/BackEndTorv/src/repository/tests/workout.repository.test.js b/BackEndTorv/src/repository/tests/workout.repository.test.js
+new file mode 100644
+index 0000000..ae6722a
+--- /dev/null
++++ b/BackEndTorv/src/repository/tests/workout.repository.test.js
+@@ -0,0 +1,64 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++
++// Prisma falso (o client real é um Proxy que o mock.method não alcança): $transaction roda o callback
++// com a transação do teste em andamento.
++let tx = null;
++const prismaPath = require.resolve('../../lib/prisma');
++require.cache[prismaPath] = {
++  id: prismaPath, filename: prismaPath, loaded: true,
++  exports: { $transaction: async (fn) => fn(tx) },
++};
++
++const workoutRepository = require('../workout.repository');
++
++const USER = '11111111-1111-4111-8111-111111111111';
++const ROUTINE = '22222222-2222-4222-8222-222222222222';
++const SUPINO = '33333333-3333-4333-8333-333333333333';
++const REMADA = '55555555-5555-4555-8555-555555555555';
++
++// Rotina com Supino na posição 1 e Remada na 2, as duas com 3 séries.
++function useTx(routine) {
++  const calls = { findFirst: [], updateMany: [] };
++  tx = {
++    workout_routines: {
++      findFirst: async (args) => { calls.findFirst.push(args); return routine; },
++    },
++    routine_exercise_sets: {
++      updateMany: async (args) => { calls.updateMany.push(args); return { count: args.where.set_number <= 3 ? 1 : 0 }; },
++    },
++  };
++  return calls;
++}
++
++const routine = {
++  routine_exercises: [
++    { id: 're-supino', position: 1, exercise_id: SUPINO },
++    { id: 're-remada', position: 2, exercise_id: REMADA },
++  ],
++};
++
++test('updateRoutineWeights: só muda séries que batem com posição + exercício; conta as atualizadas', async () => {
++  const calls = useTx(routine);
++  const updated = await workoutRepository.updateRoutineWeights(USER, ROUTINE, [
++    { position: 1, exercise_id: SUPINO, set_number: 2, weight_kg: 65 },
++    { position: 2, exercise_id: REMADA, set_number: 1, weight_kg: null },
++    { position: 2, exercise_id: SUPINO, set_number: 1, weight_kg: 50 }, // exercício trocou de lugar na rotina
++    { position: 3, exercise_id: REMADA, set_number: 1, weight_kg: 50 }, // posição não existe mais
++    { position: 1, exercise_id: SUPINO, set_number: 4, weight_kg: 70 }, // série removida da rotina: UPDATE conta 0
++  ]);
++  assert.equal(updated, 2);
++  assert.deepEqual(calls.findFirst[0].where, { id: ROUTINE, user_id: USER });
++  assert.deepEqual(calls.updateMany, [
++    { where: { routine_exercise_id: 're-supino', set_number: 2 }, data: { weight_kg: 65 } },
++    { where: { routine_exercise_id: 're-remada', set_number: 1 }, data: { weight_kg: null } },
++    { where: { routine_exercise_id: 're-supino', set_number: 4 }, data: { weight_kg: 70 } },
++  ]);
++});
++
++test('updateRoutineWeights: rotina de outro usuário (ou inexistente) → null, sem UPDATE', async () => {
++  const calls = useTx(null);
++  const sets = [{ position: 1, exercise_id: SUPINO, set_number: 1, weight_kg: 40 }];
++  assert.equal(await workoutRepository.updateRoutineWeights(USER, ROUTINE, sets), null);
++  assert.equal(calls.updateMany.length, 0);
++});
+diff --git a/BackEndTorv/src/routes/workout.routes.test.js b/BackEndTorv/src/routes/workout.routes.test.js
+index 63083dd..0109959 100644
+--- a/BackEndTorv/src/routes/workout.routes.test.js
++++ b/BackEndTorv/src/routes/workout.routes.test.js
+@@ -205,3 +205,37 @@ test('exercícios: lista marca is_custom; criar valida grupo e nome; alheio →
+   assert.equal((await call(app, 'PUT', `/workouts/exercises/${EX}`, { name: 'Y', muscle_group: 'Costas' })).statusCode, 200);
+   assert.equal((await call(app, 'DELETE', `/workouts/exercises/${EX}`)).statusCode, 204);
+ });
++
++test('PATCH /routines/:id/weights: repassa userId, id e séries (null e 0 intactos); null do repository → 404', async (t) => {
++  const update = t.mock.method(workoutRepository, 'updateRoutineWeights', async () => 3);
++  const app = await build(t);
++  const sets = [
++    { position: 1, exercise_id: EX, set_number: 1, weight_kg: 42.5 },
++    { position: 1, exercise_id: EX, set_number: 2, weight_kg: null },
++    { position: 1, exercise_id: EX, set_number: 3, weight_kg: 0 },
++  ];
++  const res = await call(app, 'PATCH', `/workouts/routines/${ID}/weights`, { sets });
++  assert.equal(res.statusCode, 200);
++  assert.deepEqual(res.json(), { updated: 3 });
++  assert.deepEqual(update.mock.calls[0].arguments, [USER, ID, sets]);
++  update.mock.mockImplementation(async () => null);
++  assert.equal((await call(app, 'PATCH', `/workouts/routines/${ID}/weights`, { sets })).statusCode, 404);
++});
++
++test('PATCH /routines/:id/weights 400: corpo e id inválidos não chegam ao repository', async (t) => {
++  const update = t.mock.method(workoutRepository, 'updateRoutineWeights', async () => 0);
++  const app = await build(t);
++  const set = { position: 1, exercise_id: EX, set_number: 1, weight_kg: 40 };
++  const { weight_kg, ...noWeight } = set;
++  for (const body of [
++    {}, { sets: [] }, { sets: Array(201).fill(set) },
++    { sets: [{ ...set, position: 0 }] }, { sets: [{ ...set, position: 21 }] },
++    { sets: [{ ...set, set_number: 0 }] }, { sets: [{ ...set, set_number: 11 }] },
++    { sets: [{ ...set, weight_kg: -1 }] }, { sets: [{ ...set, weight_kg: 1000 }] },
++    { sets: [{ ...set, exercise_id: 'nope' }] }, { sets: [noWeight] },
++  ]) {
++    assert.equal((await call(app, 'PATCH', `/workouts/routines/${ID}/weights`, body)).statusCode, 400, JSON.stringify(body).slice(0, 80));
++  }
++  assert.equal((await call(app, 'PATCH', '/workouts/routines/nope/weights', { sets: [set] })).statusCode, 400);
++  assert.equal(update.mock.callCount(), 0);
++});
+diff --git a/BackEndTorv/src/routes/workout.sessions.test.js b/BackEndTorv/src/routes/workout.sessions.test.js
+index 3f1bb4e..dc055ad 100644
+--- a/BackEndTorv/src/routes/workout.sessions.test.js
++++ b/BackEndTorv/src/routes/workout.sessions.test.js
+@@ -136,3 +136,37 @@ test('POST /sessions: null fica null, 0 fica 0 (rest_before_sec e routine_id)',
+   }
+   assert.equal(create.mock.callCount(), 2);
+ });
++
++test('POST /sessions: weight_kg número, 0, null e ausente chegam ao repository; fora da faixa → 400', async (t) => {
++  t.mock.method(workoutRepository, 'findSessionByStart', async () => null);
++  const create = t.mock.method(workoutRepository, 'createSession', async () => ACT);
++  const app = await build(t);
++  const [a, b] = validSession.sets;
++  const sets = [
++    { ...a, weight_kg: 62.5 },
++    { ...b, weight_kg: 0 },
++    { ...b, set_number: 3, weight_kg: null },
++    { ...b, set_number: 4 }, // app antigo: sem o campo
++  ];
++  assert.equal((await call(app, 'POST', '/workouts/sessions', { ...validSession, sets })).statusCode, 201);
++  assert.deepEqual(create.mock.calls[0].arguments[1].sets.map((s) => s.weight_kg), [62.5, 0, null, undefined]);
++  for (const weight_kg of [-1, 1000, '60kg']) {
++    const res = await call(app, 'POST', '/workouts/sessions', { ...validSession, sets: [{ ...a, weight_kg }] });
++    assert.equal(res.statusCode, 400, String(weight_kg));
++  }
++  assert.equal(create.mock.callCount(), 1);
++});
++
++test('GET /sessions/:id: weight_kg Decimal vira número; null fica null', async (t) => {
++  t.mock.method(workoutRepository, 'getSession', async () => ({
++    id: ACT, title: 'Peito', start_time: new Date(startedAt), duration_sec: 3000,
++    workout_sets: [
++      { exercise_name: 'Supino', position: 1, set_number: 1, duration_sec: 40, rest_before_sec: null, weight_kg: '62.50' },
++      { exercise_name: 'Supino', position: 1, set_number: 2, duration_sec: 40, rest_before_sec: 90, weight_kg: null },
++    ],
++  }));
++  const app = await build(t);
++  const res = await call(app, 'GET', `/workouts/sessions/${ACT}`);
++  assert.equal(res.statusCode, 200);
++  assert.deepEqual(res.json().sets.map((s) => s.weight_kg), [62.5, null]);
++});

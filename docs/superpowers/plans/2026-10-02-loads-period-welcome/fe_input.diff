@@ -1,0 +1,43 @@
+diff --git a/FrontEndTorv/src/components/Input/index.tsx b/FrontEndTorv/src/components/Input/index.tsx
+index c0b994f..7353970 100644
+--- a/FrontEndTorv/src/components/Input/index.tsx
++++ b/FrontEndTorv/src/components/Input/index.tsx
+@@ -12,6 +12,8 @@ interface InputProps extends TextInputProps {
+ export const Input: React.FC<InputProps> = ({ label, error, style, ...rest }) => {
+   const [isFocused, setIsFocused] = useState(false);
+   const [visible, setVisible] = useState(false);
++  // Senha oculta com texto: fonte do sistema, que desenha bolinhas. Na Sora o "•" da máscara é um quadrado.
++  const masked = !!rest.secureTextEntry && !visible && !!rest.value;
+ 
+   return (
+     <View style={styles.container}>
+@@ -24,6 +26,7 @@ export const Input: React.FC<InputProps> = ({ label, error, style, ...rest }) =>
+             error ? { borderColor: colors.error } : null,
+             rest.secureTextEntry ? styles.inputWithToggle : null,
+             style,
++            masked && styles.inputMasked,
+           ]}
+           placeholderTextColor={colors.textSecondary}
+           onFocus={(e) => {
+diff --git a/FrontEndTorv/src/components/Input/styles.ts b/FrontEndTorv/src/components/Input/styles.ts
+index 8134dd0..bbb14cb 100644
+--- a/FrontEndTorv/src/components/Input/styles.ts
++++ b/FrontEndTorv/src/components/Input/styles.ts
+@@ -1,4 +1,4 @@
+-import { StyleSheet } from 'react-native';
++import { Platform, StyleSheet } from 'react-native';
+ import { colors, radius, fontFamily } from '../../theme/tokens';
+ 
+ export const styles = StyleSheet.create({
+@@ -26,6 +26,11 @@ export const styles = StyleSheet.create({
+   inputWithToggle: {
+     paddingRight: 48,
+   },
++  // Nome explícito: no web o react-native-web traduz 'System' para a pilha de fontes do sistema
++  // (undefined seria ignorado e a Sora continuaria).
++  inputMasked: {
++    fontFamily: Platform.select({ android: 'sans-serif', default: 'System' }),
++  },
+   toggle: {
+     position: 'absolute',
+     right: 0,

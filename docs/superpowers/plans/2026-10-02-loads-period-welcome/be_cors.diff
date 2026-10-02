@@ -1,0 +1,13 @@
+diff --git a/BackEndTorv/server.js b/BackEndTorv/server.js
+index a631528..b0d8279 100644
+--- a/BackEndTorv/server.js
++++ b/BackEndTorv/server.js
+@@ -13,7 +13,7 @@ fastify.addHook('onResponse', (request, reply, done) => {
+ });
+ 
+ fastify.register(require('@fastify/cors'), {
+-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
++  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+ });
+ fastify.register(require('@fastify/multipart'));
+ fastify.register(require('@fastify/static'), {

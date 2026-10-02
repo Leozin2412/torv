@@ -1,0 +1,171 @@
+diff --git a/BackEndTorv/src/controller/workout.controller.js b/BackEndTorv/src/controller/workout.controller.js
+index 08f794e..20d3c9c 100644
+--- a/BackEndTorv/src/controller/workout.controller.js
++++ b/BackEndTorv/src/controller/workout.controller.js
+@@ -94,6 +94,11 @@ class WorkoutController {
+     return reply.send(routineDetail(await workoutRepository.getRoutine(userId, id)));
+   }
+ 
++  async updateRoutineWeights(request, reply) {
++    const updated = await workoutRepository.updateRoutineWeights(request.user.userId, request.params.id, request.body.sets);
++    return updated === null ? reply.status(404).send(NOT_FOUND) : reply.send({ updated });
++  }
++
+   async deleteRoutine(request, reply) {
+     const deleted = await workoutRepository.deleteRoutine(request.user.userId, request.params.id);
+     return deleted ? reply.status(204).send() : reply.status(404).send(NOT_FOUND);
+@@ -160,7 +165,13 @@ class WorkoutController {
+   async getSession(request, reply) {
+     const s = await workoutRepository.getSession(request.user.userId, request.params.id);
+     if (!s) return reply.status(404).send(NOT_FOUND);
+-    return reply.send({ id: s.id, title: s.title, start_time: s.start_time.toISOString(), duration_sec: s.duration_sec, sets: s.workout_sets });
++    return reply.send({
++      id: s.id,
++      title: s.title,
++      start_time: s.start_time.toISOString(),
++      duration_sec: s.duration_sec,
++      sets: s.workout_sets.map((w) => ({ ...w, weight_kg: w.weight_kg == null ? null : Number(w.weight_kg) })),
++    });
+   }
+ }
+ 
+diff --git a/BackEndTorv/src/repository/workout.repository.js b/BackEndTorv/src/repository/workout.repository.js
+index 9953fce..e8a1cf4 100644
+--- a/BackEndTorv/src/repository/workout.repository.js
++++ b/BackEndTorv/src/repository/workout.repository.js
+@@ -151,6 +151,31 @@ class WorkoutRepository {
+     }, TX);
+   }
+ 
++  // Só as séries que ainda batem com a rotina (posição + exercício + nº da série) mudam: rotina editada no
++  // meio do treino não recebe carga no lugar errado. null = rotina não é do usuário.
++  // ponytail: 1 UPDATE por série (≤ 200, em geral poucas); um UPDATE ... FROM (VALUES ...) se pesar.
++  async updateRoutineWeights(userId, routineId, sets) {
++    return prisma.$transaction(async (tx) => {
++      const routine = await tx.workout_routines.findFirst({
++        where: { id: routineId, user_id: userId },
++        select: { routine_exercises: { select: { id: true, position: true, exercise_id: true } } },
++      });
++      if (!routine) return null;
++      const byPosition = new Map(routine.routine_exercises.map((e) => [e.position, e]));
++      let updated = 0;
++      for (const s of sets) {
++        const ex = byPosition.get(s.position);
++        if (!ex || ex.exercise_id !== s.exercise_id) continue;
++        const { count } = await tx.routine_exercise_sets.updateMany({
++          where: { routine_exercise_id: ex.id, set_number: s.set_number },
++          data: { weight_kg: s.weight_kg },
++        });
++        updated += count;
++      }
++      return updated;
++    }, TX);
++  }
++
+   async deleteRoutine(userId, id) {
+     const { count } = await prisma.workout_routines.deleteMany({ where: { id, user_id: userId } });
+     return count > 0;
+@@ -218,6 +243,7 @@ class WorkoutRepository {
+           set_number: s.set_number,
+           duration_sec: s.duration_sec,
+           rest_before_sec: s.rest_before_sec,
++          weight_kg: s.weight_kg ?? null,
+         })),
+       });
+       return activity.id;
+@@ -234,7 +260,7 @@ class WorkoutRepository {
+         duration_sec: true,
+         workout_sets: {
+           orderBy: [{ position: 'asc' }, { set_number: 'asc' }],
+-          select: { exercise_name: true, position: true, set_number: true, duration_sec: true, rest_before_sec: true },
++          select: { exercise_name: true, position: true, set_number: true, duration_sec: true, rest_before_sec: true, weight_kg: true },
+         },
+       },
+     });
+diff --git a/BackEndTorv/src/routes/workout.routes.js b/BackEndTorv/src/routes/workout.routes.js
+index 16413ce..f10a641 100644
+--- a/BackEndTorv/src/routes/workout.routes.js
++++ b/BackEndTorv/src/routes/workout.routes.js
+@@ -3,7 +3,7 @@ const workoutController = require('../controller/workout.controller');
+ const authenticateToken = require('../middlewares/auth.middleware');
+ const {
+   errors, IdParams, RoutineBody, RoutineList, RoutineDetail,
+-  ExerciseBody, Exercise, SessionBody, SessionDetail,
++  ExerciseBody, Exercise, SessionBody, SessionDetail, RoutineWeightsBody,
+ } = require('./workout.schemas');
+ 
+ const tags = ['Workouts'];
+@@ -36,6 +36,14 @@ async function workoutRoutes(fastify) {
+     },
+   }, workoutController.updateRoutine);
+ 
++  fastify.patch('/routines/:id/weights', {
++    schema: {
++      description: 'Atualiza só as cargas das séries que ainda batem com a rotina (posição + exercício + nº da série)',
++      tags, security, params: IdParams, body: RoutineWeightsBody,
++      response: { 200: Type.Object({ updated: Type.Integer() }), ...errors(400, 401, 403, 404) },
++    },
++  }, workoutController.updateRoutineWeights);
++
+   fastify.delete('/routines/:id', {
+     schema: { tags, security, params: IdParams, response: { 204: Type.Null(), ...errors(400, 401, 403, 404) } },
+   }, workoutController.deleteRoutine);
+diff --git a/BackEndTorv/src/routes/workout.schemas.js b/BackEndTorv/src/routes/workout.schemas.js
+index 30b1235..6f45118 100644
+--- a/BackEndTorv/src/routes/workout.schemas.js
++++ b/BackEndTorv/src/routes/workout.schemas.js
+@@ -10,6 +10,9 @@ const ErrorBody = Type.Object({ error: Type.String() });
+ const errors = (...codes) => Object.fromEntries(codes.map((c) => [c, ErrorBody]));
+ const IdParams = Type.Object({ id: Uuid });
+ const MuscleGroup = Type.Union(MUSCLE_GROUPS.map((g) => Type.Literal(g)));
++// Carga nullable num corpo: type array, não Union. Com coerceTypes o Ajv coage no 1º ramo do anyOf
++// (Number: null→0; Null: 0→null); com type ['number','null'] só coage o que não for nenhum dos dois.
++const Weight = Type.Unsafe({ type: ['number', 'null'], minimum: 0, maximum: 999.99 });
+ 
+ const RoutineBody = Type.Object({
+   name: Type.String({ minLength: 1, maxLength: 100 }),
+@@ -18,12 +21,7 @@ const RoutineBody = Type.Object({
+     reps_min: Type.Integer({ minimum: 1, maximum: 100 }),
+     reps_max: Type.Integer({ minimum: 1, maximum: 100 }),
+     rest_sec: Type.Integer({ minimum: 0, maximum: 600 }),
+-    sets: Type.Array(
+-      // type array, não Union: com coerceTypes o Ajv coage no 1º ramo do anyOf (Number: null→0; Null: 0→null).
+-      // Com type ['number','null'] só coage o que não for nenhum dos dois.
+-      Type.Object({ weight_kg: Type.Unsafe({ type: ['number', 'null'], minimum: 0, maximum: 999.99 }) }),
+-      { minItems: 1, maxItems: 10 },
+-    ),
++    sets: Type.Array(Type.Object({ weight_kg: Weight }), { minItems: 1, maxItems: 10 }),
+   }), { minItems: 1, maxItems: 20 }),
+ });
+ 
+@@ -85,6 +83,7 @@ const SessionBody = Type.Object({
+     set_number: Type.Integer({ minimum: 1, maximum: 10 }),
+     duration_sec: Type.Integer({ minimum: 0, maximum: 3600 }),
+     rest_before_sec: Type.Unsafe({ type: ['integer', 'null'], minimum: 0, maximum: 7200 }),
++    weight_kg: Type.Optional(Weight), // ausente (app antigo) → grava null
+   }), { minItems: 1, maxItems: 200 }),
+ });
+ 
+@@ -99,10 +98,21 @@ const SessionDetail = Type.Object({
+     set_number: Type.Integer(),
+     duration_sec: Type.Integer(),
+     rest_before_sec: Type.Union([Type.Integer(), Type.Null()]),
++    weight_kg: Type.Union([Type.Number(), Type.Null()]),
+   })),
+ });
+ 
++// Cargas feitas no treino → rotina. Série que não bate com a rotina atual (posição + exercício + nº) é ignorada.
++const RoutineWeightsBody = Type.Object({
++  sets: Type.Array(Type.Object({
++    position: Type.Integer({ minimum: 1, maximum: 20 }),
++    exercise_id: Uuid,
++    set_number: Type.Integer({ minimum: 1, maximum: 10 }),
++    weight_kg: Weight,
++  }), { minItems: 1, maxItems: 200 }),
++});
++
+ module.exports = {
+   MUSCLE_GROUPS, errors, IdParams, RoutineBody, RoutineList, RoutineDetail,
+-  ExerciseBody, Exercise, SessionBody, SessionDetail,
++  ExerciseBody, Exercise, SessionBody, SessionDetail, RoutineWeightsBody,
+ };

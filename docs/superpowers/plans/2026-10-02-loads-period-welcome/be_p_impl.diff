@@ -1,0 +1,68 @@
+diff --git a/BackEndTorv/src/controller/profile.controller.js b/BackEndTorv/src/controller/profile.controller.js
+index d9d6b2b..06071bf 100644
+--- a/BackEndTorv/src/controller/profile.controller.js
++++ b/BackEndTorv/src/controller/profile.controller.js
+@@ -61,6 +61,7 @@ class ProfileController {
+         followers: 0,
+         following: 0,
+         total_workouts: user.workout_counts.total,
++        welcome_pending: profile.welcomed_at == null,
+       });
+     } catch (error) {
+       request.log.error(error);
+@@ -69,6 +70,11 @@ class ProfileController {
+     }
+   }
+ 
++  async markWelcomed(request, reply) {
++    await profileRepository.markWelcomed(request.user.userId);
++    return reply.status(204).send();
++  }
++
+   async uploadPhoto(request, reply) {
+     try {
+       const { userId } = request.user;
+diff --git a/BackEndTorv/src/repository/profile.repository.js b/BackEndTorv/src/repository/profile.repository.js
+index 339b644..b546317 100644
+--- a/BackEndTorv/src/repository/profile.repository.js
++++ b/BackEndTorv/src/repository/profile.repository.js
+@@ -25,6 +25,11 @@ class ProfileRepository {
+     };
+   }
+ 
++  // Só a 1ª vez grava: repetir não muda o horário.
++  async markWelcomed(userId) {
++    await prisma.user_profiles.updateMany({ where: { user_id: userId, welcomed_at: null }, data: { welcomed_at: new Date() } });
++  }
++
+   async updatePhotoUrl(userId, photoUrl) {
+     return await prisma.user_profiles.update({
+       where: { user_id: userId },
+diff --git a/BackEndTorv/src/routes/profile.routes.js b/BackEndTorv/src/routes/profile.routes.js
+index eef4d77..3cf4d66 100644
+--- a/BackEndTorv/src/routes/profile.routes.js
++++ b/BackEndTorv/src/routes/profile.routes.js
+@@ -30,6 +30,7 @@ async function profileRoutes(fastify) {
+         followers: Type.Number(),
+         following: Type.Number(),
+         total_workouts: Type.Number(),
++        welcome_pending: Type.Boolean(),
+       }),
+       404: Type.Object({ error: Type.String() }),
+       500: Type.Object({ error: Type.String() }),
+@@ -38,6 +39,15 @@ async function profileRoutes(fastify) {
+ 
+   fastify.get('/', { schema: getProfileSchema }, profileController.getProfile);
+ 
++  fastify.post('/welcome', {
++    schema: {
++      description: 'Marca a mensagem de boas-vindas como vista. Idempotente: só a 1ª chamada grava o horário',
++      tags: ['Profile'],
++      security: [{ bearerAuth: [] }],
++      response: { 204: Type.Null() },
++    },
++  }, profileController.markWelcomed);
++
+   const uploadPhotoSchema = {
+     description: 'Faz upload de uma nova foto de perfil (multipart/form-data, campo "photo")',
+     tags: ['Profile'],

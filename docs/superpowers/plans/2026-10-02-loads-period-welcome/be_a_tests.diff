@@ -1,0 +1,35 @@
+diff --git a/BackEndTorv/src/routes/activities.routes.test.js b/BackEndTorv/src/routes/activities.routes.test.js
+index 25252a5..6861d71 100644
+--- a/BackEndTorv/src/routes/activities.routes.test.js
++++ b/BackEndTorv/src/routes/activities.routes.test.js
+@@ -41,7 +41,7 @@ test('GET /activities: limit padrão 20, sem filtro; página incompleta → next
+     ],
+     next_before: null,
+   });
+-  assert.deepEqual(list.mock.calls[0].arguments, [USER, { type: undefined, before: undefined, limit: 20 }]);
++  assert.deepEqual(list.mock.calls[0].arguments, [USER, { type: undefined, from: undefined, before: undefined, limit: 20 }]);
+ });
+ 
+ test('GET /activities: página cheia → next_before = start_time do último; type/before/limit repassados', async (t) => {
+@@ -65,6 +65,7 @@ test('GET /activities 400: type, limit e before inválidos não chegam ao reposi
+     'type=RUN', 'type=strength', 'limit=0', 'limit=51', 'limit=abc', 'before=ontem', 'before=2026-10-01',
+     // Passam no date-time do ajv-formats, mas o Date do JS não parseia (fuso só com hora, segundo bissexto). %2B = '+'.
+     'before=2026-10-01T10:00:00-03', 'before=2026-06-30T23:59:60Z', 'before=2026-10-01T02:59:60%2B03:00',
++    'from=ontem', 'from=2026-10-01', 'from=2026-10-01T10:00:00-03', 'from=2026-06-30T23:59:60Z',
+   ]) {
+     assert.equal((await get(app, `/activities?${qs}`)).statusCode, 400, qs);
+   }
+@@ -78,3 +79,13 @@ test('GET /activities: user_id vindo do cliente é ignorado', async (t) => {
+   assert.equal(res.statusCode, 200);
+   assert.equal(list.mock.calls[0].arguments[0], USER);
+ });
++
++test('GET /activities: from e before viram Date e chegam juntos ao repository', async (t) => {
++  const list = t.mock.method(activitiesRepository, 'listActivities', async () => []);
++  const app = await build(t);
++  const res = await get(app, '/activities?from=2026-09-01T03:00:00.000Z&before=2026-10-01T03:00:00.000Z');
++  assert.equal(res.statusCode, 200);
++  const { from, before } = list.mock.calls[0].arguments[1];
++  assert.ok(from instanceof Date && before instanceof Date);
++  assert.deepEqual([from.toISOString(), before.toISOString()], ['2026-09-01T03:00:00.000Z', '2026-10-01T03:00:00.000Z']);
++});

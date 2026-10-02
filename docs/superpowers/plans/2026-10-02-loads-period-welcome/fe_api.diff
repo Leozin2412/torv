@@ -1,0 +1,20 @@
+diff --git a/FrontEndTorv/src/services/api.ts b/FrontEndTorv/src/services/api.ts
+index a93de90..a163999 100644
+--- a/FrontEndTorv/src/services/api.ts
++++ b/FrontEndTorv/src/services/api.ts
+@@ -1,9 +1,12 @@
+ import axios, { InternalAxiosRequestConfig } from 'axios';
++import Constants from 'expo-constants';
+ import { getSession, setSession, clearSession, Session } from './session';
+ 
+-// Web/iOS simulator: default localhost. Android emulator: http://10.0.2.2:3000.
+-// Physical phone (Expo Go): set EXPO_PUBLIC_API_URL=http://<LAN IP>:3000 in FrontEndTorv/.env.
+-const baseURL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
++// Dev: o backend roda na mesma máquina do Metro. O hostUri do Expo ("192.168.x.x:8081") dá o IP dela
++// na rede local, que o celular no Expo Go alcança; sem hostUri fica 127.0.0.1 (web e simulador no PC).
++// EXPO_PUBLIC_API_URL sobrepõe (túnel, outra rede, produção); vazio conta como ausente.
++const devHost = Constants.expoConfig?.hostUri?.split(':')[0];
++const baseURL = process.env.EXPO_PUBLIC_API_URL || `http://${devHost || '127.0.0.1'}:3000`;
+ 
+ // /auth/* goes through here: no interceptors, so a failing refresh can't loop.
+ export const authApi = axios.create({ baseURL });

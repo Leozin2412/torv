@@ -1,0 +1,90 @@
+diff --git a/BackEndTorv/prisma/migrations/20261002120000_loads_welcome/migration.sql b/BackEndTorv/prisma/migrations/20261002120000_loads_welcome/migration.sql
+new file mode 100644
+index 0000000..2b4711c
+--- /dev/null
++++ b/BackEndTorv/prisma/migrations/20261002120000_loads_welcome/migration.sql
+@@ -0,0 +1,7 @@
++-- Carga feita em cada série (NULL = sem carga, ou treino gravado antes desta migration)
++-- e o momento em que a pessoa viu a mensagem de boas-vindas (NULL = ainda não viu).
++ALTER TABLE "workout_sets"
++  ADD COLUMN "weight_kg" DECIMAL(6,2),
++  ADD CONSTRAINT "workout_sets_weight_kg_check" CHECK ("weight_kg" IS NULL OR "weight_kg" BETWEEN 0 AND 999.99);
++
++ALTER TABLE "user_profiles" ADD COLUMN "welcomed_at" TIMESTAMPTZ;
+diff --git a/BackEndTorv/prisma/schema.prisma b/BackEndTorv/prisma/schema.prisma
+index f361f97..7bcd789 100644
+--- a/BackEndTorv/prisma/schema.prisma
++++ b/BackEndTorv/prisma/schema.prisma
+@@ -40,6 +40,8 @@ model user_profiles {
+   gender        String?   @db.VarChar(50)
+   // basis {fitness_level, goals, gender} da última geração/decisão do plano default; NULL = nunca gerado
+   workout_plan_basis Json? @db.JsonB
++  // NULL = ainda não viu a mensagem de boas-vindas
++  welcomed_at   DateTime? @db.Timestamptz
+ 
+   user          users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+ }
+@@ -217,6 +219,7 @@ model workout_sets {
+   set_number      Int
+   duration_sec    Int
+   rest_before_sec Int?
++  weight_kg       Decimal?   @db.Decimal(6, 2)
+ 
+   activity        activities @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+   exercise        exercises? @relation(fields: [exercise_id], references: [id], onDelete: SetNull)
+diff --git a/BancoDeDadosTorv/Regras BD.sql b/BancoDeDadosTorv/Regras BD.sql
+index 83d9d44..a05f341 100644
+--- a/BancoDeDadosTorv/Regras BD.sql	
++++ b/BancoDeDadosTorv/Regras BD.sql	
+@@ -329,6 +329,9 @@ ALTER TABLE routine_exercise_sets ADD CONSTRAINT routine_exercise_sets_weight_kg
+ ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_duration_sec_check CHECK (duration_sec BETWEEN 0 AND 3600);
+ ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_rest_before_sec_check CHECK (rest_before_sec IS NULL OR rest_before_sec BETWEEN 0 AND 7200);
+ 
++--Carga por série (20261002120000_loads_welcome)
++ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_weight_kg_check CHECK (weight_kg IS NULL OR weight_kg BETWEEN 0 AND 999.99);
++
+ --Slots do gerador de treino (20261001150000_workout_generator_rules)
+ ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_day_check CHECK (day BETWEEN 1 AND days_per_week);
+ ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_position_check CHECK (position >= 1);
+diff --git a/BancoDeDadosTorv/SQL BANCO DE DADOS.sql b/BancoDeDadosTorv/SQL BANCO DE DADOS.sql
+index f603766..bb73606 100644
+--- a/BancoDeDadosTorv/SQL BANCO DE DADOS.sql	
++++ b/BancoDeDadosTorv/SQL BANCO DE DADOS.sql	
+@@ -8,6 +8,7 @@
+ --   20260925210000_revoke_global_function_execute - tira o EXECUTE global de PUBLIC em functions novas (ver Gestao_e_Performance.sql, passo 1.3)
+ --   20260930200000_workout_module      - módulo de treinos: catálogo + exercícios próprios, rotinas com séries, treinos finalizados (workout_sets)
+ --   20261001150000_workout_generator_rules - regras do gerador de treino no banco (type/min_level/catalog_order + workout_template_slots)
++--   20261002120000_loads_welcome       - carga por série (workout_sets.weight_kg) e boas-vindas (user_profiles.welcomed_at)
+ -- CHECKs ficam em "Regras BD.sql"; RLS e índices não-únicos em Gestao_e_Performance.sql.
+ -- This file has no runtime effect; it exists for readability/presentation only.
+ -- No CREATE DATABASE / USE statement here: Supabase already scopes a project to
+@@ -36,7 +37,9 @@ CREATE TABLE user_profiles (
+     -- basis (nível, objetivos, sexo) da última geração/aceite do plano de treino
+     -- default; comparar com o perfil atual gera a sugestão de novo plano.
+     -- NULL = plano default nunca gerado.
+-    workout_plan_basis JSONB
++    workout_plan_basis JSONB,
++    -- momento em que a pessoa viu a mensagem de boas-vindas; NULL = ainda não viu
++    welcomed_at TIMESTAMPTZ
+ );
+ 
+ -- Os CHECKs abaixo saíram do antigo authController.register e viraram regra do
+@@ -160,7 +163,7 @@ CREATE TABLE routine_exercise_sets (
+     weight_kg DECIMAL(6,2)
+ );
+ 
+--- Séries de um treino finalizado (activities.activity_type = 'STRENGTH'). Só tempos;
++-- Séries de um treino finalizado (activities.activity_type = 'STRENGTH'): tempos e carga;
+ -- exercise_name é cópia do nome no momento do treino (sobrevive ao exercício apagado).
+ CREATE TABLE workout_sets (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+@@ -170,7 +173,8 @@ CREATE TABLE workout_sets (
+     position INT NOT NULL,
+     set_number INT NOT NULL,
+     duration_sec INT NOT NULL,
+-    rest_before_sec INT
++    rest_before_sec INT,
++    weight_kg DECIMAL(6,2) -- NULL = sem carga (ou treino anterior a 20261002120000_loads_welcome)
+ );
+ 
+ -- Aba Sessoes do gerador de treino: os slots do plano default por frequência

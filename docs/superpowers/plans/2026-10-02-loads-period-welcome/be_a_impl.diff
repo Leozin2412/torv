@@ -1,0 +1,66 @@
+diff --git a/BackEndTorv/src/controller/activities.controller.js b/BackEndTorv/src/controller/activities.controller.js
+index 4d5a904..c726a0c 100644
+--- a/BackEndTorv/src/controller/activities.controller.js
++++ b/BackEndTorv/src/controller/activities.controller.js
+@@ -4,13 +4,16 @@ const DEFAULT_LIMIT = 20;
+ 
+ class ActivitiesController {
+   async listActivities(request, reply) {
+-    const { type, before, limit = DEFAULT_LIMIT } = request.query;
+-    // O date-time do schema aceita formas que o Date do JS não parseia (fuso só com hora, segundo bissexto).
++    const { type, from, before, limit = DEFAULT_LIMIT } = request.query;
++    const fromDate = from ? new Date(from) : undefined;
+     const beforeDate = before ? new Date(before) : undefined;
+-    if (beforeDate && Number.isNaN(beforeDate.getTime())) {
+-      return reply.status(400).send({ error: 'querystring/before must match format "date-time"' });
++    // O date-time do schema aceita formas que o Date do JS não parseia (fuso só com hora, segundo bissexto).
++    for (const [name, date] of [['from', fromDate], ['before', beforeDate]]) {
++      if (date && Number.isNaN(date.getTime())) {
++        return reply.status(400).send({ error: `querystring/${name} must match format "date-time"` });
++      }
+     }
+-    const rows = await activitiesRepository.listActivities(request.user.userId, { type, before: beforeDate, limit });
++    const rows = await activitiesRepository.listActivities(request.user.userId, { type, from: fromDate, before: beforeDate, limit });
+     return reply.send({
+       activities: rows.map((a) => ({
+         id: a.id,
+diff --git a/BackEndTorv/src/repository/activities.repository.js b/BackEndTorv/src/repository/activities.repository.js
+index 6de9919..23cca91 100644
+--- a/BackEndTorv/src/repository/activities.repository.js
++++ b/BackEndTorv/src/repository/activities.repository.js
+@@ -1,14 +1,14 @@
+ const prisma = require('../lib/prisma');
+ 
+ class ActivitiesRepository {
+-  // Mais recente primeiro. Sem start_time não dá para pôr no histórico, então fica de fora.
++  // Mais recente primeiro. Sem start_time não dá para pôr no histórico, então fica de fora (gte/lt já excluem NULL).
+   // ponytail: cursor só por start_time (único por usuário em STRENGTH); com outro tipo, empate é possível → (start_time, id).
+-  async listActivities(userId, { type, before, limit }) {
++  async listActivities(userId, { type, from, before, limit }) {
+     return prisma.activities.findMany({
+       where: {
+         user_id: userId,
+         ...(type && { activity_type: type }),
+-        start_time: before ? { lt: before } : { not: null },
++        start_time: from || before ? { ...(from && { gte: from }), ...(before && { lt: before }) } : { not: null },
+       },
+       orderBy: { start_time: 'desc' },
+       take: limit,
+diff --git a/BackEndTorv/src/routes/activities.routes.js b/BackEndTorv/src/routes/activities.routes.js
+index 0f3be24..3ad0fb9 100644
+--- a/BackEndTorv/src/routes/activities.routes.js
++++ b/BackEndTorv/src/routes/activities.routes.js
+@@ -25,11 +25,12 @@ async function activitiesRoutes(fastify) {
+ 
+   fastify.get('/', {
+     schema: {
+-      description: 'Activities do usuário, mais recente primeiro. Próxima página: before = next_before da anterior',
++      description: 'Activities do usuário, mais recente primeiro. Período: from (inclusivo) e before (exclusivo). Próxima página: before = next_before da anterior',
+       tags: ['Activities'],
+       security: [{ bearerAuth: [] }],
+       querystring: Type.Object({
+         type: Type.Optional(Type.Union(ACTIVITY_TYPES.map((t) => Type.Literal(t)))),
++        from: Type.Optional(Type.String({ format: 'date-time' })),
+         before: Type.Optional(Type.String({ format: 'date-time' })),
+         limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+       }),

@@ -1,0 +1,138 @@
+diff --git a/FrontEndTorv/src/components/WelcomeModal/index.tsx b/FrontEndTorv/src/components/WelcomeModal/index.tsx
+new file mode 100644
+index 0000000..4ade278
+--- /dev/null
++++ b/FrontEndTorv/src/components/WelcomeModal/index.tsx
+@@ -0,0 +1,50 @@
++import React from 'react';
++import { Modal, View, Text } from 'react-native';
++import { Dumbbell, Stethoscope, Pencil } from 'lucide-react-native';
++import { Button } from '../Button';
++import { colors } from '../../theme/tokens';
++import { styles } from './styles';
++
++// Mostrada uma vez por conta, no 1º acesso (GET /profile → welcome_pending).
++interface Props {
++  visible: boolean;
++  name?: string;
++  onClose: () => void;
++}
++
++const POINTS = [
++  {
++    Icon: Dumbbell,
++    text: 'Com os dados do seu cadastro, montamos um plano de treinos e metas de calorias e macronutrientes iniciais. Eles são genéricos.',
++  },
++  {
++    Icon: Stethoscope,
++    text: 'O ideal é ter o acompanhamento de um profissional (educador físico e nutricionista). Em breve isso estará aqui no app.',
++  },
++  {
++    Icon: Pencil,
++    text: 'Fique à vontade para editar seus treinos e suas metas quando quiser.',
++  },
++];
++
++export const WelcomeModal: React.FC<Props> = ({ visible, name, onClose }) => {
++  const firstName = name?.trim().split(/\s+/)[0];
++  return (
++    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
++      <View style={styles.overlay}>
++        <View style={styles.content} accessibilityRole="alert">
++          <Text style={styles.title}>{firstName ? `Bem-vindo(a) ao Torv, ${firstName}!` : 'Bem-vindo(a) ao Torv!'}</Text>
++          {POINTS.map(({ Icon, text }) => (
++            <View key={text} style={styles.point}>
++              <View style={styles.pointIcon}>
++                <Icon color={colors.brand} size={18} />
++              </View>
++              <Text style={styles.pointText}>{text}</Text>
++            </View>
++          ))}
++          <Button title="Começar" onPress={onClose} />
++        </View>
++      </View>
++    </Modal>
++  );
++};
+diff --git a/FrontEndTorv/src/components/WelcomeModal/styles.ts b/FrontEndTorv/src/components/WelcomeModal/styles.ts
+new file mode 100644
+index 0000000..f1b9e9f
+--- /dev/null
++++ b/FrontEndTorv/src/components/WelcomeModal/styles.ts
+@@ -0,0 +1,11 @@
++import { StyleSheet } from 'react-native';
++import { colors, radius, fontFamily } from '../../theme/tokens';
++
++export const styles = StyleSheet.create({
++  overlay: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.7)' },
++  content: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 24, gap: 16, width: '100%', maxWidth: 420, alignSelf: 'center' },
++  title: { color: colors.text, fontFamily: fontFamily.extraBold, fontSize: 22, lineHeight: 28 },
++  point: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
++  pointIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.brandTint, alignItems: 'center', justifyContent: 'center' },
++  pointText: { flex: 1, color: colors.textMuted, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20 },
++});
+diff --git a/FrontEndTorv/src/contexts/AuthContext.tsx b/FrontEndTorv/src/contexts/AuthContext.tsx
+index 78a9552..8dba653 100644
+--- a/FrontEndTorv/src/contexts/AuthContext.tsx
++++ b/FrontEndTorv/src/contexts/AuthContext.tsx
+@@ -11,6 +11,7 @@ interface Profile {
+   goal?: string;
+   photo_url?: string;
+   goalCalories?: number;
++  welcome_pending?: boolean; // true até a pessoa fechar a mensagem de boas-vindas
+ }
+ 
+ export interface RegisterPayload {
+@@ -34,6 +35,7 @@ interface AuthContextData {
+   // Resolves to true when the account needs e-mail confirmation before login.
+   register: (payload: RegisterPayload) => Promise<boolean>;
+   logout: () => Promise<void>;
++  dismissWelcome: () => void;
+ }
+ 
+ export const AuthContext = createContext<AuthContextData>({} as AuthContextData);
+@@ -105,8 +107,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
+     setUser(null);
+   };
+ 
++  // Fecha na hora; o POST é melhor-esforço: se falhar, a mensagem volta no próximo login.
++  const dismissWelcome = () => {
++    setUser((current) => (current ? { ...current, welcome_pending: false } : current));
++    api.post('/profile/welcome', {}).catch(() => {});
++  };
++
+   return (
+-    <AuthContext.Provider value={{ signed, user, loading, login, register, logout }}>
++    <AuthContext.Provider value={{ signed, user, loading, login, register, logout, dismissWelcome }}>
+       {children}
+     </AuthContext.Provider>
+   );
+diff --git a/FrontEndTorv/src/screens/Home/index.tsx b/FrontEndTorv/src/screens/Home/index.tsx
+index 4a82545..60174c3 100644
+--- a/FrontEndTorv/src/screens/Home/index.tsx
++++ b/FrontEndTorv/src/screens/Home/index.tsx
+@@ -8,6 +8,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
+ import { ProgressBar } from '../../components/ProgressBar';
+ import { Card } from '../../components/Card';
+ import { ConfirmModal } from '../../components/ConfirmModal';
++import { WelcomeModal } from '../../components/WelcomeModal';
+ import { AuthContext } from '../../contexts/AuthContext';
+ import api from '../../services/api';
+ import { workoutsApi, type RoutineSummary } from '../../services/workouts';
+@@ -18,7 +19,7 @@ import { styles } from './styles';
+ 
+ export default function Home() {
+   const navigation = useNavigation<AppNavigation>();
+-  const { user } = useContext(AuthContext);
++  const { user, dismissWelcome } = useContext(AuthContext);
+   const [loading, setLoading] = useState(true);
+   const [loadError, setLoadError] = useState(false);
+   const [consumed, setConsumed] = useState(0);
+@@ -300,6 +301,7 @@ export default function Home() {
+         onConfirm={startNext}
+         onCancel={() => setConfirmRepeat(false)}
+       />
++      <WelcomeModal visible={!!user?.welcome_pending} name={user?.name} onClose={dismissWelcome} />
+     </SafeAreaView>
+   );
+ }

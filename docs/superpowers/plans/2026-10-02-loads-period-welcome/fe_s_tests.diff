@@ -1,0 +1,138 @@
+diff --git a/FrontEndTorv/src/utils/workoutSession.test.mjs b/FrontEndTorv/src/utils/workoutSession.test.mjs
+index 46a4298..cb21dbf 100644
+--- a/FrontEndTorv/src/utils/workoutSession.test.mjs
++++ b/FrontEndTorv/src/utils/workoutSession.test.mjs
+@@ -5,6 +5,7 @@ import {
+   createSession, startSet, finishSet, skipSet, skipExercise, finish,
+   totalElapsedSec, phaseElapsedSec, isRestOverdue, toSessionPayload,
+   summaryFromState, summaryFromDetail,
++  setWeight, stepWeight, formatWeight, weightChanges, upgradeState,
+ } from './workoutSession.ts';
+ 
+ const T0 = Date.parse('2026-09-30T10:00:00Z');
+@@ -24,6 +25,7 @@ test('createSession copia a rotina e começa em ready', () => {
+   const s = createSession(routine, T0);
+   assert.equal(s.phase, 'ready');
+   assert.deepEqual(s.exercises[0].weights, [40, null]);
++  assert.deepEqual(s.exercises[0].planned_weights, [40, null]);
+   assert.equal(s.started_at, T0);
+   assert.deepEqual([s.exercise_index, s.set_index], [0, 0]);
+ });
+@@ -38,7 +40,7 @@ test('fluxo completo: série → descanso → série, com tempos e alvo do desca
+   assert.equal(s.phase, 'resting');
+   assert.equal(s.rest_target_sec, 120);
+   assert.deepEqual([s.exercise_index, s.set_index], [0, 1]);
+-  assert.deepEqual(s.sets[0], { exercise_id: 'e1', position: 1, set_number: 1, duration_sec: 40, rest_before_sec: null, rest_target_sec: null });
++  assert.deepEqual(s.sets[0], { exercise_id: 'e1', position: 1, set_number: 1, duration_sec: 40, rest_before_sec: null, rest_target_sec: null, weight_kg: 40 });
+ 
+   assert.equal(isRestOverdue(s, at(165)), false); // 120s exatos: ainda não estourou
+   assert.equal(isRestOverdue(s, at(166)), true);
+@@ -48,7 +50,7 @@ test('fluxo completo: série → descanso → série, com tempos e alvo do desca
+   assert.equal(s.pending_rest_sec, 180);
+   assert.equal(isRestOverdue(s, at(300)), false); // em série: nunca vermelho
+   s = finishSet(s, at(260));
+-  assert.deepEqual(s.sets[1], { exercise_id: 'e1', position: 1, set_number: 2, duration_sec: 35, rest_before_sec: 180, rest_target_sec: 120 });
++  assert.deepEqual(s.sets[1], { exercise_id: 'e1', position: 1, set_number: 2, duration_sec: 35, rest_before_sec: 180, rest_target_sec: 120, weight_kg: null });
+ 
+   // Último exercício de um: descanso conta contra o rest_sec do Supino (acabou de terminar).
+   assert.equal(s.rest_target_sec, 120);
+@@ -132,3 +134,99 @@ test('resumo: agrupa por exercício, média de descanso e vermelho só no ao viv
+   assert.equal(history.groups[0].sets[1].overdue, false);
+   assert.equal(history.avg_rest_sec, 500);
+ });
++
++test('setWeight muda só a série atual (em ready, set e resting) e grava no finishSet', () => {
++  let s = setWeight(createSession(routine, T0), 42.5); // Supino série 1 (rotina: 40)
++  assert.deepEqual(s.exercises[0].weights, [42.5, null]);
++  assert.deepEqual(s.exercises[0].planned_weights, [40, null]); // a base do "diferente" não muda
++  s = startSet(s, at(0));
++  s = setWeight(s, 45); // durante a série
++  s = finishSet(s, at(40));
++  assert.equal(s.sets[0].weight_kg, 45);
++  // No descanso, o controle mostra a próxima série (Supino 2): muda ela, não a que acabou.
++  s = setWeight(s, 20);
++  assert.deepEqual(s.exercises[0].weights, [45, 20]);
++  assert.equal(s.sets[0].weight_kg, 45);
++  s = finishSet(startSet(s, at(100)), at(130));
++  assert.equal(s.sets[1].weight_kg, 20);
++  assert.deepEqual(s.exercises[1].weights, [null]); // Remada intacta
++});
++
++test('setWeight: limita a 0–999,99 com 2 casas; NaN, mesmo valor e treino encerrado não mudam o estado', () => {
++  const s = createSession(routine, T0);
++  assert.equal(setWeight(s, 1500).exercises[0].weights[0], 999.99);
++  assert.equal(setWeight(s, -5).exercises[0].weights[0], 0);
++  assert.equal(setWeight(s, 7.255).exercises[0].weights[0], 7.26);
++  assert.equal(setWeight(s, null).exercises[0].weights[0], null);
++  assert.equal(setWeight(s, Number.NaN), s);
++  assert.equal(setWeight(s, 40), s);
++  const done = finish(s, at(1));
++  assert.equal(setWeight(done, 50), done);
++});
++
++test('stepWeight: passo de 2,5; abaixo de 2,5 vira sem carga; sem carga + 1 passo = 2,5; teto 999,99', () => {
++  assert.equal(stepWeight(null, 1), 2.5);
++  assert.equal(stepWeight(null, -1), null);
++  assert.equal(stepWeight(2.5, -1), null);
++  assert.equal(stepWeight(1, -1), null);
++  assert.equal(stepWeight(7.5, 1), 10);
++  assert.equal(stepWeight(0.1 + 0.2, 1), 2.8); // sem lixo de ponto flutuante
++  assert.equal(stepWeight(999, 1), 999.99);
++});
++
++test('formatWeight: vírgula decimal; null = Sem carga', () => {
++  assert.equal(formatWeight(7.5), '7,5 kg');
++  assert.equal(formatWeight(60), '60 kg');
++  assert.equal(formatWeight(0), '0 kg');
++  assert.equal(formatWeight(null), 'Sem carga');
++});
++
++test('weightChanges: só séries feitas com carga diferente do início; pulada não conta; treino livre → nada', () => {
++  let s = createSession(routine, T0);
++  s = finishSet(startSet(setWeight(s, 45), at(0)), at(30)); // Supino 1: 40 → 45
++  s = finishSet(startSet(s, at(60)), at(90)); // Supino 2: null → null (igual)
++  s = skipSet(setWeight(s, 30), at(100)); // Remada 1: mudou mas foi pulada
++  assert.equal(s.phase, 'done');
++  assert.deepEqual(weightChanges(s), [{ position: 1, exercise_id: 'e1', set_number: 1, name: 'Supino', from: 40, to: 45 }]);
++  assert.deepEqual(weightChanges({ ...s, routine_id: '' }), []);
++
++  let none = createSession(routine, T0);
++  none = finishSet(startSet(none, at(0)), at(30));
++  assert.deepEqual(weightChanges(none), []);
++});
++
++test('toSessionPayload manda weight_kg de cada série', () => {
++  let s = createSession(routine, T0);
++  s = finishSet(startSet(setWeight(s, 42.5), at(0)), at(30));
++  s = finish(finishSet(startSet(s, at(60)), at(90)), at(100));
++  assert.deepEqual(toSessionPayload(s).sets.map((x) => x.weight_kg), [42.5, null]);
++});
++
++test('upgradeState: rascunho antigo ganha planned_weights = weights e weight_kg null; atual passa intacto', () => {
++  let current = createSession(routine, T0);
++  current = finishSet(startSet(current, at(0)), at(30));
++  const old = {
++    ...current,
++    exercises: current.exercises.map(({ planned_weights, ...e }) => e),
++    sets: current.sets.map(({ weight_kg, ...set }) => set),
++  };
++  const up = upgradeState(old);
++  assert.deepEqual(up.exercises[0].planned_weights, [40, null]);
++  assert.equal(up.sets[0].weight_kg, null);
++  assert.deepEqual(weightChanges(up), [{ position: 1, exercise_id: 'e1', set_number: 1, name: 'Supino', from: 40, to: null }]);
++  assert.deepEqual(upgradeState(current), current);
++});
++
++test('resumo leva a carga de cada série (ao vivo e do histórico, com null no treino antigo)', () => {
++  let s = createSession(routine, T0);
++  s = finishSet(startSet(s, at(0)), at(30));
++  assert.equal(summaryFromState(s).groups[0].sets[0].weight_kg, 40);
++  const history = summaryFromDetail({
++    id: 'a1', title: 'Peito', start_time: '2026-09-30T10:00:00.000Z', duration_sec: 60,
++    sets: [
++      { exercise_name: 'Supino', position: 1, set_number: 1, duration_sec: 40, rest_before_sec: null, weight_kg: 62.5 },
++      { exercise_name: 'Supino', position: 1, set_number: 2, duration_sec: 40, rest_before_sec: 60 },
++    ],
++  });
++  assert.deepEqual(history.groups[0].sets.map((x) => x.weight_kg), [62.5, null]);
++});
