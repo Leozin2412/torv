@@ -24,7 +24,7 @@
 | CORS | Entra `PATCH` em `methods` no `server.js`. Hoje a lista só tem GET/POST/PUT/DELETE, e o preflight do web falharia. |
 | Treinos antigos | Ficam com `weight_kg` nulo. Não há backfill (a rotina pode ter mudado desde então). No resumo, carga nula não mostra texto. |
 | Período | Calculado no app, no fuso do aparelho. O servidor ganha só `from` (`start_time >= from`); o fim do período é o `before` da primeira página. |
-| Senha | Bolinhas nativas: fonte do sistema no campo mascarado com texto. A Sora não tem o "●" (U+25CF) que o iOS e o Safari usam na máscara, e por isso aparecem quadrados. |
+| Senha | Bolinhas nativas: fonte do sistema no campo mascarado com texto. Na Sora, o "•" (U+2022), que o Android e o Chrome usam na máscara, é desenhado como um quadrado (4 pontos retos), e ela não tem o "●" (U+25CF) do iOS. |
 | Boas-vindas | Fica no servidor (`user_profiles.welcomed_at`), uma vez por conta, em qualquer aparelho. Sem backfill: as contas atuais também veem a mensagem uma vez. |
 | API no celular | Em dev, o host da API vem do `hostUri` do Expo (o IP do PC na rede, onde também roda o backend). `EXPO_PUBLIC_API_URL` continua sobrepondo. |
 | Fora do escopo | Repetições por série, carga no item da lista do histórico, e a carga ajustada empurrar as séries seguintes. |
@@ -133,7 +133,7 @@ const baseURL = process.env.EXPO_PUBLIC_API_URL || `http://${devHost ?? '127.0.0
 ### Senha (`components/Input`)
 
 - **Quando:** com `secureTextEntry`, a senha oculta (`!visible`) e o `value` não vazio.
-- **O que muda:** o `TextInput` recebe `fontFamily` do sistema (`Platform.select({ ios: 'System', default: undefined })`).
+- **O que muda:** o `TextInput` recebe `fontFamily` do sistema, com nome explícito: `Platform.select({ android: 'sans-serif', default: 'System' })`. No web, o react-native-web traduz `System` para a pilha de fontes do sistema. `undefined` não serve, porque o react-native-web ignora valor indefinido e a Sora continuaria.
 - **O que não muda:** o placeholder e a senha visível continuam em Sora.
 
 ### Boas-vindas (`components/WelcomeModal` + Home)
