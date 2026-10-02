@@ -20,7 +20,8 @@ export interface ActivityPage {
 
 export interface ActivityQuery {
   type?: ActivityType;
-  before?: string;
+  from?: string; // ISO, inclusivo
+  before?: string; // ISO, exclusivo (fim do período ou next_before)
   limit?: number;
 }
 

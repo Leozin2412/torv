@@ -15,6 +15,7 @@ export const styles = StyleSheet.create({
     maxWidth: 400,
     alignSelf: 'center',
   },
+  title: { color: colors.brand, fontFamily: fontFamily.semiBold, fontSize: 14, marginBottom: 8 },
   year: { color: colors.textSecondary, fontFamily: fontFamily.semiBold, fontSize: 14 },
   selectedLabel: { color: colors.text, fontFamily: fontFamily.extraBold, fontSize: 28, marginTop: 4, marginBottom: 16 },
   monthNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },

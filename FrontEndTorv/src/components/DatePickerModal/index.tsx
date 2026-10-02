@@ -24,6 +24,7 @@ const NAV_HIT_SLOP = { top: 4, bottom: 4 };
 
 interface Props {
   visible: boolean;
+  title?: string; // acima da data; ex.: "Desde quando?"
   value: string; // YYYY-MM-DD
   minDate?: string;
   maxDate?: string;
@@ -31,7 +32,7 @@ interface Props {
   onClose: () => void;
 }
 
-export const DatePickerModal: React.FC<Props> = ({ visible, value, minDate, maxDate, onConfirm, onClose }) => {
+export const DatePickerModal: React.FC<Props> = ({ visible, title, value, minDate, maxDate, onConfirm, onClose }) => {
   // Páginas de anos terminam no ano de maxDate (ou no ano de hoje): [end-11 .. end], end = anchor - 12k.
   const anchor = (maxDate ? parseLocalDate(maxDate) : new Date()).getFullYear();
 
@@ -150,6 +151,7 @@ export const DatePickerModal: React.FC<Props> = ({ visible, value, minDate, maxD
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.content}>
+          {!!title && <Text style={styles.title}>{title}</Text>}
           <Text style={styles.year}>{selectedDate.getFullYear()}</Text>
           <Text style={styles.selectedLabel}>
             {`${WEEKDAYS[selectedDate.getDay()].slice(0, 3)}., ${selectedDate.getDate()} de ${MONTHS[selectedDate.getMonth()].slice(0, 3)}.`}
