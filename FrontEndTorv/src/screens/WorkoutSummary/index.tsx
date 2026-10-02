@@ -157,6 +157,8 @@ export default function WorkoutSummary() {
               <>
                 <Button
                   title={weightsStatus === 'error' ? 'Tentar de novo' : 'Atualizar rotina'}
+                  outline
+                  style={styles.changesAction}
                   loading={weightsStatus === 'saving'}
                   onPress={updateRoutineWeights}
                 />

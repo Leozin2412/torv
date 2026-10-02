@@ -31,6 +31,8 @@ export const styles = StyleSheet.create({
   error: { color: colors.error, fontFamily: fontFamily.semiBold, fontSize: 14, textAlign: 'center' },
 
   changes: { gap: 10, borderWidth: 1, borderColor: colors.brand },
+  // Tinta + contorno: o verde sólido fica só para "Concluir".
+  changesAction: { backgroundColor: colors.brandTint },
   changesTitle: { color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 16 },
   changeItem: { color: colors.textMuted, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20, fontVariant: ['tabular-nums'] },
   changesOk: { color: colors.brand, fontFamily: fontFamily.semiBold, fontSize: 14 },

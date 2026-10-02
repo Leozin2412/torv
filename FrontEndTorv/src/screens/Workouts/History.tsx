@@ -114,10 +114,11 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
     } else loadFirst(type, period);
   }, [type, period]));
 
-  const chip = (key: string, label: string, active: boolean, onPress: () => void) => (
+  // quiet = linha de período: sem contorno quando inativa, para não competir com a linha de tipo.
+  const chip = (key: string, label: string, active: boolean, onPress: () => void, quiet = false) => (
     <TouchableOpacity
       key={key}
-      style={[styles.chip, active && styles.chipActive]}
+      style={[styles.chip, quiet && styles.chipQuiet, active && styles.chipActive]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
@@ -132,9 +133,9 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
         {[undefined, ...ACTIVITY_TYPES].map((t) => chip(t ?? 'ALL', t ? ACTIVITY_LABELS[t] : 'Todos', t === type, () => setType(t)))}
       </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
-        {PERIOD_PRESETS.map((p) => chip(p.label, p.label, periodKey(p.period) === periodKey(period), () => setPeriod(p.period)))}
-        {chip('custom', period.kind === 'custom' ? customLabel(period) : 'Personalizado', period.kind === 'custom', () => setPicking({ step: 'start' }))}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.chipsScroll, styles.periodScroll]} contentContainerStyle={styles.chipsRow}>
+        {PERIOD_PRESETS.map((p) => chip(p.label, p.label, periodKey(p.period) === periodKey(period), () => setPeriod(p.period), true))}
+        {chip('custom', period.kind === 'custom' ? customLabel(period) : 'Personalizado', period.kind === 'custom', () => setPicking({ step: 'start' }), true)}
       </ScrollView>
     </View>
   );

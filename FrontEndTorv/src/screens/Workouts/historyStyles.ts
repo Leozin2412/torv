@@ -22,6 +22,9 @@ export const historyStyles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
+  // Período: fundo e contorno transparentes até ficar ativo (o ativo mantém a tinta). Alvo continua 44 px.
+  chipQuiet: { borderColor: 'transparent', backgroundColor: 'transparent', paddingHorizontal: 12 },
+  periodScroll: { marginTop: 4, marginBottom: 8 },
   chipActive: { borderColor: colors.brand, backgroundColor: colors.brandTint },
   chipText: { color: colors.textSecondary, fontFamily: fontFamily.semiBold, fontSize: 13 },
   chipTextActive: { color: colors.brand },
