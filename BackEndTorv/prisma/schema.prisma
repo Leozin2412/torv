@@ -27,6 +27,9 @@ model users {
   following         follows[]           @relation("follower")
   group_members     group_members[]
   group_rankings    group_rankings[]
+  owned_groups              groups[]            @relation("group_owner")
+  group_invitations         group_invitations[] @relation("invitee")
+  group_invitations_created group_invitations[] @relation("inviter")
 }
 
 model user_profiles {
@@ -77,11 +80,26 @@ model follows {
 }
 
 model groups {
-  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name           String           @db.VarChar(100)
-  period_type    String?          @db.VarChar(50)
-  group_members  group_members[]
-  group_rankings group_rankings[]
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String    @db.VarChar(100)
+  owner_id      String    @db.Uuid
+  // 'PUBLIC' | 'PRIVATE' (CHECK só no SQL da migration)
+  visibility    String    @db.VarChar(10)
+  cover_url     String?   @db.VarChar(500)
+  starts_at     DateTime  @db.Date
+  // NULL = sem data de término: a competição segue para sempre
+  ends_at       DateTime? @db.Date
+  // fuso do grupo (offset do admin na criação); define o "dia local" da pontuação
+  tz_offset_min Int
+  invite_token  String?   @unique @db.VarChar(12)
+  created_at    DateTime? @default(now()) @db.Timestamptz
+
+  owner             users               @relation("group_owner", fields: [owner_id], references: [id], onDelete: Cascade)
+  group_members     group_members[]
+  group_rankings    group_rankings[]
+  group_invitations group_invitations[]
+
+  @@index([owner_id])
 }
 
 model group_members {
@@ -93,8 +111,11 @@ model group_members {
   user       users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@id([group_id, user_id])
+  @@index([user_id])
 }
 
+// Ranking materializado: total_points = dias locais com atividade; activities_count = atividades na mesma janela.
+// Recalculado (nunca incrementado) por groups.repository.recomputeRanking.
 model group_rankings {
   group_id         String @db.Uuid
   user_id          String @db.Uuid
@@ -105,6 +126,27 @@ model group_rankings {
   user             users  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@id([group_id, user_id])
+  @@index([group_id, total_points(sort: Desc), activities_count(sort: Desc)], map: "group_rankings_order_idx")
+}
+
+model group_invitations {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_id    String    @db.Uuid
+  user_id     String    @db.Uuid
+  // 'INVITE' (admin convida) | 'REQUEST' (usuário pede para entrar)
+  kind        String    @db.VarChar(10)
+  // 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELED'
+  status      String    @default("PENDING") @db.VarChar(10)
+  created_by  String    @db.Uuid
+  created_at  DateTime? @default(now()) @db.Timestamptz
+  resolved_at DateTime? @db.Timestamptz
+
+  group       groups    @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  user        users     @relation("invitee", fields: [user_id], references: [id], onDelete: Cascade)
+  creator     users     @relation("inviter", fields: [created_by], references: [id], onDelete: Cascade)
+
+  @@index([user_id, status])
+  // + índice único parcial (group_id, user_id) WHERE status = 'PENDING', só no SQL da migration
 }
 
 model activities {
@@ -122,6 +164,7 @@ model activities {
   routine           workout_routines?  @relation(fields: [routine_id], references: [id], onDelete: SetNull)
   activity_gps_data activity_gps_data?
   workout_sets      workout_sets[]
+  @@index([user_id, start_time])
   // + índice único parcial (user_id, start_time) WHERE activity_type = 'STRENGTH', só no SQL da migration
 }
 

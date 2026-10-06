@@ -274,28 +274,6 @@ AFTER INSERT ON activities
 FOR EACH ROW
 EXECUTE FUNCTION trg_fn_update_streak_on_activity();
 
---Add Points GymRats
-CREATE OR REPLACE FUNCTION trg_fn_add_points_to_group_ranking()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  UPDATE group_rankings
-  SET total_points = total_points + 10,
-      activities_count = activities_count + 1
-  WHERE user_id = NEW.user_id;
-
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_add_points_to_group_ranking
-AFTER INSERT ON activities
-FOR EACH ROW
-EXECUTE FUNCTION trg_fn_add_points_to_group_ranking();
-
-
-
 --Regras (CHECKs)
 -- Regras de domínio que o banco garante para qualquer escritor (app, seed ou SQL
 -- manual). Na migration elas nascem junto com a coluna/tabela; aqui ficam como
@@ -340,3 +318,12 @@ ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_type_ch
 ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_min_level_check CHECK (min_level IN ('INICIANTE', 'INTERMEDIÁRIO', 'AVANÇADO'));
 -- TODOS = vale para qualquer sexo; M/F/N = só para quem tem esse sexo no perfil.
 ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_sex_check CHECK (sex IN ('TODOS', 'M', 'F', 'N'));
+
+--Grupos e competição (20261006120000_groups)
+-- group_rankings é materializado e recalculado pelo backend (recomputeRanking); o trigger
+-- antigo que somava +10 por atividade foi removido em 20261006120100_drop_group_points_trigger.
+ALTER TABLE groups ADD CONSTRAINT groups_visibility_check CHECK (visibility IN ('PUBLIC', 'PRIVATE'));
+ALTER TABLE groups ADD CONSTRAINT groups_period_check CHECK (ends_at IS NULL OR ends_at >= starts_at);
+ALTER TABLE groups ADD CONSTRAINT groups_tz_offset_min_check CHECK (tz_offset_min BETWEEN -840 AND 840);
+ALTER TABLE group_invitations ADD CONSTRAINT group_invitations_kind_check CHECK (kind IN ('INVITE', 'REQUEST'));
+ALTER TABLE group_invitations ADD CONSTRAINT group_invitations_status_check CHECK (status IN ('PENDING', 'ACCEPTED', 'DECLINED', 'CANCELED'));

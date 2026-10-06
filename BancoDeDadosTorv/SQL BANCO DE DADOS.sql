@@ -74,7 +74,14 @@ CREATE TABLE follows (
 CREATE TABLE groups (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
-    period_type VARCHAR(50)
+    owner_id UUID NOT NULL,
+    visibility VARCHAR(10) NOT NULL,
+    cover_url VARCHAR(500),
+    starts_at DATE NOT NULL,
+    ends_at DATE,
+    tz_offset_min INT NOT NULL,
+    invite_token VARCHAR(12),
+    created_at TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TABLE group_members (
@@ -90,6 +97,17 @@ CREATE TABLE group_rankings (
     total_points INT DEFAULT 0,
     activities_count INT DEFAULT 0,
     PRIMARY KEY (group_id, user_id)
+);
+
+CREATE TABLE group_invitations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    kind VARCHAR(10) NOT NULL,
+    status VARCHAR(10) NOT NULL DEFAULT 'PENDING',
+    created_by UUID NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    resolved_at TIMESTAMPTZ
 );
 
 --Modulo Tracking(Strava)
@@ -226,11 +244,12 @@ CREATE TABLE food_logs (
 
 CREATE UNIQUE INDEX users_email_key ON users(email);
 CREATE UNIQUE INDEX user_profiles_username_key ON user_profiles(username);
+CREATE UNIQUE INDEX groups_invite_token_key ON groups(invite_token);
 CREATE UNIQUE INDEX exercises_slug_key ON exercises(slug);
 CREATE UNIQUE INDEX exercises_catalog_order_key ON exercises(catalog_order);
 CREATE UNIQUE INDEX routine_exercise_sets_routine_exercise_id_set_number_key ON routine_exercise_sets(routine_exercise_id, set_number);
 -- O único parcial activities_strength_user_start_key (idempotência do treino) está
--- em Gestao_e_Performance.sql, passo 2.4.
+-- em Gestao_e_Performance.sql, passo 2.4; o group_invitations_pending_key, no passo 2.5.
 
 
 -- Foreign keys
@@ -245,6 +264,10 @@ ALTER TABLE user_measurements ADD CONSTRAINT user_measurements_user_id_fkey FORE
 ALTER TABLE user_streaks ADD CONSTRAINT user_streaks_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE follows ADD CONSTRAINT follows_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE NO ACTION;
 ALTER TABLE follows ADD CONSTRAINT follows_followed_id_fkey FOREIGN KEY (followed_id) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE NO ACTION;
+ALTER TABLE groups ADD CONSTRAINT groups_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE group_invitations ADD CONSTRAINT group_invitations_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE group_invitations ADD CONSTRAINT group_invitations_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE group_invitations ADD CONSTRAINT group_invitations_created_by_fkey FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE group_members ADD CONSTRAINT group_members_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE group_members ADD CONSTRAINT group_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE group_rankings ADD CONSTRAINT group_rankings_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE ON UPDATE CASCADE;

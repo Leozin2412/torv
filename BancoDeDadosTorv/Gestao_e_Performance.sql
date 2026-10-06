@@ -88,6 +88,8 @@ ALTER TABLE group_members ENABLE ROW LEVEL SECURITY;
 CREATE POLICY torv_api_full_access ON group_members TO torv_api USING (true) WITH CHECK (true);
 ALTER TABLE group_rankings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY torv_api_full_access ON group_rankings TO torv_api USING (true) WITH CHECK (true);
+ALTER TABLE group_invitations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY torv_api_full_access ON group_invitations TO torv_api USING (true) WITH CHECK (true);
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 CREATE POLICY torv_api_full_access ON activities TO torv_api USING (true) WITH CHECK (true);
 ALTER TABLE activity_gps_data ENABLE ROW LEVEL SECURITY;
@@ -157,6 +159,19 @@ CREATE INDEX workout_sets_activity_id_idx ON workout_sets (activity_id);
 CREATE UNIQUE INDEX activities_strength_user_start_key
 ON activities (user_id, start_time)
 WHERE activity_type = 'STRENGTH';
+
+-- Passo 2.5: Índices de grupos e competição (20261006120000_groups)
+-- group_rankings_order_idx cobre a leitura do ranking (ordem: pontos, depois atividades);
+-- activities_user_id_start_time_idx, a varredura do recomputeRanking por usuário e start_time.
+CREATE INDEX groups_owner_id_idx ON groups (owner_id);
+CREATE INDEX group_members_user_id_idx ON group_members (user_id);
+CREATE INDEX group_rankings_order_idx ON group_rankings (group_id, total_points DESC, activities_count DESC);
+CREATE INDEX activities_user_id_start_time_idx ON activities (user_id, start_time);
+CREATE INDEX group_invitations_user_id_status_idx ON group_invitations (user_id, status);
+-- No máximo 1 convite/pedido pendente por (grupo, usuário). Parcial: só no SQL da migration.
+CREATE UNIQUE INDEX group_invitations_pending_key
+ON group_invitations (group_id, user_id)
+WHERE status = 'PENDING';
 
 -- =======================================================================
 -- 3. GESTÃO DE ARMAZENAMENTO FÍSICO (MANUTENÇÃO)
