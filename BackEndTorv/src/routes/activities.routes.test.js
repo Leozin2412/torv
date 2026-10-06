@@ -89,3 +89,77 @@ test('GET /activities: from e before viram Date e chegam juntos ao repository', 
   assert.ok(from instanceof Date && before instanceof Date);
   assert.deepEqual([from.toISOString(), before.toISOString()], ['2026-09-01T03:00:00.000Z', '2026-10-01T03:00:00.000Z']);
 });
+
+// /summary: o repository (mockado) devolve os dias LOCAIS com treino; a conversão UTC→local é do SQL.
+async function summary(t, { days = [], calories = 0, qs = 'date=2026-10-06&tz_offset_min=-180' } = {}) {
+  const strengthDays = t.mock.method(activitiesRepository, 'strengthDays', async () => days);
+  const caloriesBetween = t.mock.method(activitiesRepository, 'caloriesBetween', async () => calories);
+  const res = await get(await build(t), `/activities/summary?${qs}`);
+  return { res, strengthDays, caloriesBetween };
+}
+
+test('GET /activities/summary: sem treino → streak 0, calorias 0', async (t) => {
+  const { res } = await summary(t);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { streak_days: 0, calories_burned: 0 });
+});
+
+test('GET /activities/summary: treino hoje conta; dias seguidos somam', async (t) => {
+  assert.equal((await summary(t, { days: ['2026-10-06'] })).res.json().streak_days, 1);
+  assert.equal((await summary(t, { days: ['2026-10-06', '2026-10-05', '2026-10-04'] })).res.json().streak_days, 3);
+});
+
+test('GET /activities/summary: só ontem → streak viva a partir de ontem; anteontem sem ontem → 0', async (t) => {
+  assert.equal((await summary(t, { days: ['2026-10-05', '2026-10-04'] })).res.json().streak_days, 2);
+  assert.equal((await summary(t, { days: ['2026-10-04', '2026-10-03'] })).res.json().streak_days, 0);
+});
+
+test('GET /activities/summary: gap quebra a contagem; vira de mês e de ano', async (t) => {
+  assert.equal((await summary(t, { days: ['2026-10-06', '2026-10-05', '2026-10-03', '2026-10-02'] })).res.json().streak_days, 2);
+  const nye = await summary(t, { days: ['2027-01-01', '2026-12-31', '2026-12-30'], qs: 'date=2027-01-01&tz_offset_min=0' });
+  assert.equal(nye.res.json().streak_days, 3);
+});
+
+test('GET /activities/summary: fuso — janela do dia local em UTC (23:30 BRT = 02:30Z do dia seguinte cai dentro)', async (t) => {
+  const { strengthDays, caloriesBetween } = await summary(t, { calories: 250 });
+  const [userId, opts] = strengthDays.mock.calls[0].arguments;
+  assert.equal(userId, USER);
+  assert.equal(opts.tzOffsetMin, -180);
+  assert.equal(opts.before.toISOString(), '2026-10-07T03:00:00.000Z');
+  const [, win] = caloriesBetween.mock.calls[0].arguments;
+  assert.deepEqual([win.from.toISOString(), win.before.toISOString()], ['2026-10-06T03:00:00.000Z', '2026-10-07T03:00:00.000Z']);
+  assert.ok(new Date('2026-10-07T02:30:00Z') >= win.from && new Date('2026-10-07T02:30:00Z') < win.before);
+  // Fuso positivo: dia local começa antes da meia-noite UTC.
+  const plus = await summary(t, { qs: 'date=2026-10-06&tz_offset_min=540' });
+  assert.equal(plus.caloriesBetween.mock.calls[0].arguments[1].from.toISOString(), '2026-10-05T15:00:00.000Z');
+});
+
+test('GET /activities/summary: calories_burned vem da soma do repository', async (t) => {
+  const { res } = await summary(t, { calories: 480 });
+  assert.equal(res.json().calories_burned, 480);
+});
+
+test('GET /activities/summary 400: date e tz_offset_min inválidos não chegam ao repository', async (t) => {
+  const { strengthDays, caloriesBetween } = await summary(t, { qs: 'date=2026-10-06&tz_offset_min=0' });
+  strengthDays.mock.resetCalls();
+  caloriesBetween.mock.resetCalls();
+  const app = await build(t);
+  for (const qs of [
+    '', 'tz_offset_min=0', 'date=2026-10-06', 'date=ontem&tz_offset_min=0', 'date=2026-1-6&tz_offset_min=0',
+    'date=2026-10-06T00:00:00Z&tz_offset_min=0', 'date=2026-13-01&tz_offset_min=0', 'date=2026-00-10&tz_offset_min=0',
+    'date=2026-02-31&tz_offset_min=0', 'date=2026-10-32&tz_offset_min=0',
+    'date=2026-10-06&tz_offset_min=abc', 'date=2026-10-06&tz_offset_min=1.5', 'date=2026-10-06&tz_offset_min=841',
+    'date=2026-10-06&tz_offset_min=-841',
+  ]) {
+    assert.equal((await get(app, `/activities/summary?${qs}`)).statusCode, 400, qs);
+  }
+  assert.equal(strengthDays.mock.callCount() + caloriesBetween.mock.callCount(), 0);
+  for (const off of [-840, 840]) assert.equal((await get(app, `/activities/summary?date=2026-10-06&tz_offset_min=${off}`)).statusCode, 200);
+});
+
+test('GET /activities/summary: isolamento — user_id do cliente é ignorado, repository recebe só o do token', async (t) => {
+  const { res, strengthDays, caloriesBetween } = await summary(t, { qs: 'date=2026-10-06&tz_offset_min=0&user_id=99999999-9999-4999-8999-999999999999' });
+  assert.equal(res.statusCode, 200);
+  assert.equal(strengthDays.mock.calls[0].arguments[0], USER);
+  assert.equal(caloriesBetween.mock.calls[0].arguments[0], USER);
+});

@@ -18,6 +18,26 @@ class ActivitiesRepository {
       },
     });
   }
+
+  // Dias locais distintos (YYYY-MM-DD, mais recente primeiro) com treino STRENGTH antes de `before` (UTC). Local = UTC + tzOffsetMin.
+  // ponytail: LIMIT 1000 dias → streak maior que isso trunca; subir se algum dia importar.
+  async strengthDays(userId, { before, tzOffsetMin }) {
+    const rows = await prisma.$queryRaw`
+      SELECT DISTINCT to_char((start_time AT TIME ZONE 'UTC') + make_interval(mins => ${tzOffsetMin}::int), 'YYYY-MM-DD') AS day
+      FROM activities
+      WHERE user_id = ${userId}::uuid AND activity_type = 'STRENGTH' AND start_time < ${before}::timestamptz
+      ORDER BY day DESC LIMIT 1000`;
+    return rows.map((r) => r.day);
+  }
+
+  // Soma de calories (null conta 0) de qualquer tipo em [from, before).
+  async caloriesBetween(userId, { from, before }) {
+    const { _sum } = await prisma.activities.aggregate({
+      _sum: { calories: true },
+      where: { user_id: userId, start_time: { gte: from, lt: before } },
+    });
+    return _sum.calories ?? 0;
+  }
 }
 
 module.exports = new ActivitiesRepository();

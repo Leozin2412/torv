@@ -20,6 +20,8 @@ const ActivityPage = Type.Object({
   next_before: Type.Union([Type.String(), Type.Null()]),
 });
 
+const Summary = Type.Object({ streak_days: Type.Integer(), calories_burned: Type.Integer() });
+
 async function activitiesRoutes(fastify) {
   fastify.addHook('preHandler', authenticateToken);
 
@@ -37,6 +39,20 @@ async function activitiesRoutes(fastify) {
       response: { 200: ActivityPage, ...errors(400, 401, 403) },
     },
   }, activitiesController.listActivities);
+
+  // Antes de qualquer rota com :id.
+  fastify.get('/summary', {
+    schema: {
+      description: 'Resumo do dia para a Home: streak (dias locais seguidos com treino STRENGTH; viva se treinou hoje ou ontem) e calorias do dia local. Dia local = start_time + tz_offset_min',
+      tags: ['Activities'],
+      security: [{ bearerAuth: [] }],
+      querystring: Type.Object({
+        date: Type.String({ pattern: '^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$', description: 'Dia local do cliente, YYYY-MM-DD' }),
+        tz_offset_min: Type.Integer({ minimum: -840, maximum: 840, description: 'Minutos que o relógio local difere de UTC (BRT = -180)' }),
+      }),
+      response: { 200: Summary, ...errors(400, 401, 403) },
+    },
+  }, activitiesController.getSummary);
 }
 
 module.exports = activitiesRoutes;
