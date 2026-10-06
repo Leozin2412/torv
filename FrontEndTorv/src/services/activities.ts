@@ -25,6 +25,19 @@ export interface ActivityQuery {
   limit?: number;
 }
 
+// Contrato de GET /activities/summary. date = dia LOCAL (AAAA-MM-DD); tz_offset_min = -getTimezoneOffset().
+export interface ActivitySummary {
+  streak_days: number;
+  calories_burned: number;
+}
+
+export interface ActivitySummaryQuery {
+  date: string;
+  tz_offset_min: number;
+}
+
 export const activitiesApi = {
   list: (query: ActivityQuery = {}) => api.get<ActivityPage>('/activities', { params: query }).then((r) => r.data),
+  summary: (query: ActivitySummaryQuery) =>
+    api.get<ActivitySummary>('/activities/summary', { params: query }).then((r) => r.data),
 };

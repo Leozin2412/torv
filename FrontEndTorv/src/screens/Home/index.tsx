@@ -12,7 +12,9 @@ import { WelcomeModal } from '../../components/WelcomeModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import { workoutsApi, type RoutineSummary } from '../../services/workouts';
+import { activitiesApi, type ActivitySummary } from '../../services/activities';
 import { loadDraft } from '../../utils/workoutDraft';
+import { toISODate } from '../../utils/date';
 import type { AppNavigation } from '../../routes/types';
 import { colors } from '../../theme/tokens';
 import { styles } from './styles';
@@ -29,13 +31,27 @@ export default function Home() {
   const [nextRoutine, setNextRoutine] = useState<RoutineSummary | null | undefined>(undefined);
   const [confirmRepeat, setConfirmRepeat] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
+  // null = carregando/erro (UI mostra '–', nunca um número inventado)
+  const [activity, setActivity] = useState<ActivitySummary | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       loadDietSummary();
       loadWorkout();
+      loadActivitySummary();
     }, [user?.id])
   );
+
+  // Falha aqui não derruba dieta/treino: try/catch próprio.
+  const loadActivitySummary = async () => {
+    try {
+      const now = new Date();
+      setActivity(await activitiesApi.summary({ date: toISODate(now), tz_offset_min: -now.getTimezoneOffset() }));
+    } catch (error) {
+      console.log('Failed to load activity summary', error);
+      setActivity(null);
+    }
+  };
 
   // 1ª chamada depois do login gera o treino padrão no backend.
   const loadWorkout = async () => {
@@ -127,8 +143,8 @@ export default function Home() {
               <Flame color={colors.textSecondary} size={14} />
               <Text style={styles.streakTitle}>Streak</Text>
             </View>
-            <Text style={styles.streakValue}>12</Text>
-            <Text style={styles.streakSub}>dias seguidos</Text>
+            <Text style={styles.streakValue}>{activity ? activity.streak_days : '–'}</Text>
+            <Text style={styles.streakSub}>{activity?.streak_days === 1 ? 'dia seguido' : 'dias seguidos'}</Text>
           </Card>
 
           <Card style={styles.workoutCard}>
@@ -197,8 +213,10 @@ export default function Home() {
 
               <View style={styles.calorieBox}>
                 <Text style={styles.calorieBoxTitle}>Gastas</Text>
-                <Text style={styles.calorieBoxValueGreen}>180</Text>
-                <Text style={styles.calorieBoxSub}>kcal = caminhada</Text>
+                <Text style={styles.calorieBoxValueGreen}>
+                  {activity ? activity.calories_burned.toLocaleString('pt-BR') : '–'}
+                </Text>
+                <Text style={styles.calorieBoxSub}>kcal = atividades</Text>
               </View>
             </View>
 
