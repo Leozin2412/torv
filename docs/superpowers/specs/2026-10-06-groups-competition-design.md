@@ -74,7 +74,7 @@ Padrão atual: Fastify + Typebox, `routes → controller → repository`, JWT em
 |---|---|---|
 | `POST /` | autenticado | cria o grupo (`name`, `visibility`, `starts_at`, `ends_at` nullable, `tz_offset_min`); insere o dono em `group_members` e a linha zerada em `group_rankings`, numa transação |
 | `GET /` | autenticado | meus grupos, com nº de membros, minha posição e meus pontos |
-| `GET /discover?q=&cursor=` | autenticado | busca por nome entre grupos `PUBLIC` e ainda não encerrados, paginada |
+| `GET /discover?q=&cursor=` | autenticado | busca por nome entre grupos `PUBLIC`, ainda não encerrados e dos quais não sou membro; `cursor` é o deslocamento (20 por página) e a resposta traz `next_cursor` |
 | `GET /:id` | membro; qualquer um se `PUBLIC` | detalhes e capa |
 | `PATCH /:id` | dono | `name`, `visibility`, `starts_at`, `ends_at`. Mudou o período → `recomputeGroup` |
 | `DELETE /:id` | dono | apaga o grupo (cascade) e o arquivo da capa |
@@ -97,7 +97,7 @@ Regras comuns: já é membro → 409; grupo encerrado → 409; convite ou pedido
 
 ### Token de convite
 
-8 a 10 caracteres de um alfabeto sem ambiguidade (sem `0/O/1/I/L`), comparado em maiúsculas, gerado com `crypto.randomInt`. Em colisão do `UNIQUE`, gera de novo. As rotas `/join/:token` usam `@fastify/rate-limit` (já dependência do projeto) para frear tentativa de adivinhar tokens.
+8 caracteres de um alfabeto de 31 símbolos sem ambiguidade (sem `0/O/1/I/L`, ~8,5e11 combinações), comparado em maiúsculas, gerado com `crypto.randomInt`. Em colisão do `UNIQUE`, gera de novo. As rotas `/join/:token` usam `@fastify/rate-limit` (já dependência do projeto) para frear tentativa de adivinhar tokens.
 
 ### Ranking
 
@@ -131,7 +131,8 @@ O `PUT` de sessão **não** recalcula, porque não muda `started_at`. Qualquer n
 
 ### Editar e excluir atividade — `workout.routes.js`
 
-- `PUT /workouts/sessions/:id`: corpo `{ duration_sec, sets }`, com as mesmas regras de validação de `duration_sec` e `sets` do `POST /workouts/sessions`. `started_at`, `routine_id` e o título não mudam. Substitui as séries na transação. Só o dono (`user_id` na query).
+- `GET /workouts/sessions/:id` passa a devolver o `id` de cada série.
+- `PUT /workouts/sessions/:id`: corpo `{ duration_sec, sets: [{ id, duration_sec, weight_kg }] }`. Atualiza `duration_sec` da atividade e, para cada série listada, `duration_sec` e `weight_kg`; **as séries não listadas são apagadas** (é assim que se remove uma série; mínimo de 1). Nunca cria série. Todo `id` precisa pertencer à atividade, senão 400. `started_at`, `routine_id`, título, exercício, posição e descanso não mudam. Tudo numa transação, só o dono (`user_id` na query).
 - `DELETE /workouts/sessions/:id`: apaga a atividade e chama `recomputeRanking`, na mesma transação. Só o dono.
 
 ### Imagem
@@ -151,14 +152,14 @@ A validação de tipo e de assinatura hoje está em `profile.controller.js`. Pas
 ### Navegação
 
 - Nova aba **Grupos** (ícone `Users`) como 5ª aba; `minWidth` do `TabIcon` cai de 64 para ~56 para caber em telas estreitas.
-- Empilhadas acima das abas, em `AppStackParamList`: `GroupDetail {groupId}`, `GroupEditor {groupId?}`, `GroupManage {groupId}`, `JoinGroup {token?}`.
+- Empilhadas acima das abas, em `AppStackParamList`: `GroupDetail {groupId}`, `GroupEditor {groupId?}`, `GroupManage {groupId}`, `JoinGroup {token?}` e `WorkoutEdit {sessionId}`.
 
 ### Telas (`screens/<Nome>/index.tsx` + `styles.ts`)
 
 1. **Groups (aba):** segmentos **Meus grupos** e **Descobrir** (busca, só públicos). Card com capa, nome, nº de membros, minha posição e pontos, e o estado do período (ativo, "começa em X dias", encerrado). Seção **Convites recebidos** (aceitar ou recusar), visível só com convite pendente. Ações: **Criar grupo** e **Entrar com código**.
 2. **GroupDetail:** capa grande, nome, período, ranking (posição, foto, nome, pontos; top 3 em destaque; minha linha marcada), pull-to-refresh. Membro: **Sair**. Não-membro de grupo público: **Pedir para entrar**. Dono: **Editar** e **Gerenciar**.
 3. **GroupEditor:** capa (`expo-image-picker`, já instalado; upload com `FormData` como no Profile), nome, visibilidade, início e fim com o toggle **"Sem data de término"**. Reaproveita o date picker custom.
-4. **GroupManage (dono):** convidar por username exato; pedidos pendentes; link de convite (compartilhar pelo `Share` nativo, regenerar, revogar); membros com remover.
+4. **GroupManage (dono):** convidar por username exato; pedidos pendentes e convites enviados (cancelar); link de convite (compartilhar pelo `Share` nativo, regenerar, revogar); membros com remover; **Excluir grupo** no fim, com confirmação.
 5. **JoinGroup:** abre por link ou por código digitado; prévia e botão **Entrar**.
 
 ### Link `torv://`
@@ -169,8 +170,8 @@ A validação de tipo e de assinatura hoje está em `profile.controller.js`. Pas
 
 ### Editar e excluir atividade
 
-- Em **WorkoutSummary** com `sessionId`. **Editar** põe peso e duração de cada série em campos editáveis, com remover série; não há campo de data. **Excluir** pede confirmação em **modal próprio** (`Alert.alert` não funciona no Expo web, onde roda o QA de usabilidade).
-- Ao voltar, o Histórico e a Home (streak e calorias) recarregam. O plano confere se já recarregam no foco.
+- O **WorkoutSummary** com `sessionId` ganha os botões **Editar** e **Excluir**. **Editar** abre a nova tela empilhada `WorkoutEdit {sessionId}`, com peso e duração de cada série em campos editáveis e remover série; não há campo de data. **Excluir** pede confirmação no `ConfirmModal` existente (`Alert.alert` não funciona no Expo web, onde roda o QA de usabilidade).
+- Ao voltar, o Home e o Perfil já recarregam no foco. O **Histórico** só traz o que é novo no topo e não notaria um treino apagado; por isso uma versão em memória (`sessionsVersion`) sobe quando um treino é editado ou apagado, e o Histórico e o resumo recarregam do zero ao voltar.
 
 ### Serviços e utilitários
 
