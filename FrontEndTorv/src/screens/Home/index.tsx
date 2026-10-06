@@ -85,7 +85,7 @@ export default function Home() {
     setLoading(true);
     setLoadError(false);
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = toISODate(new Date());
       const response = await api.get(`/diet/summary?date=${today}`);
       const consumedData = response.data.consumed || {};
       const targetsData = response.data.targets || {};
