@@ -35,7 +35,7 @@ class DietRepository {
 
   async createFoodLog(userId, data) {
     const targetDate = data.logged_date ? new Date(data.logged_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-    const macrosJsonStr = typeof data.macros_json === 'string' ? data.macros_json : JSON.stringify(data.macros_json || { proteins: 0, carbs: 0, fats: 0 });
+    const macrosJsonStr = typeof data.macros_json === 'string' ? data.macros_json : JSON.stringify(data.macros_json || { protein: 0, carbs: 0, fat: 0 });
 
     // Execute the Postgres function and capture the new summary balance
     // Explicit ::integer cast on calories: Prisma's $queryRaw infers JS numbers as

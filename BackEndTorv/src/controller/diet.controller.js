@@ -33,7 +33,7 @@ const formatDietSummaryResponse = (date, spResult, logsArray) => {
       fat_g: summary.RemainingFat,
     },
     logs: logsArray.map(log => {
-      let macros = { proteins: 0, carbs: 0, fats: 0 };
+      let macros = { protein: 0, carbs: 0, fat: 0 };
       if (log.macros_json) {
         try {
           macros = typeof log.macros_json === 'string' ? JSON.parse(log.macros_json) : log.macros_json;
