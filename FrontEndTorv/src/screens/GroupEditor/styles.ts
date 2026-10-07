@@ -30,6 +30,8 @@ export const styles = StyleSheet.create({
 
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 52, marginBottom: 8 },
   switchText: { flex: 1 },
+  // Só mostra o estado: o toque vai para a linha (alvo de 44 px ou mais).
+  switchDecor: { pointerEvents: 'none' },
   label: { color: colors.textMuted, fontFamily: fontFamily.semiBold, fontSize: 14 },
   hint: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 18, marginTop: 2, marginBottom: 8 },
 

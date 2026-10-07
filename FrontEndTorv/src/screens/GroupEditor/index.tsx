@@ -125,13 +125,24 @@ export default function GroupEditor() {
 
         <Input label="Nome do grupo" value={name} onChangeText={setName} maxLength={100} placeholder="Ex.: Galera da academia" />
 
-        <View style={styles.switchRow}>
+        {/* A linha inteira é o alvo de toque (o Switch sozinho tem 40×20); o Switch só mostra o estado. */}
+        <TouchableOpacity
+          style={styles.switchRow}
+          activeOpacity={0.7}
+          onPress={() => setVisibility(visibility === 'PUBLIC' ? 'PRIVATE' : 'PUBLIC')}
+          accessibilityRole="switch"
+          accessibilityLabel="Grupo público"
+          accessibilityState={{ checked: visibility === 'PUBLIC' }}
+          aria-checked={visibility === 'PUBLIC'} // react-native-web ignora accessibilityState
+        >
           <View style={styles.switchText}>
             <Text style={styles.label}>Grupo público</Text>
             <Text style={styles.hint}>{visibility === 'PUBLIC' ? 'Aparece na busca e aceita pedidos de entrada.' : 'Só entra por convite ou código.'}</Text>
           </View>
-          <Switch value={visibility === 'PUBLIC'} onValueChange={(v) => setVisibility(v ? 'PUBLIC' : 'PRIVATE')} trackColor={{ true: colors.brand }} accessibilityLabel="Grupo público" />
-        </View>
+          <View style={styles.switchDecor} accessible={false} importantForAccessibility="no-hide-descendants">
+            <Switch value={visibility === 'PUBLIC'} trackColor={{ true: colors.brand }} />
+          </View>
+        </TouchableOpacity>
 
         <Text style={styles.label}>Período da competição</Text>
         <TouchableOpacity style={styles.dateButton} onPress={() => setPicking('start')} accessibilityRole="button" accessibilityLabel={`Início: ${formatDay(startsAt)}`}>
@@ -139,10 +150,20 @@ export default function GroupEditor() {
           <Text style={styles.dateValue}>{formatDay(startsAt)}</Text>
         </TouchableOpacity>
 
-        <View style={styles.switchRow}>
+        <TouchableOpacity
+          style={styles.switchRow}
+          activeOpacity={0.7}
+          onPress={() => setEndsAt(endsAt === null ? startsAt : null)}
+          accessibilityRole="switch"
+          accessibilityLabel="Sem data de término"
+          accessibilityState={{ checked: endsAt === null }}
+          aria-checked={endsAt === null}
+        >
           <Text style={styles.label}>Sem data de término</Text>
-          <Switch value={endsAt === null} onValueChange={(v) => setEndsAt(v ? null : (endsAt ?? startsAt))} trackColor={{ true: colors.brand }} accessibilityLabel="Sem data de término" />
-        </View>
+          <View style={styles.switchDecor} accessible={false} importantForAccessibility="no-hide-descendants">
+            <Switch value={endsAt === null} trackColor={{ true: colors.brand }} />
+          </View>
+        </TouchableOpacity>
         {endsAt !== null && (
           <TouchableOpacity style={styles.dateButton} onPress={() => setPicking('end')} accessibilityRole="button" accessibilityLabel={`Fim: ${formatDay(endsAt)}`}>
             <Text style={styles.dateLabel}>Fim</Text>
