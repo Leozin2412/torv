@@ -89,6 +89,7 @@ export interface SessionDetail {
   start_time: string;
   duration_sec: number;
   sets: {
+    id: string;
     exercise_name: string;
     position: number;
     set_number: number;
@@ -96,6 +97,12 @@ export interface SessionDetail {
     rest_before_sec: number | null;
     weight_kg: number | null;
   }[];
+}
+
+// PUT /workouts/sessions/:id: só duração e carga, por id de série. Séries não listadas são apagadas; a data não muda.
+export interface SessionEdit {
+  duration_sec: number;
+  sets: { id: string; duration_sec: number; weight_kg: number | null }[];
 }
 
 // PATCH /workouts/routines/:id/weights: série que não bate com a rotina atual (posição + exercício + nº) é ignorada.
@@ -122,4 +129,6 @@ export const workoutsApi = {
   deleteExercise: (id: string) => api.delete(`/workouts/exercises/${id}`),
   saveSession: (body: SessionPayload) => api.post<{ activity_id: string }>('/workouts/sessions', body).then((r) => r.data),
   getSession: (id: string) => api.get<SessionDetail>(`/workouts/sessions/${id}`).then((r) => r.data),
+  updateSession: (id: string, body: SessionEdit) => api.put<{ activity_id: string }>(`/workouts/sessions/${id}`, body).then((r) => r.data),
+  deleteSession: (id: string) => api.delete(`/workouts/sessions/${id}`),
 };
