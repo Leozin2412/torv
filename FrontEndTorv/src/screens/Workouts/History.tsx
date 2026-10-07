@@ -12,6 +12,7 @@ import { groupByDay, prependNew, type DayGroup } from '../../utils/historyGroups
 import { PERIOD_PRESETS, periodKey, periodRange, customLabel, type Period } from '../../utils/historyPeriod';
 import { formatClock } from '../../utils/clock';
 import { toISODate } from '../../utils/date';
+import { getSessionsVersion } from '../../utils/sessionsVersion';
 import type { AppNavigation } from '../../routes/types';
 import { colors } from '../../theme/tokens';
 import { historyStyles as styles } from './historyStyles';
@@ -44,6 +45,7 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
   const loadedKey = useRef<string | null>(null); // filtro da última carga ok; null = nunca carregou ou deu erro
   const offset = useRef(0); // posição da lista, para voltar do resumo no mesmo ponto
   const listRef = useRef<SectionList<ActivityItem, DayGroup<ActivityItem>>>(null);
+  const seenVersion = useRef(getSessionsVersion()); // sobe quando um treino salvo é editado ou apagado
 
   // Limites recalculados a cada chamada: "7 dias" depois da meia-noite já é outro intervalo.
   const query = (filterType: ActivityType | undefined, filterPeriod: Period) =>
@@ -108,6 +110,12 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
 
   // Mesmo filtro já carregado → mantém a lista e a posição; filtro novo (ou 1ª vez, ou erro) → carga do zero.
   useFocusEffect(useCallback(() => {
+    if (seenVersion.current !== getSessionsVersion()) {
+      // Treino editado ou apagado: o refreshTop só traz o que é novo, então recarrega do zero.
+      seenVersion.current = getSessionsVersion();
+      loadFirst(type, period);
+      return;
+    }
     if (loadedKey.current === filterKey(type, period)) {
       refreshTop();
       restoreScroll();

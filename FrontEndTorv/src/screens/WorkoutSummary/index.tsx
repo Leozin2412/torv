@@ -1,12 +1,13 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import axios from 'axios';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react-native';
 
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import { workoutsApi } from '../../services/workouts';
 import {
@@ -14,6 +15,8 @@ import {
 } from '../../utils/workoutSession';
 import { formatClock } from '../../utils/clock';
 import { loadDraft, clearDraft } from '../../utils/workoutDraft';
+import { bumpSessionsVersion, getSessionsVersion } from '../../utils/sessionsVersion';
+import { describeError } from '../../utils/groupErrors';
 import type { AppNavigation, AppStackParamList } from '../../routes/types';
 import { colors } from '../../theme/tokens';
 import { styles } from './styles';
@@ -32,6 +35,11 @@ export default function WorkoutSummary() {
   const [draft, setDraft] = useState<SessionState | null>(null);
   const [status, setStatus] = useState<Status>('loading');
   const [weightsStatus, setWeightsStatus] = useState<WeightsStatus>('idle');
+  const [reloadTick, setReloadTick] = useState(0);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const seenVersion = useRef(getSessionsVersion());
   // Do estado da tela: o clearDraft depois do save não apaga o card.
   const changes = useMemo(() => (draft ? weightChanges(draft) : []), [draft]);
 
@@ -46,6 +54,14 @@ export default function WorkoutSummary() {
       setStatus(axios.isAxiosError(error) && error.response?.status === 400 ? 'invalid' : 'retry');
     }
   };
+
+  // Volta de WorkoutEdit: o resumo mostra o treino já editado.
+  useFocusEffect(useCallback(() => {
+    if (sessionId && seenVersion.current !== getSessionsVersion()) {
+      seenVersion.current = getSessionsVersion();
+      setReloadTick((t) => t + 1);
+    }
+  }, [sessionId]));
 
   useEffect(() => {
     (async () => {
@@ -68,7 +84,7 @@ export default function WorkoutSummary() {
       setSummary(summaryFromState(state));
       save(state);
     })();
-  }, [sessionId, userId]);
+  }, [sessionId, userId, reloadTick]);
 
   const updateRoutineWeights = async () => {
     if (!draft) return;
@@ -81,6 +97,23 @@ export default function WorkoutSummary() {
       setWeightsStatus(updated > 0 ? 'done' : 'stale');
     } catch (error) {
       setWeightsStatus(axios.isAxiosError(error) && error.response?.status === 404 ? 'gone' : 'error');
+    }
+  };
+
+  const deleteSession = async () => {
+    if (!sessionId) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await workoutsApi.deleteSession(sessionId);
+      bumpSessionsVersion();
+      setConfirmDelete(false);
+      navigation.goBack();
+    } catch (error) {
+      setConfirmDelete(false);
+      setDeleteError(describeError(error, 'Treino não encontrado.'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -203,7 +236,25 @@ export default function WorkoutSummary() {
         {(status === 'saved' || status === 'history') && (
           <Button title="Concluir" onPress={() => (status === 'saved' ? navigation.popTo('Tabs', { screen: 'Workouts' }) : navigation.goBack())} />
         )}
+        {status === 'history' && (
+          <>
+            {deleteError && <Text style={styles.error}>{deleteError}</Text>}
+            <Button title="Editar treino" outline onPress={() => navigation.navigate('WorkoutEdit', { sessionId: sessionId as string })} />
+            <Button title="Excluir treino" outline danger onPress={() => setConfirmDelete(true)} />
+          </>
+        )}
       </ScrollView>
+
+      <ConfirmModal
+        visible={confirmDelete}
+        title="Excluir este treino?"
+        message="O treino sai do histórico e os dias dele deixam de contar nos seus grupos. Isso não pode ser desfeito."
+        confirmLabel="Excluir"
+        danger
+        loading={deleting}
+        onConfirm={deleteSession}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </SafeAreaView>
   );
 }
