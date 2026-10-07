@@ -55,6 +55,7 @@ fastify.register(require('./src/routes/diet.routes'), { prefix: '/diet' });
 fastify.register(require('./src/routes/workout.routes'), { prefix: '/workouts' });
 fastify.register(require('./src/routes/activities.routes'), { prefix: '/activities' });
 fastify.register(require('./src/routes/groups.routes'), { prefix: '/groups' });
+fastify.register(require('./src/routes/groupInvitations.routes'), { prefix: '/groups' });
 
 fastify.setErrorHandler((err, request, reply) => {
   fastify.log.error(err);

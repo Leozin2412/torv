@@ -86,7 +86,45 @@ const RankingResponse = Type.Object({
 
 const MemberParams = Type.Object({ id: Uuid, userId: Uuid });
 
+const InviteBody = Type.Object({ username: Type.String({ minLength: 1, maxLength: 100 }) });
+const IdResponse = Type.Object({ id: Type.String() });
+
+const PendingItem = Type.Object({
+  id: Type.String(),
+  user_id: Type.String(),
+  name: Type.String(),
+  username: Type.String(),
+  photo_url: Nullable(Type.String()),
+  created_at: Type.String(),
+});
+const PendingResponse = Type.Object({ requests: Type.Array(PendingItem), invites: Type.Array(PendingItem) });
+
+const ReceivedResponse = Type.Object({
+  invitations: Type.Array(Type.Object({
+    id: Type.String(),
+    group: Type.Object({ id: Type.String(), name: Type.String(), cover_url: Nullable(Type.String()) }),
+    invited_by: Type.Object({ name: Type.String(), username: Type.String() }),
+    created_at: Type.String(),
+  })),
+});
+
+const ResolveResponse = Type.Object({ group_id: Type.String(), status: Type.String() });
+const TokenParams = Type.Object({ token: Type.String({ minLength: 1, maxLength: 32 }) });
+
+const JoinPreview = Type.Object({
+  group: Type.Object({
+    id: Type.String(),
+    name: Type.String(),
+    cover_url: Nullable(Type.String()),
+    ...Period,
+    member_count: Type.Integer(),
+  }),
+  is_member: Type.Boolean(),
+  ended: Type.Boolean(),
+});
+
 module.exports = {
   GroupBody, GroupPatchBody, GroupDetail, GroupListItem, DiscoverQuery, DiscoverResponse, RankingResponse, MemberParams,
   Period, Nullable, DateStr,
+  InviteBody, IdResponse, PendingResponse, ReceivedResponse, ResolveResponse, TokenParams, JoinPreview,
 };
