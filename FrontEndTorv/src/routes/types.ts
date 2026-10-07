@@ -5,6 +5,7 @@ export type TabParamList = {
   Home: undefined;
   Workouts: undefined;
   MyDiet: undefined;
+  Groups: undefined;
   Profile: undefined;
 };
 
@@ -14,6 +15,11 @@ export type AppStackParamList = {
   RoutineEditor: { routineId?: string };
   WorkoutSession: { routineId?: string; resume?: boolean };
   WorkoutSummary: { sessionId?: string }; // sem sessionId: treino recém-finalizado (rascunho)
+  WorkoutEdit: { sessionId: string };
+  GroupDetail: { groupId: string };
+  GroupEditor: { groupId?: string }; // sem groupId: criar
+  GroupManage: { groupId: string };
+  JoinGroup: { token?: string }; // sem token: digitar o código
 };
 
 export type AppNavigation = NativeStackNavigationProp<AppStackParamList>;

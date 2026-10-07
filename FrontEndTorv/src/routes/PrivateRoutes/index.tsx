@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Image } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Home, ClipboardList, User, Dumbbell } from 'lucide-react-native';
+import { Home, ClipboardList, User, Dumbbell, Users } from 'lucide-react-native';
 
 import { colors } from '../../theme/tokens';
 import HomeScreen from '../../screens/Home';
@@ -12,7 +13,14 @@ import ProfileScreen from '../../screens/Profile';
 import RoutineEditorScreen from '../../screens/RoutineEditor';
 import WorkoutSessionScreen from '../../screens/WorkoutSession';
 import WorkoutSummaryScreen from '../../screens/WorkoutSummary';
-import type { AppStackParamList, TabParamList } from '../types';
+import WorkoutEditScreen from '../../screens/WorkoutEdit';
+import GroupsScreen from '../../screens/Groups';
+import GroupDetailScreen from '../../screens/GroupDetail';
+import GroupEditorScreen from '../../screens/GroupEditor';
+import GroupManageScreen from '../../screens/GroupManage';
+import JoinGroupScreen from '../../screens/JoinGroup';
+import { takePendingJoin } from '../../utils/pendingJoin';
+import type { AppNavigation, AppStackParamList, TabParamList } from '../types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -26,7 +34,7 @@ const TabIcon = ({ focused, icon: Icon, label, photoUrl }: any) => {
       paddingVertical: 6,
       paddingHorizontal: 12,
       borderRadius: 20,
-      minWidth: 64,
+      minWidth: 56,
     }}>
       {photoUrl ? (
         <Image
@@ -54,7 +62,15 @@ const TabIcon = ({ focused, icon: Icon, label, photoUrl }: any) => {
   );
 };
 
-const Tabs = ({ user }: { user: any }) => (
+const Tabs = ({ user }: { user: any }) => {
+  const navigation = useNavigation<AppNavigation>();
+  // Convite recebido por link com o app fechado ou deslogado: abre agora que a navegação existe.
+  useEffect(() => {
+    const code = takePendingJoin();
+    if (code) navigation.navigate('JoinGroup', { token: code });
+  }, []);
+
+  return (
   <Tab.Navigator
     screenOptions={{
       headerShown: false,
@@ -105,6 +121,13 @@ const Tabs = ({ user }: { user: any }) => (
       }}
     />
     <Tab.Screen
+      name="Groups"
+      component={GroupsScreen}
+      options={{
+        tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon={Users} label="Grupos" />,
+      }}
+    />
+    <Tab.Screen
       name="Profile"
       component={ProfileScreen}
       options={{
@@ -112,7 +135,8 @@ const Tabs = ({ user }: { user: any }) => (
       }}
     />
   </Tab.Navigator>
-);
+  );
+};
 
 // Telas empilhadas acima das abas cobrem a tab bar.
 export const PrivateRoutes = ({ user }: { user: any }) => (
@@ -121,5 +145,10 @@ export const PrivateRoutes = ({ user }: { user: any }) => (
     <Stack.Screen name="RoutineEditor" component={RoutineEditorScreen} />
     <Stack.Screen name="WorkoutSession" component={WorkoutSessionScreen} options={{ gestureEnabled: false }} />
     <Stack.Screen name="WorkoutSummary" component={WorkoutSummaryScreen} options={{ gestureEnabled: false }} />
+    <Stack.Screen name="WorkoutEdit" component={WorkoutEditScreen} />
+    <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
+    <Stack.Screen name="GroupEditor" component={GroupEditorScreen} />
+    <Stack.Screen name="GroupManage" component={GroupManageScreen} />
+    <Stack.Screen name="JoinGroup" component={JoinGroupScreen} />
   </Stack.Navigator>
 );
