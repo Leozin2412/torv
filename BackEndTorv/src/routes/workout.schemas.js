@@ -118,4 +118,5 @@ const RoutineWeightsBody = Type.Object({
 module.exports = {
   MUSCLE_GROUPS, errors, IdParams, RoutineBody, RoutineList, RoutineDetail,
   ExerciseBody, Exercise, SessionBody, SessionDetail, RoutineWeightsBody,
+  Uuid, UUID_PATTERN,
 };
