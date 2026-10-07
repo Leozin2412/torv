@@ -191,3 +191,71 @@ test('createSession: teto estourado → o lock ja foi tomado, mas nada e escrito
   await assert.rejects(workoutRepository.createSession(USER, session('2026-10-06T12:00:00Z')), { code: 'SESSION_DAY_LIMIT' });
   assert.deepEqual(calls.order, ['lock', 'count']);
 });
+
+// --- Fila por usuario: uma rajada do mesmo usuario nao pode segurar mais de 1 conexao do pool ---
+const OTHER_USER = '99999999-9999-4999-8999-999999999999';
+const tick = () => new Promise((resolve) => setImmediate(resolve));
+
+// Prisma falso com estado: conta o que foi criado por usuario e mede quantas transacoes ficam abertas ao mesmo tempo.
+// count e create cedem o turno (tick), como o banco real: sem serializacao, todos os pedidos contam antes de qualquer insert.
+async function withStatefulFake({ beforeCount } = {}, body) {
+  const saved = { tx: fakePrisma.$transaction, count: fakePrisma.activities.count, create: fakePrisma.activities.create };
+  const created = new Map();
+  const tx = { inflight: 0, max: 0 };
+  fakePrisma.$transaction = async (fn) => {
+    tx.inflight += 1;
+    tx.max = Math.max(tx.max, tx.inflight);
+    try { await tick(); return await fn(fakePrisma); } finally { tx.inflight -= 1; }
+  };
+  fakePrisma.activities.count = async ({ where }) => { await beforeCount?.(where.user_id); await tick(); return created.get(where.user_id) ?? 0; };
+  fakePrisma.activities.create = async ({ data }) => { await tick(); created.set(data.user_id, (created.get(data.user_id) ?? 0) + 1); return { id: ACTIVITY }; };
+  try {
+    calls = fresh();
+    return await body({ created, tx });
+  } finally {
+    fakePrisma.$transaction = saved.tx;
+    fakePrisma.activities.count = saved.count;
+    fakePrisma.activities.create = saved.create;
+  }
+}
+
+test('createSession: rajada de 12 do mesmo usuario no mesmo dia → 5 criados, 7 SESSION_DAY_LIMIT, nunca 2 transacoes juntas', async () => {
+  await withStatefulFake({}, async ({ created, tx }) => {
+    const results = await Promise.allSettled(Array.from({ length: 12 }, (_, i) =>
+      workoutRepository.createSession(USER, session(`2026-10-06T12:${String(i).padStart(2, '0')}:00Z`))));
+    const ok = results.filter((r) => r.status === 'fulfilled');
+    const failed = results.filter((r) => r.status === 'rejected');
+    assert.equal(ok.length, 5);
+    assert.equal(failed.length, 7);
+    assert.ok(failed.every((r) => r.reason.code === 'SESSION_DAY_LIMIT'), 'nenhum outro erro');
+    assert.equal(created.get(USER), 5);
+    assert.equal(tx.max, 1, 'no maximo 1 transacao aberta do mesmo usuario (1 conexao do pool)');
+  });
+});
+
+test('createSession: usuarios diferentes nao se bloqueiam na fila', async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  await withStatefulFake({ beforeCount: (userId) => (userId === USER ? gate : undefined) }, async ({ created }) => {
+    const a = workoutRepository.createSession(USER, session('2026-10-06T12:00:00Z')); // fica parado no gate
+    const b = workoutRepository.createSession(OTHER_USER, session('2026-10-06T12:00:00Z'));
+    const timeout = new Promise((_, reject) => { setTimeout(() => reject(new Error('B ficou preso atras de A')), 1000).unref(); });
+    await Promise.race([b, timeout]);
+    assert.equal(created.get(OTHER_USER), 1);
+    assert.equal(created.get(USER), undefined, 'A ainda esta parado');
+    release();
+    await a;
+    assert.equal(created.get(USER), 1);
+  });
+});
+
+test('createSession: um erro na fila nao trava as chamadas seguintes do mesmo usuario', async () => {
+  let n = 0;
+  await withStatefulFake({ beforeCount: () => { if (n++ === 0) throw new Error('boom'); } }, async ({ created }) => {
+    const first = workoutRepository.createSession(USER, session('2026-10-06T12:00:00Z'));
+    const second = workoutRepository.createSession(USER, session('2026-10-06T12:01:00Z'));
+    await assert.rejects(first, /boom/);
+    assert.equal(await second, ACTIVITY);
+    assert.equal(created.get(USER), 1);
+  });
+});

@@ -11,6 +11,21 @@ const TX = { timeout: 15000 };
 const MAX_SESSIONS_PER_DAY = 5;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Fila por usuário, em memória: cada chamada espera a anterior do mesmo userId (mesmo que ela tenha falhado), roda fn e
+// devolve o resultado ou o erro de fn ao chamador. Sem ela, uma rajada do mesmo usuário abre N transações interativas, todas
+// presas no advisory lock, e esgota o pool (connection_limit=5): as excedentes viram 500 e os outros usuários ficam lentos.
+// A entrada do Map sai quando a chamada é a última da fila, então o Map não cresce.
+// ponytail: fila de 1 processo. Com várias instâncias o advisory lock continua garantindo o teto, mas a rajada volta a
+// segurar conexões; subir para limite por usuário (rate limit) se virar instância múltipla.
+const sessionQueues = new Map();
+function serializePerUser(userId, fn) {
+  const run = (sessionQueues.get(userId) ?? Promise.resolve()).then(fn);
+  const tail = run.then(() => {}, () => {});
+  sessionQueues.set(userId, tail);
+  tail.then(() => { if (sessionQueues.get(userId) === tail) sessionQueues.delete(userId); });
+  return run;
+}
+
 const visibleExercise = (userId) => ({ OR: [{ owner_user_id: null }, { owner_user_id: userId }] });
 
 // exercises: [{ exercise_id, reps_min, reps_max, rest_sec, sets: [{ weight_kg }] }] → linhas das 2 tabelas.
@@ -224,7 +239,7 @@ class WorkoutRepository {
     ]);
     const nameById = new Map(exercises.map((e) => [e.id, e.name]));
 
-    return prisma.$transaction(async (tx) => {
+    return serializePerUser(userId, () => prisma.$transaction(async (tx) => {
       // Serializa os salvamentos do mesmo usuário até o fim da transação (o lock cai no commit/rollback). Sem ele, POSTs
       // paralelos contam o mesmo total antes de qualquer insert e furam o teto por dia (READ COMMITTED). userId parametrizado.
       await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${userId}::text))`);
@@ -262,7 +277,7 @@ class WorkoutRepository {
       // Ranking dos grupos do usuário, na mesma transação: ou grava treino e pontos, ou nenhum dos dois.
       await groupsRepository.recomputeRanking(tx, userId);
       return activity.id;
-    }, TX);
+    }, TX));
   }
 
   async getSession(userId, id) {
