@@ -1,6 +1,7 @@
 const { randomUUID } = require('node:crypto');
 const { Prisma } = require('@prisma/client');
 const prisma = require('../lib/prisma');
+const groupsRepository = require('./groups.repository');
 
 // Transação interativa + createMany com ids gerados aqui: nested create faria 1 INSERT por linha
 // (~40 idas e voltas até o banco num plano de 5 dias).
@@ -243,6 +244,8 @@ class WorkoutRepository {
           weight_kg: s.weight_kg ?? null,
         })),
       });
+      // Ranking dos grupos do usuário, na mesma transação: ou grava treino e pontos, ou nenhum dos dois.
+      await groupsRepository.recomputeRanking(tx, userId);
       return activity.id;
     }, TX);
   }
@@ -257,10 +260,43 @@ class WorkoutRepository {
         duration_sec: true,
         workout_sets: {
           orderBy: [{ position: 'asc' }, { set_number: 'asc' }],
-          select: { exercise_name: true, position: true, set_number: true, duration_sec: true, rest_before_sec: true, weight_kg: true },
+          select: { id: true, exercise_name: true, position: true, set_number: true, duration_sec: true, rest_before_sec: true, weight_kg: true },
         },
       },
     });
+  }
+
+  // Só duração e carga das séries; started_at, rotina, título, exercício e posição ficam como estão.
+  // As séries não listadas são apagadas (é assim que se remove uma série); nunca cria série.
+  // A data não muda, então o ranking não muda: sem recomputeRanking aqui.
+  // ponytail: 1 UPDATE por série dentro da transação (até 200); trocar por UPDATE ... FROM (VALUES ...) se pesar.
+  async updateSession(userId, id, { duration_sec, sets }) {
+    return prisma.$transaction(async (tx) => {
+      const activity = await tx.activities.findFirst({
+        where: { id, user_id: userId, activity_type: 'STRENGTH' },
+        select: { workout_sets: { select: { id: true } } },
+      });
+      if (!activity) return { notFound: true };
+      const own = new Set(activity.workout_sets.map((s) => s.id));
+      if (sets.some((s) => !own.has(s.id))) return { badSet: true };
+
+      await tx.activities.update({ where: { id }, data: { duration_sec } });
+      await tx.workout_sets.deleteMany({ where: { activity_id: id, id: { notIn: sets.map((s) => s.id) } } });
+      for (const s of sets) {
+        await tx.workout_sets.update({ where: { id: s.id }, data: { duration_sec: s.duration_sec, weight_kg: s.weight_kg ?? null } });
+      }
+      return { ok: true };
+    }, TX);
+  }
+
+  // Apagar muda os pontos: o ranking é recalculado na mesma transação (dia com 2 treinos mantém o ponto).
+  async deleteSession(userId, id) {
+    return prisma.$transaction(async (tx) => {
+      const { count } = await tx.activities.deleteMany({ where: { id, user_id: userId, activity_type: 'STRENGTH' } });
+      if (count === 0) return false;
+      await groupsRepository.recomputeRanking(tx, userId);
+      return true;
+    }, TX);
   }
 }
 

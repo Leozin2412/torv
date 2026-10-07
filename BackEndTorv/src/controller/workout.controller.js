@@ -173,6 +173,20 @@ class WorkoutController {
       sets: s.workout_sets.map((w) => ({ ...w, weight_kg: w.weight_kg == null ? null : Number(w.weight_kg) })),
     });
   }
+
+  async updateSession(request, reply) {
+    const ids = request.body.sets.map((s) => s.id);
+    if (new Set(ids).size !== ids.length) return reply.status(400).send({ error: 'duplicate set id' });
+    const out = await workoutRepository.updateSession(request.user.userId, request.params.id, request.body);
+    if (out.notFound) return reply.status(404).send(NOT_FOUND);
+    if (out.badSet) return reply.status(400).send({ error: 'unknown set id' });
+    return reply.send({ activity_id: request.params.id });
+  }
+
+  async deleteSession(request, reply) {
+    const ok = await workoutRepository.deleteSession(request.user.userId, request.params.id);
+    return ok ? reply.status(204).send() : reply.status(404).send(NOT_FOUND);
+  }
 }
 
 module.exports = new WorkoutController();

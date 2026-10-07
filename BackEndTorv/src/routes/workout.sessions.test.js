@@ -14,6 +14,8 @@ const workoutRepository = require('../repository/workout.repository');
 const ID = '22222222-2222-4222-8222-222222222222';
 const EX = '33333333-3333-4333-8333-333333333333';
 const ACT = '44444444-4444-4444-8444-444444444444';
+const SET = '77777777-7777-4777-8777-777777777777';
+const SET_2 = '88888888-8888-4888-8888-888888888888';
 const startedAt = new Date(Date.now() - 3600 * 1000).toISOString();
 const validSession = {
   routine_id: ID,
@@ -103,7 +105,7 @@ test('POST /sessions 400: limites e datas', async (t) => {
 test('GET /sessions/:id: própria → séries; alheia → 404', async (t) => {
   const get = t.mock.method(workoutRepository, 'getSession', async () => ({
     id: ACT, title: 'Treino livre', start_time: new Date(startedAt), duration_sec: 3000,
-    workout_sets: [{ exercise_name: 'Exercício removido', position: 1, set_number: 1, duration_sec: 40, rest_before_sec: null }],
+    workout_sets: [{ id: SET, exercise_name: 'Exercício removido', position: 1, set_number: 1, duration_sec: 40, rest_before_sec: null }],
   }));
   const app = await build(t);
   const res = await call(app, 'GET', `/workouts/sessions/${ACT}`);
@@ -163,8 +165,8 @@ test('GET /sessions/:id: weight_kg Decimal vira número; null fica null', async 
   t.mock.method(workoutRepository, 'getSession', async () => ({
     id: ACT, title: 'Peito', start_time: new Date(startedAt), duration_sec: 3000,
     workout_sets: [
-      { exercise_name: 'Supino', position: 1, set_number: 1, duration_sec: 40, rest_before_sec: null, weight_kg: '62.50' },
-      { exercise_name: 'Supino', position: 1, set_number: 2, duration_sec: 40, rest_before_sec: 90, weight_kg: null },
+      { id: SET, exercise_name: 'Supino', position: 1, set_number: 1, duration_sec: 40, rest_before_sec: null, weight_kg: '62.50' },
+      { id: SET_2, exercise_name: 'Supino', position: 1, set_number: 2, duration_sec: 40, rest_before_sec: 90, weight_kg: null },
     ],
   }));
   const app = await build(t);

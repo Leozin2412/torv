@@ -96,6 +96,7 @@ const SessionDetail = Type.Object({
   start_time: Type.String(),
   duration_sec: Type.Integer(),
   sets: Type.Array(Type.Object({
+    id: Type.String(),
     exercise_name: Type.String(),
     position: Type.Integer(),
     set_number: Type.Integer(),
@@ -104,6 +105,17 @@ const SessionDetail = Type.Object({
     weight_kg: Type.Union([Type.Number(), Type.Null()]),
   })),
 });
+
+// Edição de um treino salvo: só duração e carga, por id de série. Sem started_at: a data é fixa (ela decide o ranking).
+// additionalProperties: false + removeAdditional do Fastify: um started_at no corpo é descartado, nunca chega ao repository.
+const SessionEditBody = Type.Object({
+  duration_sec: Type.Integer({ minimum: 1, maximum: 21600 }),
+  sets: Type.Array(Type.Object({
+    id: Uuid,
+    duration_sec: Type.Integer({ minimum: 0, maximum: 3600 }),
+    weight_kg: Type.Optional(Weight),
+  }, { additionalProperties: false }), { minItems: 1, maxItems: 200 }),
+}, { additionalProperties: false });
 
 // Cargas feitas no treino → rotina. Série que não bate com a rotina atual (posição + exercício + nº) é ignorada.
 const RoutineWeightsBody = Type.Object({
@@ -117,6 +129,6 @@ const RoutineWeightsBody = Type.Object({
 
 module.exports = {
   MUSCLE_GROUPS, errors, IdParams, RoutineBody, RoutineList, RoutineDetail,
-  ExerciseBody, Exercise, SessionBody, SessionDetail, RoutineWeightsBody,
+  ExerciseBody, Exercise, SessionBody, SessionDetail, SessionEditBody, RoutineWeightsBody,
   Uuid, UUID_PATTERN,
 };

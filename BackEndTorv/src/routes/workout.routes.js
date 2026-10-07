@@ -3,7 +3,7 @@ const workoutController = require('../controller/workout.controller');
 const authenticateToken = require('../middlewares/auth.middleware');
 const {
   errors, IdParams, RoutineBody, RoutineList, RoutineDetail,
-  ExerciseBody, Exercise, SessionBody, SessionDetail, RoutineWeightsBody,
+  ExerciseBody, Exercise, SessionBody, SessionDetail, SessionEditBody, RoutineWeightsBody,
 } = require('./workout.schemas');
 
 const tags = ['Workouts'];
@@ -87,6 +87,22 @@ async function workoutRoutes(fastify) {
   fastify.get('/sessions/:id', {
     schema: { tags, security, params: IdParams, response: { 200: SessionDetail, ...errors(400, 401, 403, 404) } },
   }, workoutController.getSession);
+
+  fastify.put('/sessions/:id', {
+    schema: {
+      description: 'Edita duração e séries de um treino salvo (por id de série; as não listadas são apagadas). A data não muda',
+      tags, security, params: IdParams, body: SessionEditBody,
+      response: { 200: Type.Object({ activity_id: Type.String() }), ...errors(400, 401, 403, 404) },
+    },
+  }, workoutController.updateSession);
+
+  fastify.delete('/sessions/:id', {
+    schema: {
+      description: 'Apaga um treino salvo e recalcula o ranking dos grupos do usuário',
+      tags, security, params: IdParams,
+      response: { 204: Type.Null(), ...errors(400, 401, 403, 404) },
+    },
+  }, workoutController.deleteSession);
 }
 
 module.exports = workoutRoutes;

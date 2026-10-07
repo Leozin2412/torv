@@ -241,3 +241,65 @@ test('PATCH /routines/:id/weights 400: corpo e id inválidos não chegam ao repo
   assert.equal((await call(app, 'PATCH', `/workouts/routines/urn:uuid:${ID}/weights`, { sets: [set] })).statusCode, 400);
   assert.equal(update.mock.callCount(), 0);
 });
+
+const SET = '77777777-7777-4777-8777-777777777777';
+const editBody = { duration_sec: 900, sets: [{ id: SET, duration_sec: 45, weight_kg: 22.5 }] };
+
+test('PUT /sessions/:id: edita duração e séries; devolve o id', async (t) => {
+  const update = t.mock.method(workoutRepository, 'updateSession', async () => ({ ok: true }));
+  const app = await build(t);
+  const res = await call(app, 'PUT', `/workouts/sessions/${ID}`, editBody);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { activity_id: ID });
+  assert.deepEqual(update.mock.calls[0].arguments, [USER, ID, editBody]);
+});
+
+test('PUT /sessions/:id: de outro usuário → 404; série alheia → 400; id repetido → 400', async (t) => {
+  const update = t.mock.method(workoutRepository, 'updateSession', async () => ({ notFound: true }));
+  const app = await build(t);
+  assert.equal((await call(app, 'PUT', `/workouts/sessions/${ID}`, editBody)).statusCode, 404);
+  update.mock.mockImplementation(async () => ({ badSet: true }));
+  assert.equal((await call(app, 'PUT', `/workouts/sessions/${ID}`, editBody)).statusCode, 400);
+  const before = update.mock.callCount();
+  const dup = { duration_sec: 900, sets: [{ id: SET, duration_sec: 1 }, { id: SET, duration_sec: 2 }] };
+  assert.equal((await call(app, 'PUT', `/workouts/sessions/${ID}`, dup)).statusCode, 400);
+  assert.equal(update.mock.callCount(), before);
+});
+
+test('PUT /sessions/:id: valida o corpo e não aceita mudar a data', async (t) => {
+  const update = t.mock.method(workoutRepository, 'updateSession', async () => ({ ok: true }));
+  const app = await build(t);
+  for (const bad of [
+    { duration_sec: 0, sets: editBody.sets },
+    { duration_sec: 900, sets: [] },
+    { duration_sec: 900, sets: [{ id: 'x', duration_sec: 1 }] },
+    { duration_sec: 900, sets: [{ id: SET, duration_sec: 9999 }] },
+    { duration_sec: 900, sets: [{ id: SET, duration_sec: 1, weight_kg: 1000 }] },
+  ]) {
+    assert.equal((await call(app, 'PUT', `/workouts/sessions/${ID}`, bad)).statusCode, 400, JSON.stringify(bad));
+  }
+  assert.equal(update.mock.callCount(), 0);
+  // started_at no corpo é descartado (removeAdditional): o repository nunca o recebe.
+  await call(app, 'PUT', `/workouts/sessions/${ID}`, { ...editBody, started_at: '2026-10-01T10:00:00Z' });
+  assert.equal(update.mock.calls[0].arguments[2].started_at, undefined);
+});
+
+test('DELETE /sessions/:id: dono → 204; de outro usuário ou inexistente → 404', async (t) => {
+  const del = t.mock.method(workoutRepository, 'deleteSession', async () => true);
+  const app = await build(t);
+  assert.equal((await call(app, 'DELETE', `/workouts/sessions/${ID}`)).statusCode, 204);
+  assert.deepEqual(del.mock.calls[0].arguments, [USER, ID]);
+  del.mock.mockImplementation(async () => false);
+  assert.equal((await call(app, 'DELETE', `/workouts/sessions/${ID}`)).statusCode, 404);
+});
+
+test('GET /sessions/:id: cada série traz o id (a tela de edição precisa dele)', async (t) => {
+  t.mock.method(workoutRepository, 'getSession', async () => ({
+    id: ID, title: 'Treino', start_time: new Date('2026-10-06T12:00:00Z'), duration_sec: 600,
+    workout_sets: [{ id: SET, exercise_name: 'Supino', position: 1, set_number: 1, duration_sec: 30, rest_before_sec: null, weight_kg: '20.00' }],
+  }));
+  const app = await build(t);
+  const res = await call(app, 'GET', `/workouts/sessions/${ID}`);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.json().sets[0].id, SET);
+});

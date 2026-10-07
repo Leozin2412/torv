@@ -3,14 +3,27 @@ const assert = require('node:assert/strict');
 
 // Prisma falso (o client real é um Proxy que o mock.method não alcança): registra as chamadas do teste em andamento.
 let calls = null;
-const prismaPath = require.resolve('../../lib/prisma');
-require.cache[prismaPath] = {
-  id: prismaPath, filename: prismaPath, loaded: true,
-  exports: {
-    workout_routines: { findFirst: async (args) => { calls.findFirst.push(args); return calls.routine; } },
-    $executeRaw: async (query) => { calls.executeRaw.push(query); return calls.count; },
+const ACTIVITY = '66666666-6666-4666-8666-666666666666';
+const w = (name, ret) => async (args) => { calls.writes.push([name, args]); return typeof ret === 'function' ? ret(args) : ret; };
+const fakePrisma = {
+  workout_routines: { findFirst: async (args) => { calls.findFirst.push(args); return calls.routine; } },
+  $executeRaw: async (query) => { calls.executeRaw.push(query); return calls.count; },
+  $transaction: async (fn) => fn(fakePrisma),
+  exercises: { findMany: async () => [] },
+  activities: {
+    create: w('activities.create', { id: ACTIVITY }),
+    findFirst: async () => calls.activity,
+    update: w('activities.update', {}),
+    deleteMany: w('activities.deleteMany', () => ({ count: calls.deleted })),
+  },
+  workout_sets: {
+    createMany: w('workout_sets.createMany', {}),
+    deleteMany: w('workout_sets.deleteMany', {}),
+    update: w('workout_sets.update', {}),
   },
 };
+const prismaPath = require.resolve('../../lib/prisma');
+require.cache[prismaPath] = { id: prismaPath, filename: prismaPath, loaded: true, exports: fakePrisma };
 
 const workoutRepository = require('../workout.repository');
 
@@ -42,4 +55,68 @@ test('updateRoutineWeights: rotina de outro usuário (ou inexistente) → null, 
   const sets = [{ position: 1, exercise_id: SUPINO, set_number: 1, weight_kg: 40 }];
   assert.equal(await workoutRepository.updateRoutineWeights(USER, ROUTINE, sets), null);
   assert.equal(calls.executeRaw.length, 0);
+});
+
+const SET_A = '77777777-7777-4777-8777-777777777777';
+const SET_B = '88888888-8888-4888-8888-888888888888';
+const fresh = (over = {}) => ({ findFirst: [], executeRaw: [], writes: [], routine: null, count: 0, ...over });
+
+test('createSession: grava atividade e séries e recalcula o ranking na MESMA transação', async () => {
+  calls = fresh();
+  const id = await workoutRepository.createSession(USER, {
+    routine_id: null,
+    started_at: new Date('2026-10-06T12:00:00Z'),
+    duration_sec: 600,
+    sets: [{ exercise_id: SUPINO, position: 1, set_number: 1, duration_sec: 30, rest_before_sec: null, weight_kg: 20 }],
+  });
+  assert.equal(id, ACTIVITY);
+  assert.deepEqual(calls.writes.map(([n]) => n), ['activities.create', 'workout_sets.createMany']);
+  assert.equal(calls.executeRaw.length, 1);
+  assert.match(calls.executeRaw[0].sql, /INSERT INTO group_rankings/);
+  assert.deepEqual(calls.executeRaw[0].values, [USER]);
+});
+
+test('deleteSession: só do dono e só STRENGTH; apagou → recalcula o ranking; não achou → não recalcula', async () => {
+  calls = fresh({ deleted: 1 });
+  assert.equal(await workoutRepository.deleteSession(USER, ACTIVITY), true);
+  const [name, args] = calls.writes[0];
+  assert.equal(name, 'activities.deleteMany');
+  assert.deepEqual(args.where, { id: ACTIVITY, user_id: USER, activity_type: 'STRENGTH' });
+  assert.equal(calls.executeRaw.length, 1);
+  assert.deepEqual(calls.executeRaw[0].values, [USER]);
+
+  calls = fresh({ deleted: 0 });
+  assert.equal(await workoutRepository.deleteSession(USER, ACTIVITY), false);
+  assert.equal(calls.executeRaw.length, 0);
+});
+
+test('updateSession: atividade de outro usuário → notFound, sem escrita', async () => {
+  calls = fresh({ activity: null });
+  assert.deepEqual(await workoutRepository.updateSession(USER, ACTIVITY, { duration_sec: 600, sets: [{ id: SET_A, duration_sec: 30 }] }), { notFound: true });
+  assert.equal(calls.writes.length, 0);
+});
+
+test('updateSession: id de série que não é da atividade → badSet, sem escrita', async () => {
+  calls = fresh({ activity: { workout_sets: [{ id: SET_A }] } });
+  const out = await workoutRepository.updateSession(USER, ACTIVITY, { duration_sec: 600, sets: [{ id: SET_B, duration_sec: 30 }] });
+  assert.deepEqual(out, { badSet: true });
+  assert.equal(calls.writes.length, 0);
+});
+
+test('updateSession: atualiza as listadas, apaga as não listadas, nunca cria, e NÃO recalcula o ranking', async () => {
+  calls = fresh({ activity: { workout_sets: [{ id: SET_A }, { id: SET_B }] } });
+  const out = await workoutRepository.updateSession(USER, ACTIVITY, { duration_sec: 900, sets: [{ id: SET_A, duration_sec: 45, weight_kg: 22.5 }] });
+  assert.deepEqual(out, { ok: true });
+  const byName = Object.fromEntries(calls.writes.map(([n, a]) => [n, a]));
+  assert.deepEqual(byName['activities.update'], { where: { id: ACTIVITY }, data: { duration_sec: 900 } });
+  assert.deepEqual(byName['workout_sets.deleteMany'].where, { activity_id: ACTIVITY, id: { notIn: [SET_A] } });
+  assert.deepEqual(byName['workout_sets.update'], { where: { id: SET_A }, data: { duration_sec: 45, weight_kg: 22.5 } });
+  assert.equal(calls.writes.some(([n]) => n === 'workout_sets.createMany'), false);
+  assert.equal(calls.executeRaw.length, 0, 'a data não muda, então o ranking não muda');
+});
+
+test('updateSession: carga ausente grava null', async () => {
+  calls = fresh({ activity: { workout_sets: [{ id: SET_A }] } });
+  await workoutRepository.updateSession(USER, ACTIVITY, { duration_sec: 900, sets: [{ id: SET_A, duration_sec: 45 }] });
+  assert.equal(calls.writes.find(([n]) => n === 'workout_sets.update')[1].data.weight_kg, null);
 });
