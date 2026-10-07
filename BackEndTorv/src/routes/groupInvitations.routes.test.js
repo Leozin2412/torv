@@ -192,3 +192,15 @@ test('POST /groups/join/:token: entra; encerrado e já membro → 409; revogado 
   assert.equal((await call(app, 'POST', '/groups/join/curto')).statusCode, 404);
   assert.equal(join.mock.callCount(), before);
 });
+
+// Convite por username e um oraculo (existe → 201/409, nao existe → 404): o limite freia varredura de usernames.
+test('POST /groups/:id/invitations: 30 por minuto; a 31a → 429', async (t) => {
+  const invite = t.mock.method(repo, 'inviteByUsername', async () => ({ id: INV }));
+  const app = await build(t);
+  for (let i = 1; i <= 30; i += 1) {
+    assert.equal((await call(app, 'POST', `/groups/${GID}/invitations`, { username: 'ana' })).statusCode, 201, `chamada ${i}`);
+  }
+  const blocked = await call(app, 'POST', `/groups/${GID}/invitations`, { username: 'ana' });
+  assert.equal(blocked.statusCode, 429);
+  assert.equal(invite.mock.callCount(), 30, 'a 31a nao chega ao repository');
+});

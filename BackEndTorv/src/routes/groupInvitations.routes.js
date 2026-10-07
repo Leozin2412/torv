@@ -7,13 +7,16 @@ const S = require('./groups.schemas');
 const tags = ['Groups'];
 const security = [{ bearerAuth: [] }];
 const joinLimit = { rateLimit: { max: 20, timeWindow: '1 minute' } };
+// Convite por username diferencia usuário existente de inexistente (201/409 vs 404): o limite freia a varredura de usernames.
+const inviteLimit = { rateLimit: { max: 30, timeWindow: '1 minute' } };
 
 async function groupInvitationsRoutes(fastify) {
   await fastify.register(require('@fastify/rate-limit'), { global: false });
   fastify.addHook('preHandler', authenticateToken);
 
   fastify.post('/:id/invitations', {
-    schema: { description: 'Dono convida por username exato', tags, security, params: IdParams, body: S.InviteBody, response: { 201: S.IdResponse, ...errors(400, 401, 403, 404, 409) } },
+    config: inviteLimit,
+    schema: { description: 'Dono convida por username exato', tags, security, params: IdParams, body: S.InviteBody, response: { 201: S.IdResponse, ...errors(400, 401, 403, 404, 409, 429) } },
   }, c.invite);
 
   fastify.post('/:id/requests', {
