@@ -107,7 +107,7 @@ export default function WorkoutEdit() {
           </Card>
         ))}
 
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
         <Button title="Salvar alterações" loading={saving} onPress={save} />
         <Button title="Cancelar" outline disabled={saving} onPress={() => navigation.goBack()} />
       </ScrollView>

@@ -248,7 +248,7 @@ export default function WorkoutSummary() {
       <ConfirmModal
         visible={confirmDelete}
         title="Excluir este treino?"
-        message="O treino sai do histórico e os dias dele deixam de contar nos seus grupos. Isso não pode ser desfeito."
+        message="O treino sai do histórico. Se for o único do dia, esse dia deixa de contar nos seus grupos. Isso não pode ser desfeito."
         confirmLabel="Excluir"
         danger
         loading={deleting}

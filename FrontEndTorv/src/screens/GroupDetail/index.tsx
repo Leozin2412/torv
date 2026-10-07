@@ -126,7 +126,8 @@ export default function GroupDetail() {
             {group.visibility === 'PUBLIC' ? 'Público' : 'Privado'} · {plural(group.member_count, 'membro', 'membros')}
           </Text>
           <Text style={[styles.period, state === 'ended' && styles.periodEnded]}>
-            {formatDay(group.starts_at)} {group.ends_at ? `→ ${formatDay(group.ends_at)}` : '→ sem data de término'} · {periodLabel(group)}
+            {/* Sem término e em andamento, o rótulo do período já diz "Sem data de término": não repete. */}
+            {formatDay(group.starts_at)}{group.ends_at ? ` → ${formatDay(group.ends_at)}` : state === 'active' ? '' : ' → sem data de término'} · {periodLabel(group)}
           </Text>
         </View>
 
