@@ -174,3 +174,55 @@ test('GET /sessions/:id: weight_kg Decimal vira número; null fica null', async 
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.json().sets.map((s) => s.weight_kg), [62.5, null]);
 });
+
+// Janela de backdating e termino: protegem o ranking dos grupos (1 ponto por dia com treino).
+const HOUR = 3600 * 1000;
+const at = (msFromNow) => new Date(Date.now() + msFromNow).toISOString();
+
+test('POST /sessions: started_at dentro da janela de 72 h passa; fora dela → 400', async (t) => {
+  t.mock.method(workoutRepository, 'findSessionByStart', async () => null);
+  const create = t.mock.method(workoutRepository, 'createSession', async () => ACT);
+  const app = await build(t);
+  const post = (started_at) => call(app, 'POST', '/workouts/sessions', { ...validSession, started_at, duration_sec: 600 });
+  assert.equal((await post(at(-71 * HOUR))).statusCode, 201);
+  const old = await post(at(-73 * HOUR));
+  assert.equal(old.statusCode, 400);
+  assert.equal(old.json().error, 'started_at must be within the last 72 hours');
+  assert.equal(create.mock.callCount(), 1);
+});
+
+test('POST /sessions: treino que termina no futuro → 400; o que termina agora (app ao concluir) passa', async (t) => {
+  t.mock.method(workoutRepository, 'findSessionByStart', async () => null);
+  const create = t.mock.method(workoutRepository, 'createSession', async () => ACT);
+  const app = await build(t);
+  // o app envia ao concluir: comeco = agora - duracao
+  const done = await call(app, 'POST', '/workouts/sessions', { ...validSession, started_at: at(-3000 * 1000), duration_sec: 3000 });
+  assert.equal(done.statusCode, 201);
+  const future = await call(app, 'POST', '/workouts/sessions', { ...validSession, started_at: at(-10 * 60 * 1000), duration_sec: 3000 });
+  assert.equal(future.statusCode, 400);
+  assert.equal(future.json().error, 'workout must not end in the future');
+  assert.equal(create.mock.callCount(), 1);
+});
+
+test('POST /sessions: 6o treino do dia (repository recusa) → 400, nao 409', async (t) => {
+  t.mock.method(workoutRepository, 'findSessionByStart', async () => null);
+  t.mock.method(workoutRepository, 'createSession', async () => {
+    throw Object.assign(new Error('too many sessions on that day'), { code: 'SESSION_DAY_LIMIT' });
+  });
+  const app = await build(t);
+  const res = await call(app, 'POST', '/workouts/sessions', validSession);
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.json().error, 'too many sessions on that day');
+});
+
+test('POST /sessions: repeticao do mesmo started_at (ja salvo) → 200, sem contar nem criar', async (t) => {
+  t.mock.method(workoutRepository, 'findSessionByStart', async () => ACT);
+  const create = t.mock.method(workoutRepository, 'createSession', async () => {
+    throw Object.assign(new Error('too many sessions on that day'), { code: 'SESSION_DAY_LIMIT' });
+  });
+  const app = await build(t);
+  const res = await call(app, 'POST', '/workouts/sessions', validSession);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { activity_id: ACT });
+  assert.equal(create.mock.callCount(), 0);
+});

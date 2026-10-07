@@ -13,6 +13,7 @@ const fakePrisma = {
   activities: {
     create: w('activities.create', { id: ACTIVITY }),
     findFirst: async () => calls.activity,
+    count: async (args) => { calls.counts.push(args); return calls.dayCount; },
     update: w('activities.update', {}),
     deleteMany: w('activities.deleteMany', () => ({ count: calls.deleted })),
   },
@@ -59,7 +60,7 @@ test('updateRoutineWeights: rotina de outro usuário (ou inexistente) → null, 
 
 const SET_A = '77777777-7777-4777-8777-777777777777';
 const SET_B = '88888888-8888-4888-8888-888888888888';
-const fresh = (over = {}) => ({ findFirst: [], executeRaw: [], writes: [], routine: null, count: 0, ...over });
+const fresh = (over = {}) => ({ findFirst: [], executeRaw: [], writes: [], counts: [], routine: null, count: 0, dayCount: 0, ...over });
 
 test('createSession: grava atividade e séries e recalcula o ranking na MESMA transação', async () => {
   calls = fresh();
@@ -119,4 +120,44 @@ test('updateSession: carga ausente grava null', async () => {
   calls = fresh({ activity: { workout_sets: [{ id: SET_A }] } });
   await workoutRepository.updateSession(USER, ACTIVITY, { duration_sec: 900, sets: [{ id: SET_A, duration_sec: 45 }] });
   assert.equal(calls.writes.find(([n]) => n === 'workout_sets.update')[1].data.weight_kg, null);
+});
+
+const session = (started_at) => ({
+  routine_id: null,
+  started_at: new Date(started_at),
+  duration_sec: 600,
+  sets: [{ exercise_id: SUPINO, position: 1, set_number: 1, duration_sec: 30, rest_before_sec: null, weight_kg: 20 }],
+});
+
+// Teto por dia UTC do started_at: protege o ranking dos grupos (activities_count e o 1o desempate).
+test('createSession: conta os STRENGTH do usuario no dia UTC do started_at, ANTES de criar, e o 5o treino do dia passa', async () => {
+  calls = fresh({ dayCount: 4 }); // ja ha 4: o novo e o 5o
+  assert.equal(await workoutRepository.createSession(USER, session('2026-10-06T12:00:00Z')), ACTIVITY);
+  assert.equal(calls.counts.length, 1);
+  assert.deepEqual(calls.counts[0].where, {
+    user_id: USER,
+    activity_type: 'STRENGTH',
+    start_time: { gte: new Date('2026-10-06T00:00:00Z'), lt: new Date('2026-10-07T00:00:00Z') },
+  });
+  assert.deepEqual(calls.writes.map(([n]) => n), ['activities.create', 'workout_sets.createMany']);
+  assert.equal(calls.executeRaw.length, 1, 'o ranking continua sendo recalculado na mesma transacao');
+});
+
+test('createSession: o 6o treino do mesmo dia UTC e recusado, sem escrever nem recalcular', async () => {
+  calls = fresh({ dayCount: 5 });
+  await assert.rejects(
+    workoutRepository.createSession(USER, session('2026-10-06T12:00:00Z')),
+    (err) => err.code === 'SESSION_DAY_LIMIT' && /too many sessions on that day/.test(err.message),
+  );
+  assert.equal(calls.writes.length, 0);
+  assert.equal(calls.executeRaw.length, 0);
+});
+
+test('createSession: a contagem e do dia UTC do started_at; outro dia tem a propria janela', async () => {
+  calls = fresh();
+  await workoutRepository.createSession(USER, session('2026-10-06T23:59:59.999Z'));
+  assert.deepEqual(calls.counts[0].where.start_time, { gte: new Date('2026-10-06T00:00:00Z'), lt: new Date('2026-10-07T00:00:00Z') });
+  calls = fresh();
+  await workoutRepository.createSession(USER, session('2026-10-07T00:00:00Z'));
+  assert.deepEqual(calls.counts[0].where.start_time, { gte: new Date('2026-10-07T00:00:00Z'), lt: new Date('2026-10-08T00:00:00Z') });
 });

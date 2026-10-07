@@ -156,6 +156,8 @@ class WorkoutController {
       const id = await workoutRepository.createSession(userId, { ...request.body, started_at: startedAt });
       return reply.status(201).send({ activity_id: id });
     } catch (err) {
+      // 400, não 409: o app trata 400 como "não dá para salvar" e não tenta de novo.
+      if (err.code === 'SESSION_DAY_LIMIT') return reply.status(400).send({ error: err.message });
       if (err.code !== 'P2002') throw err;
       // Corrida: outra request com o mesmo started_at gravou entre o check e o insert.
       return reply.send({ activity_id: await workoutRepository.findSessionByStart(userId, startedAt) });

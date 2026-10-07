@@ -6,6 +6,10 @@ const groupsRepository = require('./groups.repository');
 // Transação interativa + createMany com ids gerados aqui: nested create faria 1 INSERT por linha
 // (~40 idas e voltas até o banco num plano de 5 dias).
 const TX = { timeout: 15000 };
+// Teto de treinos STRENGTH por dia UTC do started_at. O ranking dos grupos desempata por activities_count, e cada POST
+// cria uma atividade: sem teto, repetir POSTs com started_at diferentes no mesmo dia forjaria o desempate.
+const MAX_SESSIONS_PER_DAY = 5;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const visibleExercise = (userId) => ({ OR: [{ owner_user_id: null }, { owner_user_id: userId }] });
 
@@ -221,6 +225,14 @@ class WorkoutRepository {
     const nameById = new Map(exercises.map((e) => [e.id, e.name]));
 
     return prisma.$transaction(async (tx) => {
+      // Contagem na mesma transação do insert, antes dele. A idempotência por started_at exato vem antes, no controller.
+      const dayStart = new Date(Math.floor(started_at.getTime() / DAY_MS) * DAY_MS);
+      const sameDay = await tx.activities.count({
+        where: { user_id: userId, activity_type: 'STRENGTH', start_time: { gte: dayStart, lt: new Date(dayStart.getTime() + DAY_MS) } },
+      });
+      if (sameDay >= MAX_SESSIONS_PER_DAY) {
+        throw Object.assign(new Error('too many sessions on that day'), { code: 'SESSION_DAY_LIMIT' });
+      }
       const activity = await tx.activities.create({
         data: {
           user_id: userId,
