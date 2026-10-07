@@ -8,6 +8,8 @@ const tags = ['Groups'];
 const security = [{ bearerAuth: [] }];
 const joinLimit = { rateLimit: { max: 20, timeWindow: '1 minute' } };
 // Convite por username diferencia usuário existente de inexistente (201/409 vs 404): o limite freia a varredura de usernames.
+// ponytail: o limite é por IP (o rate-limit roda antes da autenticação, então não vê o usuário): quem troca de IP o contorna.
+// Chavear por userId exigiria autenticar antes do rate-limit. Aceito pelo Maestro (Security round 1, LOW-1).
 const inviteLimit = { rateLimit: { max: 30, timeWindow: '1 minute' } };
 
 async function groupInvitationsRoutes(fastify) {
