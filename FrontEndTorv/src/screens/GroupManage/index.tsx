@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Share } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
+import axios from 'axios';
 import { ArrowLeft, Check, X, Trash2 } from 'lucide-react-native';
 
 import { Button } from '../../components/Button';
@@ -14,6 +15,12 @@ import { describeError } from '../../utils/groupErrors';
 import type { AppNavigation, AppStackParamList } from '../../routes/types';
 import { colors } from '../../theme/tokens';
 import { styles } from './styles';
+
+// Aqui o dono age sobre outras pessoas: o 409 "Already a member" (global: "Você já está neste grupo.") fala de terceiros.
+const manageErrorText = (error: unknown) =>
+  axios.isAxiosError(error) && error.response?.status === 409 && error.response.data?.error === 'Already a member'
+    ? 'Essa pessoa já está no grupo.'
+    : describeError(error, 'Usuário não encontrado.');
 
 type Confirm = null | { kind: 'remove'; row: RankingRow } | { kind: 'regenerate' } | { kind: 'revoke' } | { kind: 'delete' };
 
@@ -50,7 +57,7 @@ export default function GroupManage() {
       await action();
       if (okText) setMessage({ text: okText, error: false });
     } catch (error) {
-      setMessage({ text: describeError(error, 'Usuário não encontrado.'), error: true });
+      setMessage({ text: manageErrorText(error), error: true });
     } finally {
       setBusy(null);
     }
