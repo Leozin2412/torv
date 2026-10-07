@@ -36,7 +36,8 @@ export const styles = StyleSheet.create({
 
   joinCard: { marginBottom: 16, gap: 4 },
   joinText: { color: colors.textMuted, fontFamily: fontFamily.regular, fontSize: 15, lineHeight: 22 },
-  message: { color: colors.textMuted, fontFamily: fontFamily.semiBold, fontSize: 14, lineHeight: 20, marginBottom: 16 },
+  ok: { color: colors.brand, fontFamily: fontFamily.semiBold, fontSize: 14, lineHeight: 20, marginBottom: 16 },
+  error: { color: colors.error, fontFamily: fontFamily.semiBold, fontSize: 14, lineHeight: 20, marginBottom: 16 },
 
   rankingBox: { marginTop: 8 },
   sectionTitle: { color: colors.text, fontFamily: fontFamily.extraBold, fontSize: 20, marginBottom: 12 },

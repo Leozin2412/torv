@@ -30,7 +30,7 @@ export default function GroupDetail() {
   const [status, setStatus] = useState<Status>('loading');
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
 
   const load = async (refresh = false) => {
@@ -56,7 +56,7 @@ export default function GroupDetail() {
     try {
       await run();
     } catch (error) {
-      setMessage(describeError(error));
+      setMessage({ text: describeError(error), error: true });
     } finally {
       setBusy(false);
     }
@@ -64,7 +64,7 @@ export default function GroupDetail() {
 
   const requestJoin = () => act(async () => {
     await groupsApi.requestJoin(groupId);
-    setMessage('Pedido enviado. O dono do grupo vai analisar.');
+    setMessage({ text: 'Pedido enviado. O dono do grupo vai analisar.', error: false });
     await load();
   });
 
@@ -156,7 +156,9 @@ export default function GroupDetail() {
           </Card>
         )}
         {!group.is_member && state === 'ended' && <Text style={styles.muted}>Este grupo já foi encerrado e não aceita novos membros.</Text>}
-        {message && <Text style={styles.message}>{message}</Text>}
+        {message && (message.error
+          ? <Text style={styles.error} accessibilityRole="alert">{message.text}</Text>
+          : <Text style={styles.ok}>{message.text}</Text>)}
 
         {group.is_member && (
           <View style={styles.rankingBox}>
