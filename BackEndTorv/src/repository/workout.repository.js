@@ -225,6 +225,9 @@ class WorkoutRepository {
     const nameById = new Map(exercises.map((e) => [e.id, e.name]));
 
     return prisma.$transaction(async (tx) => {
+      // Serializa os salvamentos do mesmo usuário até o fim da transação (o lock cai no commit/rollback). Sem ele, POSTs
+      // paralelos contam o mesmo total antes de qualquer insert e furam o teto por dia (READ COMMITTED). userId parametrizado.
+      await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${userId}::text))`);
       // Contagem na mesma transação do insert, antes dele. A idempotência por started_at exato vem antes, no controller.
       const dayStart = new Date(Math.floor(started_at.getTime() / DAY_MS) * DAY_MS);
       const sameDay = await tx.activities.count({

@@ -4,16 +4,21 @@ const assert = require('node:assert/strict');
 // Prisma falso (o client real é um Proxy que o mock.method não alcança): registra as chamadas do teste em andamento.
 let calls = null;
 const ACTIVITY = '66666666-6666-4666-8666-666666666666';
-const w = (name, ret) => async (args) => { calls.writes.push([name, args]); return typeof ret === 'function' ? ret(args) : ret; };
+const w = (name, ret) => async (args) => { calls.order?.push(name); calls.writes.push([name, args]); return typeof ret === 'function' ? ret(args) : ret; };
 const fakePrisma = {
   workout_routines: { findFirst: async (args) => { calls.findFirst.push(args); return calls.routine; } },
-  $executeRaw: async (query) => { calls.executeRaw.push(query); return calls.count; },
+  $executeRaw: async (query) => {
+    calls.executeRaw.push(query);
+    const sql = query.sql ?? '';
+    calls.order?.push(/pg_advisory_xact_lock/.test(sql) ? 'lock' : /INSERT INTO group_rankings/.test(sql) ? 'recompute' : 'executeRaw');
+    return calls.count;
+  },
   $transaction: async (fn) => fn(fakePrisma),
   exercises: { findMany: async () => [] },
   activities: {
     create: w('activities.create', { id: ACTIVITY }),
     findFirst: async () => calls.activity,
-    count: async (args) => { calls.counts.push(args); return calls.dayCount; },
+    count: async (args) => { calls.order?.push('count'); calls.counts.push(args); return calls.dayCount; },
     update: w('activities.update', {}),
     deleteMany: w('activities.deleteMany', () => ({ count: calls.deleted })),
   },
@@ -60,7 +65,7 @@ test('updateRoutineWeights: rotina de outro usuário (ou inexistente) → null, 
 
 const SET_A = '77777777-7777-4777-8777-777777777777';
 const SET_B = '88888888-8888-4888-8888-888888888888';
-const fresh = (over = {}) => ({ findFirst: [], executeRaw: [], writes: [], counts: [], routine: null, count: 0, dayCount: 0, ...over });
+const fresh = (over = {}) => ({ findFirst: [], executeRaw: [], writes: [], counts: [], order: [], routine: null, count: 0, dayCount: 0, ...over });
 
 test('createSession: grava atividade e séries e recalcula o ranking na MESMA transação', async () => {
   calls = fresh();
@@ -72,9 +77,10 @@ test('createSession: grava atividade e séries e recalcula o ranking na MESMA tr
   });
   assert.equal(id, ACTIVITY);
   assert.deepEqual(calls.writes.map(([n]) => n), ['activities.create', 'workout_sets.createMany']);
-  assert.equal(calls.executeRaw.length, 1);
-  assert.match(calls.executeRaw[0].sql, /INSERT INTO group_rankings/);
-  assert.deepEqual(calls.executeRaw[0].values, [USER]);
+  assert.equal(calls.executeRaw.length, 2, 'o lock e o recompute');
+  assert.match(calls.executeRaw[0].sql, /pg_advisory_xact_lock/);
+  assert.match(calls.executeRaw[1].sql, /INSERT INTO group_rankings/);
+  assert.deepEqual(calls.executeRaw[1].values, [USER]);
 });
 
 test('deleteSession: só do dono e só STRENGTH; apagou → recalcula o ranking; não achou → não recalcula', async () => {
@@ -140,7 +146,8 @@ test('createSession: conta os STRENGTH do usuario no dia UTC do started_at, ANTE
     start_time: { gte: new Date('2026-10-06T00:00:00Z'), lt: new Date('2026-10-07T00:00:00Z') },
   });
   assert.deepEqual(calls.writes.map(([n]) => n), ['activities.create', 'workout_sets.createMany']);
-  assert.equal(calls.executeRaw.length, 1, 'o ranking continua sendo recalculado na mesma transacao');
+  assert.equal(calls.executeRaw.length, 2, 'lock + ranking recalculado na mesma transacao');
+  assert.match(calls.executeRaw[1].sql, /INSERT INTO group_rankings/);
 });
 
 test('createSession: o 6o treino do mesmo dia UTC e recusado, sem escrever nem recalcular', async () => {
@@ -150,7 +157,8 @@ test('createSession: o 6o treino do mesmo dia UTC e recusado, sem escrever nem r
     (err) => err.code === 'SESSION_DAY_LIMIT' && /too many sessions on that day/.test(err.message),
   );
   assert.equal(calls.writes.length, 0);
-  assert.equal(calls.executeRaw.length, 0);
+  assert.equal(calls.executeRaw.length, 1, 'so o lock: nao recalcula o ranking');
+  assert.match(calls.executeRaw[0].sql, /pg_advisory_xact_lock/);
 });
 
 test('createSession: a contagem e do dia UTC do started_at; outro dia tem a propria janela', async () => {
@@ -160,4 +168,26 @@ test('createSession: a contagem e do dia UTC do started_at; outro dia tem a prop
   calls = fresh();
   await workoutRepository.createSession(USER, session('2026-10-07T00:00:00Z'));
   assert.deepEqual(calls.counts[0].where.start_time, { gte: new Date('2026-10-07T00:00:00Z'), lt: new Date('2026-10-08T00:00:00Z') });
+});
+
+// Sem o lock, uma rajada de POSTs paralelos conta 4 antes de qualquer insert e fura o teto (READ COMMITTED).
+test('createSession: o advisory lock do usuario vem ANTES do count e do create, e o recompute por ultimo', async () => {
+  calls = fresh();
+  await workoutRepository.createSession(USER, session('2026-10-06T12:00:00Z'));
+  assert.deepEqual(calls.order, ['lock', 'count', 'activities.create', 'workout_sets.createMany', 'recompute']);
+});
+
+test('createSession: o lock e parametrizado (userId como parametro ::text, nunca concatenado)', async () => {
+  calls = fresh();
+  await workoutRepository.createSession(USER, session('2026-10-06T12:00:00Z'));
+  const [lock] = calls.executeRaw;
+  assert.equal(lock.text, 'SELECT pg_advisory_xact_lock(hashtext($1::text))');
+  assert.deepEqual(lock.values, [USER]);
+  assert.ok(!lock.sql.includes(USER), 'o userId nao pode estar no texto do SQL');
+});
+
+test('createSession: teto estourado → o lock ja foi tomado, mas nada e escrito nem recalculado', async () => {
+  calls = fresh({ dayCount: 5 });
+  await assert.rejects(workoutRepository.createSession(USER, session('2026-10-06T12:00:00Z')), { code: 'SESSION_DAY_LIMIT' });
+  assert.deepEqual(calls.order, ['lock', 'count']);
 });
