@@ -17,9 +17,9 @@ export const GroupCard: React.FC<Props> = ({ name, coverUri, subtitle, meta, onP
   <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel={`${name}. ${subtitle}${meta ? `. ${meta}` : ''}`}>
     <GroupCover uri={coverUri} name={name} height={64} style={styles.thumb} />
     <View style={styles.body}>
-      <Text style={styles.name} numberOfLines={1}>{name}</Text>
-      <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
-      {meta ? <Text style={styles.meta} numberOfLines={1}>{meta}</Text> : null}
+      <Text style={styles.name} numberOfLines={2}>{name}</Text>
+      <Text style={styles.subtitle}>{subtitle}</Text>
+      {meta ? <Text style={styles.meta}>{meta}</Text> : null}
     </View>
     <ChevronRight color={colors.textSecondary} size={20} />
   </TouchableOpacity>
