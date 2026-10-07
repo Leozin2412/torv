@@ -185,7 +185,9 @@ A validação de tipo e de assinatura hoje está em `profile.controller.js`. Pas
 - **Brute force de token:** alfabeto de 8 a 10 caracteres + rate limit nas rotas `/join`; o dono revoga ou regenera.
 - **Enumeração de usuários:** convite só por username exato, resposta genérica para inexistente.
 - **Upload:** tipo declarado + assinatura do arquivo, nome gerado no servidor, tamanho limitado pelo `@fastify/multipart`.
-- **Trapaça no ranking:** data do treino imutável após salvar; a contagem exige `start_time >= joined_at`.
+- **Trapaça no ranking:** data do treino imutável após salvar; a contagem exige `start_time >= joined_at`. A revisão de segurança mostrou que isso não bastava (dava para criar treinos com datas passadas depois da entrada), então `POST /workouts/sessions` agora recusa `started_at` com mais de **72 h**, treino que **termina no futuro** e mais de **5 treinos por dia UTC** por usuário (contados na mesma transação, serializada por `pg_advisory_xact_lock` por usuário). Não há piso de duração, para não recusar treino curto legítimo.
+- **Enumeração de username (aceito):** o convite por username responde 404 para inexistente e 201/409 para existente, diferente do "resposta genérica" planejado, porque o dono precisa saber que digitou errado e o username já é público no ranking dos grupos. Mitigação: a rota `POST /groups/:id/invitations` tem rate limit de 30 por minuto (por IP).
+- **Capa de grupo privado (aceito):** `/uploads/` serve a capa sem autenticação, como a foto de perfil; o nome do arquivo tem o UUID do grupo e ~30 bits aleatórios. Resolve com a migração do storage (URL assinada).
 
 ## Testes
 
