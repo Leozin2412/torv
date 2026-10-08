@@ -46,7 +46,7 @@ export default function Login() {
       } else if (status === 429) {
         setLoginError('Muitas tentativas. Aguarde um minuto e tente de novo.');
       } else {
-        setLoginError('Falha ao realizar login. Tente novamente.');
+        setLoginError('Falha ao realizar login. Tente novamente.' );
       }
     } finally {
       setLoading(false);

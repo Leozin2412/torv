@@ -130,3 +130,19 @@ For every feature in progress, the Maestro keeps a Maestri canvas sticky note (v
 - If in rework: which layer(s) were reopened and why.
 
 Update the note at every stage transition, not just at the start/end. This is a live view for the user on the canvas — it does not replace the versioned reports in `docs/`.
+
+## 7. Models and Effort
+
+| Who | Model | Effort | Launch |
+|---|---|---|---|
+| Maestro (main session) | Opus 5.5 | max | `claude --model opus --effort max` |
+| Every recruit using the "Claude Code" preset | Sonnet | high | `maestri recruit "Name" --preset "Claude Code" --role "<role>" --command "claude --model sonnet --effort high"` |
+
+- **The Maestro makes every hard decision:** architecture, contracts between layers, data model, trade-offs, scope, how to read the spec, and which layer to reopen after a failure.
+- **Recruits execute.** They receive a decision that is already made, plus the exact files, interfaces and acceptance criteria.
+- **When a recruit hits an ambiguous or hard decision that the task does not cover, it asks the Maestro back (ask-back) instead of choosing on its own.**
+- Shell recruits (Furnace, Expo, Backend Server) run no model, so this rule does not apply to them.
+- **Switching a recruit that is already running** (no restart):
+  - From PowerShell (Git Bash rewrites `/model` into a Windows path), send `maestri ask "<recruit>" --raw "/model sonnet\n"`, then `maestri ask "<recruit>" --raw "/effort high\n"`.
+  - Then confirm in `maestri check` that the status line reads `Sonnet … [high]`.
+  - **Side effect:** `/model` writes `"model"` into the global `~/.claude/settings.json`. Set it back to `"opus"` afterwards; the running sessions keep Sonnet.
