@@ -11,8 +11,12 @@ const STATUS = {
 // Códigos que o cliente precisa distinguir pelo corpo (mesmo status, ações diferentes).
 const WITH_CODE = new Set(['EMAIL_TAKEN', 'EMAIL_NOT_CONFIRMED', 'INVALID_CODE', 'RATE_LIMITED']);
 
-// Código de 6 dígitos = 1M combinações: 5 falhas por e-mail em 15 min, além do limite por IP.
+// Código de 6 dígitos = 1M combinações: 5 tentativas por e-mail em 15 min, além do limite por IP.
+// ponytail: contadores em memória, por instância. Em serverless (várias instâncias) pedem contador no Postgres (upsert atômico); o backstop de hoje é o rate limit do GoTrue + expiração do código.
 const codeFailures = createAttemptLimiter({ max: 5, windowMs: 15 * 60 * 1000 });
+// Cooldown de reenvio por e-mail, independente de a conta existir (o GoTrue só limita contas reais, e isso vazaria a existência).
+const resendCooldown = createAttemptLimiter({ max: 1, windowMs: 60 * 1000 });
+const emailKey = (email) => email.trim().toLowerCase();
 
 // Nunca loga body (senha) nem tokens: só o código do erro tipado.
 function sendAuthError(request, reply, err) {
@@ -69,21 +73,26 @@ class AuthController {
 
   async verifyEmail(request, reply) {
     const { email, code } = request.body;
-    const key = email.trim().toLowerCase();
+    const key = emailKey(email);
     if (codeFailures.isBlocked(key)) return sendAuthError(request, reply, new authProvider.AuthError('RATE_LIMITED'));
+    // Reserva a tentativa antes do await: rajada paralela não passa do teto. Só o sucesso devolve (reset); qualquer erro do provedor consome.
+    codeFailures.fail(key);
     try {
       const session = await authProvider.verifyEmail(email, code);
       codeFailures.reset(key);
       return reply.status(200).send({ session });
     } catch (err) {
-      if (err?.code === 'INVALID_CODE') codeFailures.fail(key);
       return sendAuthError(request, reply, err);
     }
   }
 
   async resendCode(request, reply) {
+    const key = emailKey(request.body.email);
+    if (resendCooldown.isBlocked(key)) return sendAuthError(request, reply, new authProvider.AuthError('RATE_LIMITED'));
+    resendCooldown.fail(key);
     try {
-      await authProvider.resendSignup(request.body.email);
+      const result = await authProvider.resendSignup(request.body.email);
+      if (result?.swallowed) request.log.warn({ error_code: result.swallowed }, 'resend swallowed provider error');
       return reply.status(204).send();
     } catch (err) {
       return sendAuthError(request, reply, err);

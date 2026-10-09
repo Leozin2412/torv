@@ -131,11 +131,18 @@ test('resendSignup: POST /resend type=signup; 2xx ok', async (t) => {
   assert.deepEqual(JSON.parse(init.body), { type: 'signup', email: 'a@b.dev' });
 });
 
-test('resendSignup: 429/over_email_send_rate_limit → RATE_LIMITED', async (t) => {
+test('resendSignup: 429/over_email_send_rate_limit é engolido e devolve o sinal swallowed', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => json(429, { error_code: 'over_email_send_rate_limit' }));
+  assert.deepEqual(await authProvider.resendSignup('a@b.dev'), { swallowed: 'over_email_send_rate_limit' });
   t.mock.method(globalThis, 'fetch', async () => json(429, {}));
-  await rejectsCode(authProvider.resendSignup('a@b.dev'), 'RATE_LIMITED');
-  t.mock.method(globalThis, 'fetch', async () => json(400, { error_code: 'over_email_send_rate_limit' }));
-  await rejectsCode(authProvider.resendSignup('a@b.dev'), 'RATE_LIMITED');
+  assert.deepEqual(await authProvider.resendSignup('a@b.dev'), { swallowed: 'http_429' });
+});
+
+test('signUp: over_email_send_rate_limit → null (uniforme com cadastro novo); over_request_rate_limit continua erro', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => json(429, { error_code: 'over_email_send_rate_limit' }));
+  assert.equal(await authProvider.signUp('a@b.dev', 'pw123456', {}), null);
+  t.mock.method(globalThis, 'fetch', async () => json(429, { error_code: 'over_request_rate_limit' }));
+  await rejectsCode(authProvider.signUp('a@b.dev', 'pw123456', {}), 'PROVIDER');
 });
 
 test('resendSignup: email_address_not_authorized, 5xx e rede → PROVIDER', async (t) => {
@@ -147,9 +154,9 @@ test('resendSignup: email_address_not_authorized, 5xx e rede → PROVIDER', asyn
   await rejectsCode(authProvider.resendSignup('a@b.dev'), 'PROVIDER');
 });
 
-test('resendSignup: outro 4xx (e-mail inexistente/já confirmado) → ok silencioso', async (t) => {
+test('resendSignup: outro 4xx (e-mail inexistente/já confirmado) → ok, com swallowed pro log', async (t) => {
   t.mock.method(globalThis, 'fetch', async () => json(422, { error_code: 'user_not_found' }));
-  assert.equal(await authProvider.resendSignup('a@b.dev'), undefined);
+  assert.deepEqual(await authProvider.resendSignup('a@b.dev'), { swallowed: 'user_not_found' });
   t.mock.method(globalThis, 'fetch', async () => json(400, { error_code: 'email_exists' }));
-  assert.equal(await authProvider.resendSignup('a@b.dev'), undefined);
+  assert.deepEqual(await authProvider.resendSignup('a@b.dev'), { swallowed: 'email_exists' });
 });

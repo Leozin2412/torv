@@ -62,17 +62,17 @@ test('verify-email: maiúsculas e minúsculas do mesmo e-mail dividem o mesmo co
   assert.equal(verify.mock.callCount(), 5);
 });
 
-test('verify-email: só INVALID_CODE conta; PROVIDER e RATE_LIMITED do provedor não bloqueiam o e-mail', async (t) => {
+// A tentativa é reservada antes do await (anti-rajada), então qualquer erro do provedor consome (decisão do Security S2).
+test('verify-email: PROVIDER e RATE_LIMITED do provedor também consomem tentativa; a 6ª não chama o provedor', async (t) => {
   const verify = t.mock.method(authProvider, 'verifyEmail', async () => { throw new AuthError('PROVIDER'); });
   const app = await build(t);
   const body = { email: 'count@b.dev', code: '000000' };
-  for (let i = 0; i < 4; i++) assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 502);
+  for (let i = 0; i < 3; i++) assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 502);
   verify.mock.mockImplementation(async () => { throw new AuthError('RATE_LIMITED'); });
-  for (let i = 0; i < 4; i++) assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 429);
-  // 8 erros de outro tipo e ainda chama o provedor (limite por IP é 10/min, 8 < 10)
+  for (let i = 0; i < 2; i++) assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 429);
   verify.mock.mockImplementation(async () => session);
-  assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 200);
-  assert.equal(verify.mock.callCount(), 9);
+  assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 429);
+  assert.equal(verify.mock.callCount(), 5);
 });
 
 test('verify-email: 429 bloqueado leva code RATE_LIMITED e não vaza o código certo (provedor não é chamado)', async (t) => {

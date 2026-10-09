@@ -53,6 +53,8 @@ const isClientError = (status) => status >= 400 && status < 500;
 async function signUp(email, password, metadata) {
   const { status, data } = await call('/signup', { email, password, data: metadata });
   if (status >= 200 && status < 300) return toSession(data);
+  // Reenvio < 60 s de conta não confirmada: responde igual a um cadastro novo (sem sessão), pra não virar oráculo de existência.
+  if (data.error_code === 'over_email_send_rate_limit') return null;
   if (['user_already_exists', 'email_exists'].includes(data.error_code)) throw new AuthError('EMAIL_TAKEN');
   if (['weak_password', 'email_address_invalid', 'validation_failed'].includes(data.error_code)) throw new AuthError('INVALID_INPUT');
   throw new AuthError('PROVIDER');
@@ -78,12 +80,13 @@ async function verifyEmail(email, token) {
   throw new AuthError(isClientError(status) ? 'INVALID_CODE' : 'PROVIDER');
 }
 
-// Resposta uniforme: 4xx "normal" (e-mail inexistente, já confirmado...) vira ok pra não revelar se a conta existe.
+// Resposta uniforme: qualquer 4xx do GoTrue (e-mail inexistente, já confirmado, 429 de reenvio...) vira ok pra não revelar se a conta existe.
+// Quando engole, devolve { swallowed: error_code } só pro controller logar (sem e-mail).
 async function resendSignup(email) {
   const { status, data } = await call('/resend', { type: 'signup', email });
-  if (status >= 200 && status < 300) return;
-  if (status === 429 || data.error_code === 'over_email_send_rate_limit') throw new AuthError('RATE_LIMITED');
+  if (status >= 200 && status < 300) return undefined;
   if (data.error_code === 'email_address_not_authorized' || !isClientError(status)) throw new AuthError('PROVIDER');
+  return { swallowed: data.error_code ?? `http_${status}` };
 }
 
 async function refresh(refreshToken) {

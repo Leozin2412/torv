@@ -1,5 +1,5 @@
-// Contador de falhas por chave numa janela fixa que começa na 1ª falha.
-// ponytail: Map em memória, por instância (serverless tem várias, cada uma conta sozinha). O backstop real é o rate limit do GoTrue + expiração do código; mover pra Redis/tabela só se isso deixar de bastar.
+// Contador de tentativas por chave numa janela fixa que começa na 1ª. Chamar fail() síncrono antes de qualquer await mantém a contagem atômica no event loop.
+// ponytail: Map em memória, por instância (serverless tem várias, cada uma conta sozinha). Serverless pede contador no Postgres (upsert atômico); o backstop de hoje é o rate limit do GoTrue + expiração do código.
 function createAttemptLimiter({ max, windowMs, now = Date.now }) {
   const entries = new Map(); // key -> { count, resetAt }
 
