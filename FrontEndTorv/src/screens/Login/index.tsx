@@ -3,20 +3,13 @@ import { View, Text, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingView, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { AuthContext } from '../../contexts/AuthContext';
 import { colors } from '../../theme/tokens';
+import type { AuthNavigation } from '../../routes/types';
 import { styles } from './styles';
-
-type AuthStackParamList = {
-  Login: undefined;
-  Register: undefined;
-};
-
-type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -24,7 +17,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const navigation = useNavigation<LoginScreenNavigationProp>();
+  const navigation = useNavigation<AuthNavigation>();
   const { login } = useContext(AuthContext);
 
   const handleLogin = async () => {
@@ -41,7 +34,9 @@ export default function Login() {
       await login(email, password);
     } catch (error: any) {
       const status = error?.response?.status;
-      if (status === 401) {
+      if (status === 403 && error.response.data?.code === 'EMAIL_NOT_CONFIRMED') {
+        navigation.navigate('VerifyEmail', { email, cooldownSeconds: 0 });
+      } else if (status === 401) {
         setLoginError('Email ou senha incorretos.');
       } else if (status === 429) {
         setLoginError('Muitas tentativas. Aguarde um minuto e tente de novo.');

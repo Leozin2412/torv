@@ -34,6 +34,9 @@ interface AuthContextData {
   login: (email: string, password: string) => Promise<void>;
   // Resolves to true when the account needs e-mail confirmation before login.
   register: (payload: RegisterPayload) => Promise<boolean>;
+  // Confirma o e-mail com o código de 6 dígitos e já inicia a sessão.
+  verifyEmail: (email: string, code: string) => Promise<void>;
+  resendCode: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   dismissWelcome: () => void;
 }
@@ -88,6 +91,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return !!data.confirmation_required;
   };
 
+  const verifyEmail = async (email: string, code: string) => {
+    const { data } = await authApi.post('/auth/verify-email', { email, code });
+    await startSession(data.session);
+  };
+
+  const resendCode = async (email: string) => {
+    await authApi.post('/auth/resend-code', { email });
+  };
+
   const logout = async () => {
     let current = await getSession();
     // An expired access token can't revoke; refresh first so GoTrue accepts it.
@@ -114,7 +126,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ signed, user, loading, login, register, logout, dismissWelcome }}>
+    <AuthContext.Provider value={{ signed, user, loading, login, register, verifyEmail, resendCode, logout, dismissWelcome }}>
       {children}
     </AuthContext.Provider>
   );

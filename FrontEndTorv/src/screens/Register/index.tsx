@@ -11,11 +11,12 @@ import { SelectCard } from '../../components/SelectCard';
 import { AuthContext } from '../../contexts/AuthContext';
 import { GoalConflictWarning } from '../../components/GoalConflictWarning';
 import { colors } from '../../theme/tokens';
+import type { AuthNavigation } from '../../routes/types';
 import { FITNESS_LEVELS, GOAL_OPTIONS } from '../../utils/profileOptions';
 import { styles } from './styles';
 
 export default function Register() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<AuthNavigation>();
   const { register } = useContext(AuthContext);
   const [step, setStep] = useState(0); // 0 to 5
   const [loading, setLoading] = useState(false);
@@ -118,7 +119,7 @@ export default function Register() {
         goal: goals.join(', '),
       });
       if (confirmationRequired) {
-        setRegisterError('Conta criada. Confirme seu e-mail e faça login.');
+        navigation.navigate('VerifyEmail', { email, cooldownSeconds: 60 });
       }
     } catch (error: any) {
       const status = error?.response?.status;

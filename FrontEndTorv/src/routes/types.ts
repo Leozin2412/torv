@@ -23,3 +23,12 @@ export type AppStackParamList = {
 };
 
 export type AppNavigation = NativeStackNavigationProp<AppStackParamList>;
+
+// Telas públicas (antes do login).
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+  VerifyEmail: { email: string; cooldownSeconds?: number };
+};
+
+export type AuthNavigation = NativeStackNavigationProp<AuthStackParamList>;
