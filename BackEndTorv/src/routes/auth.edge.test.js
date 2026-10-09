@@ -94,3 +94,87 @@ test('resend-code: e-mail em maiúsculas passa ao provedor e a resposta 204 vem 
   assert.equal(res.body, '');
   assert.equal(resend.mock.calls[0].arguments[0], 'Ana@B.dev');
 });
+
+// ---- Round 3 (rework S1/S2/S3): reserva antes do await e cooldown de reenvio ----
+
+test('verify-email: 4 erros e a 5ª tentativa certa → 200 e zera; 5 tentativas novas são permitidas', async (t) => {
+  const verify = t.mock.method(authProvider, 'verifyEmail', async () => { throw new AuthError('INVALID_CODE'); });
+  const app = await build(t);
+  const body = { email: 'fifth@b.dev', code: '000000' };
+  for (let i = 0; i < 4; i++) assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 400);
+  verify.mock.mockImplementation(async () => session);
+  assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 200);
+  verify.mock.mockImplementation(async () => { throw new AuthError('INVALID_CODE'); });
+  for (let i = 0; i < 5; i++) assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 400, `nova tentativa ${i + 1}`);
+  assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 429);
+  assert.equal(verify.mock.callCount(), 10);
+});
+
+test('verify-email: rajada paralela com código certo → só as 5 reservadas chegam ao provedor (200), o resto 429', async (t) => {
+  const verify = t.mock.method(authProvider, 'verifyEmail', async () => {
+    await new Promise((r) => setTimeout(r, 30));
+    return session;
+  });
+  const app = await build(t);
+  const results = await Promise.all(Array.from({ length: 20 }, (_, i) => app.inject({
+    method: 'POST', url: '/auth/verify-email', payload: { email: 'burstok@b.dev', code: '123456' }, remoteAddress: `10.1.0.${i + 1}`,
+  })));
+  assert.equal(verify.mock.callCount(), 5);
+  assert.equal(results.filter((r) => r.statusCode === 200).length, 5);
+  assert.equal(results.filter((r) => r.statusCode === 429).length, 15);
+});
+
+test('verify-email: exceção inesperada (não AuthError) não deixa contador preso nem some com a tentativa', async (t) => {
+  const verify = t.mock.method(authProvider, 'verifyEmail', async () => { throw new TypeError('bug'); });
+  const app = await build(t);
+  const body = { email: 'boom@b.dev', code: '000000' };
+  assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 500);
+  verify.mock.mockImplementation(async () => session);
+  assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 200);
+});
+
+test('resend-code: rajada paralela do mesmo e-mail → 1 chamada ao provedor, resto 429', async (t) => {
+  const resend = t.mock.method(authProvider, 'resendSignup', async () => {
+    await new Promise((r) => setTimeout(r, 30));
+  });
+  const app = await build(t);
+  const results = await Promise.all(Array.from({ length: 5 }, (_, i) => app.inject({
+    method: 'POST', url: '/auth/resend-code', payload: { email: 'burstrs@b.dev' }, remoteAddress: `10.2.0.${i + 1}`,
+  })));
+  assert.equal(resend.mock.callCount(), 1);
+  assert.deepEqual(results.map((r) => r.statusCode).sort(), [204, 429, 429, 429, 429]);
+});
+
+test('resend-code: erro 502 do provedor também consome o cooldown (retentar logo dá 429, sem chamar o provedor)', async (t) => {
+  const resend = t.mock.method(authProvider, 'resendSignup', async () => { throw new AuthError('PROVIDER'); });
+  const app = await build(t);
+  assert.equal((await post(app, '/auth/resend-code', { email: 'rs502@b.dev' })).statusCode, 502);
+  assert.equal((await post(app, '/auth/resend-code', { email: 'rs502@b.dev' })).statusCode, 429);
+  assert.equal(resend.mock.callCount(), 1);
+});
+
+test('resend-code e verify-email têm contadores independentes para o mesmo e-mail', async (t) => {
+  t.mock.method(authProvider, 'resendSignup', async () => {});
+  t.mock.method(authProvider, 'verifyEmail', async () => { throw new AuthError('INVALID_CODE'); });
+  const app = await build(t);
+  const email = 'indep@b.dev';
+  for (let i = 0; i < 5; i++) assert.equal((await post(app, '/auth/verify-email', { email, code: '000000' })).statusCode, 400);
+  assert.equal((await post(app, '/auth/verify-email', { email, code: '000000' })).statusCode, 429);
+  assert.equal((await post(app, '/auth/resend-code', { email })).statusCode, 204);
+});
+
+test('login/refresh: respostas de erro do provedor seguem iguais (sem code extra em 401/502)', async (t) => {
+  const app = await build(t);
+  t.mock.method(authProvider, 'signIn', async () => { throw new AuthError('INVALID_CREDENTIALS'); });
+  let res = await post(app, '/auth/login', { email: 'a@b.dev', password: 'x' });
+  assert.equal(res.statusCode, 401);
+  assert.deepEqual(res.json(), { error: 'Invalid email or password' });
+  t.mock.method(authProvider, 'signIn', async () => { throw new AuthError('PROVIDER'); });
+  res = await post(app, '/auth/login', { email: 'a@b.dev', password: 'x' });
+  assert.equal(res.statusCode, 502);
+  assert.deepEqual(Object.keys(res.json()), ['error']);
+  t.mock.method(authProvider, 'refresh', async () => { throw new AuthError('INVALID_REFRESH'); });
+  res = await post(app, '/auth/refresh', { refresh_token: 'rt' });
+  assert.equal(res.statusCode, 401);
+  assert.deepEqual(Object.keys(res.json()), ['error']);
+});
