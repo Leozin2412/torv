@@ -46,7 +46,7 @@ test('signIn: 5xx e falha de rede → PROVIDER', async (t) => {
 
 test('signUp: envia metadata em data e devolve sessão quando auto-confirma', async (t) => {
   const fetch = t.mock.method(globalThis, 'fetch', async () => json(200, gotrueSession));
-  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456', { name: 'x' }), session);
+  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456', { name: 'x' }), { session });
   const [url, init] = fetch.mock.calls[0].arguments;
   assert.equal(url, 'https://proj.supabase.co/auth/v1/signup');
   assert.deepEqual(JSON.parse(init.body), { email: 'a@b.dev', password: 'pw123456', data: { name: 'x' } });
@@ -54,7 +54,7 @@ test('signUp: envia metadata em data e devolve sessão quando auto-confirma', as
 
 test('signUp: sem access_token (confirmação de e-mail) → null', async (t) => {
   t.mock.method(globalThis, 'fetch', async () => json(200, { id: 'u1', email: 'a@b.dev' }));
-  assert.equal(await authProvider.signUp('a@b.dev', 'pw123456', {}), null);
+  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456', {}), { session: null });
 });
 
 test('signUp: e-mail já cadastrado → EMAIL_TAKEN; senha fraca → INVALID_INPUT', async (t) => {
@@ -138,9 +138,9 @@ test('resendSignup: 429/over_email_send_rate_limit é engolido e devolve o sinal
   assert.deepEqual(await authProvider.resendSignup('a@b.dev'), { swallowed: 'http_429' });
 });
 
-test('signUp: over_email_send_rate_limit → null (uniforme com cadastro novo); over_request_rate_limit continua erro', async (t) => {
+test('signUp: over_email_send_rate_limit → sessão null + swallowed (uniforme com cadastro novo); over_request_rate_limit continua erro', async (t) => {
   t.mock.method(globalThis, 'fetch', async () => json(429, { error_code: 'over_email_send_rate_limit' }));
-  assert.equal(await authProvider.signUp('a@b.dev', 'pw123456', {}), null);
+  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456', {}), { session: null, swallowed: 'over_email_send_rate_limit' });
   t.mock.method(globalThis, 'fetch', async () => json(429, { error_code: 'over_request_rate_limit' }));
   await rejectsCode(authProvider.signUp('a@b.dev', 'pw123456', {}), 'PROVIDER');
 });

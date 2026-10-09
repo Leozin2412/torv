@@ -55,7 +55,8 @@ class AuthController {
     };
 
     try {
-      const session = await authProvider.signUp(email, password, metadata);
+      const { session, swallowed } = await authProvider.signUp(email, password, metadata);
+      if (swallowed) request.log.warn({ error_code: swallowed }, 'register swallowed provider error');
       return reply.status(201).send({ session, confirmation_required: session === null });
     } catch (err) {
       return sendAuthError(request, reply, err);

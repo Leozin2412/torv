@@ -85,7 +85,7 @@ async function authRoutes(fastify) {
     schema: {
       description: 'Troca o refresh token por uma sessão nova',
       tags: ['Auth'],
-      body: Type.Object({ refresh_token: Type.String({ minLength: 1 }) }),
+      body: Type.Object({ refresh_token: Type.String({ minLength: 1, maxLength: 512 }) }),
       response: { 200: Type.Object({ session: Session }), ...errors(400, 401, 429, 502) },
     },
   }, authController.refresh);

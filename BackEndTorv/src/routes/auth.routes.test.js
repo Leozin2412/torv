@@ -24,7 +24,7 @@ async function build(t) {
 const post = (app, url, payload, headers) => app.inject({ method: 'POST', url, payload, headers });
 
 test('register 201: mapeia metadata pro que handle_new_user lê', async (t) => {
-  const signUp = t.mock.method(authProvider, 'signUp', async () => session);
+  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session }));
   const app = await build(t);
   const res = await post(app, '/auth/register', validRegister);
   assert.equal(res.statusCode, 201);
@@ -39,7 +39,7 @@ test('register 201: mapeia metadata pro que handle_new_user lê', async (t) => {
 });
 
 test('register 201 sem sessão → confirmation_required', async (t) => {
-  t.mock.method(authProvider, 'signUp', async () => null);
+  t.mock.method(authProvider, 'signUp', async () => ({ session: null }));
   const app = await build(t);
   const res = await post(app, '/auth/register', validRegister);
   assert.equal(res.statusCode, 201);
@@ -47,7 +47,7 @@ test('register 201 sem sessão → confirmation_required', async (t) => {
 });
 
 test('register 400: campos inválidos não chegam no provedor', async (t) => {
-  const signUp = t.mock.method(authProvider, 'signUp', async () => session);
+  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session }));
   const bad = [
     { email: 'nope' },
     { password: '123' },
@@ -84,7 +84,7 @@ test('register 409 / 502 mapeados sem vazar erro do provedor', async (t) => {
 });
 
 test('register 409 USERNAME_TAKEN: username já existe → não chama o provedor', async (t) => {
-  const signUp = t.mock.method(authProvider, 'signUp', async () => session);
+  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session }));
   const app = await build(t);
   const exists = t.mock.method(profileRepository, 'usernameExists', async () => true);
   const res = await post(app, '/auth/register', validRegister);
@@ -95,7 +95,7 @@ test('register 409 USERNAME_TAKEN: username já existe → não chama o provedor
 });
 
 test('register sem username pula o pre-check (trigger gera um)', async (t) => {
-  const signUp = t.mock.method(authProvider, 'signUp', async () => session);
+  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session }));
   const app = await build(t);
   const exists = t.mock.method(profileRepository, 'usernameExists', async () => true);
   const { username, ...noUsername } = validRegister;
@@ -285,12 +285,31 @@ test('resend-code: 429/4xx do GoTrue viram 204 e logam só o error_code', async 
   assert.deepEqual(warn.mock.calls.map((c) => c.arguments), [[{ error_code: 'over_email_send_rate_limit' }, 'resend swallowed provider error']]);
 });
 
-test('register: provedor com over_email_send_rate_limit (signUp → null) → 201 confirmation_required', async (t) => {
-  t.mock.method(authProvider, 'signUp', async () => null);
+test('register: over_email_send_rate_limit engolido → 201 igual, mas loga só o error_code', async (t) => {
+  t.mock.method(authProvider, 'signUp', async () => ({ session: null, swallowed: 'over_email_send_rate_limit' }));
   const app = await build(t);
+  const warn = t.mock.method(app.log, 'warn', () => {});
   const res = await post(app, '/auth/register', validRegister);
   assert.equal(res.statusCode, 201);
   assert.deepEqual(res.json(), { session: null, confirmation_required: true });
+  assert.deepEqual(warn.mock.calls.map((c) => c.arguments), [[{ error_code: 'over_email_send_rate_limit' }, 'register swallowed provider error']]);
+});
+
+test('register sem swallowed não loga warn', async (t) => {
+  t.mock.method(authProvider, 'signUp', async () => ({ session: null }));
+  const app = await build(t);
+  const warn = t.mock.method(app.log, 'warn', () => {});
+  assert.equal((await post(app, '/auth/register', validRegister)).statusCode, 201);
+  assert.equal(warn.mock.callCount(), 0);
+});
+
+test('refresh_token com 513 chars → 400 sem chamar o provedor; 512 passa o schema', async (t) => {
+  const refresh = t.mock.method(authProvider, 'refresh', async () => session);
+  const app = await build(t);
+  assert.equal((await post(app, '/auth/refresh', { refresh_token: 'x'.repeat(513) })).statusCode, 400);
+  assert.equal(refresh.mock.callCount(), 0);
+  assert.equal((await post(app, '/auth/refresh', { refresh_token: 'x'.repeat(512) })).statusCode, 200);
+  assert.equal(refresh.mock.callCount(), 1);
 });
 
 test('verify-email: rajada paralela de 20 (IPs distintos) com provedor lento → no máximo 5 chegam ao provedor', async (t) => {
@@ -323,7 +342,7 @@ test('e-mail de 255 chars → 400 sem chamar o provedor nas 4 rotas; 254 passa o
   const verify = t.mock.method(authProvider, 'verifyEmail', async () => session);
   const resend = t.mock.method(authProvider, 'resendSignup', async () => {});
   const signIn = t.mock.method(authProvider, 'signIn', async () => session);
-  const signUp = t.mock.method(authProvider, 'signUp', async () => session);
+  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session }));
   const app = await build(t);
   assert.equal(email254.length, 254);
 
@@ -346,7 +365,7 @@ test('e-mail de 255 chars → 400 sem chamar o provedor nas 4 rotas; 254 passa o
 
 test('senha com 129 chars → 400 no login e no register; 128 passa', async (t) => {
   const signIn = t.mock.method(authProvider, 'signIn', async () => session);
-  const signUp = t.mock.method(authProvider, 'signUp', async () => session);
+  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session }));
   const app = await build(t);
   assert.equal((await post(app, '/auth/login', { email: 'a@b.dev', password: 'x'.repeat(129) })).statusCode, 400);
   assert.equal((await post(app, '/auth/register', { ...validRegister, password: 'x'.repeat(129) })).statusCode, 400);

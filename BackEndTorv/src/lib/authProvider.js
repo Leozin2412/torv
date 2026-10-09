@@ -52,9 +52,10 @@ const isClientError = (status) => status >= 400 && status < 500;
 
 async function signUp(email, password, metadata) {
   const { status, data } = await call('/signup', { email, password, data: metadata });
-  if (status >= 200 && status < 300) return toSession(data);
+  if (status >= 200 && status < 300) return { session: toSession(data) };
   // Reenvio < 60 s de conta não confirmada: responde igual a um cadastro novo (sem sessão), pra não virar oráculo de existência.
-  if (data.error_code === 'over_email_send_rate_limit') return null;
+  // swallowed só pro controller logar (sem e-mail).
+  if (data.error_code === 'over_email_send_rate_limit') return { session: null, swallowed: data.error_code };
   if (['user_already_exists', 'email_exists'].includes(data.error_code)) throw new AuthError('EMAIL_TAKEN');
   if (['weak_password', 'email_address_invalid', 'validation_failed'].includes(data.error_code)) throw new AuthError('INVALID_INPUT');
   throw new AuthError('PROVIDER');
