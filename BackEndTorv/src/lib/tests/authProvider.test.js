@@ -89,3 +89,67 @@ test('sessão sem expires_at usa expires_in', async (t) => {
   const now = Math.floor(Date.now() / 1000);
   assert.ok(s.expires_at >= now + 3599 && s.expires_at <= now + 3601);
 });
+
+test('signIn: 400 email_not_confirmed → EMAIL_NOT_CONFIRMED; 429 → PROVIDER', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => json(400, { error_code: 'email_not_confirmed', msg: 'secret-provider-detail' }));
+  await rejectsCode(authProvider.signIn('a@b.dev', 'pw123456'), 'EMAIL_NOT_CONFIRMED');
+  t.mock.method(globalThis, 'fetch', async () => json(429, { error_code: 'over_request_rate_limit' }));
+  await rejectsCode(authProvider.signIn('a@b.dev', 'pw123456'), 'PROVIDER');
+});
+
+test('verifyEmail: POST /verify type=email e normaliza a sessão', async (t) => {
+  const fetch = t.mock.method(globalThis, 'fetch', async () => json(200, gotrueSession));
+  assert.deepEqual(await authProvider.verifyEmail('a@b.dev', '123456'), session);
+  const [url, init] = fetch.mock.calls[0].arguments;
+  assert.equal(url, 'https://proj.supabase.co/auth/v1/verify');
+  assert.deepEqual(JSON.parse(init.body), { type: 'email', email: 'a@b.dev', token: '123456' });
+});
+
+test('verifyEmail: 200 sem access_token → PROVIDER', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => json(200, { id: 'u1' }));
+  await rejectsCode(authProvider.verifyEmail('a@b.dev', '123456'), 'PROVIDER');
+});
+
+test('verifyEmail: 4xx → INVALID_CODE; 429/over_request_rate_limit → RATE_LIMITED; 5xx → PROVIDER', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => json(403, { error_code: 'otp_expired', msg: 'secret-provider-detail' }));
+  await rejectsCode(authProvider.verifyEmail('a@b.dev', '123456'), 'INVALID_CODE');
+  t.mock.method(globalThis, 'fetch', async () => json(422, { error_code: 'validation_failed' }));
+  await rejectsCode(authProvider.verifyEmail('a@b.dev', '123456'), 'INVALID_CODE');
+  t.mock.method(globalThis, 'fetch', async () => json(429, {}));
+  await rejectsCode(authProvider.verifyEmail('a@b.dev', '123456'), 'RATE_LIMITED');
+  t.mock.method(globalThis, 'fetch', async () => json(400, { error_code: 'over_request_rate_limit' }));
+  await rejectsCode(authProvider.verifyEmail('a@b.dev', '123456'), 'RATE_LIMITED');
+  t.mock.method(globalThis, 'fetch', async () => json(500, { msg: 'secret-provider-detail' }));
+  await rejectsCode(authProvider.verifyEmail('a@b.dev', '123456'), 'PROVIDER');
+});
+
+test('resendSignup: POST /resend type=signup; 2xx ok', async (t) => {
+  const fetch = t.mock.method(globalThis, 'fetch', async () => json(200, {}));
+  assert.equal(await authProvider.resendSignup('a@b.dev'), undefined);
+  const [url, init] = fetch.mock.calls[0].arguments;
+  assert.equal(url, 'https://proj.supabase.co/auth/v1/resend');
+  assert.deepEqual(JSON.parse(init.body), { type: 'signup', email: 'a@b.dev' });
+});
+
+test('resendSignup: 429/over_email_send_rate_limit → RATE_LIMITED', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => json(429, {}));
+  await rejectsCode(authProvider.resendSignup('a@b.dev'), 'RATE_LIMITED');
+  t.mock.method(globalThis, 'fetch', async () => json(400, { error_code: 'over_email_send_rate_limit' }));
+  await rejectsCode(authProvider.resendSignup('a@b.dev'), 'RATE_LIMITED');
+});
+
+test('resendSignup: email_address_not_authorized, 5xx e rede → PROVIDER', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => json(400, { error_code: 'email_address_not_authorized', msg: 'secret-provider-detail' }));
+  await rejectsCode(authProvider.resendSignup('a@b.dev'), 'PROVIDER');
+  t.mock.method(globalThis, 'fetch', async () => json(500, {}));
+  await rejectsCode(authProvider.resendSignup('a@b.dev'), 'PROVIDER');
+  t.mock.method(globalThis, 'fetch', async () => { throw new TypeError('fetch failed'); });
+  await rejectsCode(authProvider.resendSignup('a@b.dev'), 'PROVIDER');
+});
+
+test('resendSignup: outro 4xx (e-mail inexistente/já confirmado) → ok silencioso', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => json(422, { error_code: 'user_not_found' }));
+  assert.equal(await authProvider.resendSignup('a@b.dev'), undefined);
+  t.mock.method(globalThis, 'fetch', async () => json(400, { error_code: 'email_exists' }));
+  assert.equal(await authProvider.resendSignup('a@b.dev'), undefined);
+});

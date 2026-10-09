@@ -6,6 +6,9 @@ const MESSAGES = {
   INVALID_REFRESH: 'Invalid refresh token',
   EMAIL_TAKEN: 'Email already registered',
   INVALID_INPUT: 'Invalid registration data',
+  EMAIL_NOT_CONFIRMED: 'Email not confirmed',
+  INVALID_CODE: 'Invalid or expired code',
+  RATE_LIMITED: 'Too many requests',
   PROVIDER: 'Authentication provider unavailable',
 };
 
@@ -58,7 +61,29 @@ async function signUp(email, password, metadata) {
 async function signIn(email, password) {
   const { status, data } = await call('/token?grant_type=password', { email, password });
   if (status === 200) return toSession(data);
+  // GoTrue só responde isso depois de validar a senha, então não revela se a conta existe.
+  if (isClientError(status) && data.error_code === 'email_not_confirmed') throw new AuthError('EMAIL_NOT_CONFIRMED');
   throw new AuthError(isClientError(status) && status !== 429 ? 'INVALID_CREDENTIALS' : 'PROVIDER');
+}
+
+async function verifyEmail(email, token) {
+  const { status, data } = await call('/verify', { type: 'email', email, token });
+  if (status === 200) {
+    const session = toSession(data);
+    if (!session) throw new AuthError('PROVIDER');
+    return session;
+  }
+  if (status === 429 || data.error_code === 'over_request_rate_limit') throw new AuthError('RATE_LIMITED');
+  // Expirado e errado ficam indistinguíveis de propósito.
+  throw new AuthError(isClientError(status) ? 'INVALID_CODE' : 'PROVIDER');
+}
+
+// Resposta uniforme: 4xx "normal" (e-mail inexistente, já confirmado...) vira ok pra não revelar se a conta existe.
+async function resendSignup(email) {
+  const { status, data } = await call('/resend', { type: 'signup', email });
+  if (status >= 200 && status < 300) return;
+  if (status === 429 || data.error_code === 'over_email_send_rate_limit') throw new AuthError('RATE_LIMITED');
+  if (data.error_code === 'email_address_not_authorized' || !isClientError(status)) throw new AuthError('PROVIDER');
 }
 
 async function refresh(refreshToken) {
@@ -72,4 +97,4 @@ async function signOut(accessToken) {
   if (status >= 300) throw new AuthError('PROVIDER');
 }
 
-module.exports = { AuthError, signUp, signIn, refresh, signOut };
+module.exports = { AuthError, signUp, signIn, verifyEmail, resendSignup, refresh, signOut };

@@ -2,14 +2,23 @@ const authProvider = require('../lib/authProvider');
 const profileRepository = require('../repository/profile.repository');
 const { validateProfileUpdate } = require('../lib/profileValidation');
 const { GENDERS, ageOn } = require('../lib/nutritionCalculator');
+const { createAttemptLimiter } = require('../lib/attemptLimiter');
 
-const STATUS = { INVALID_CREDENTIALS: 401, INVALID_REFRESH: 401, EMAIL_TAKEN: 409, INVALID_INPUT: 400, PROVIDER: 502 };
+const STATUS = {
+  INVALID_CREDENTIALS: 401, INVALID_REFRESH: 401, EMAIL_TAKEN: 409, INVALID_INPUT: 400, PROVIDER: 502,
+  EMAIL_NOT_CONFIRMED: 403, INVALID_CODE: 400, RATE_LIMITED: 429,
+};
+// Códigos que o cliente precisa distinguir pelo corpo (mesmo status, ações diferentes).
+const WITH_CODE = new Set(['EMAIL_TAKEN', 'EMAIL_NOT_CONFIRMED', 'INVALID_CODE', 'RATE_LIMITED']);
+
+// Código de 6 dígitos = 1M combinações: 5 falhas por e-mail em 15 min, além do limite por IP.
+const codeFailures = createAttemptLimiter({ max: 5, windowMs: 15 * 60 * 1000 });
 
 // Nunca loga body (senha) nem tokens: só o código do erro tipado.
 function sendAuthError(request, reply, err) {
   if (!(err instanceof authProvider.AuthError)) throw err;
   if (err.code === 'PROVIDER') request.log.warn({ code: err.code }, 'auth provider failure');
-  const body = err.code === 'EMAIL_TAKEN' ? { error: err.message, code: err.code } : { error: err.message };
+  const body = WITH_CODE.has(err.code) ? { error: err.message, code: err.code } : { error: err.message };
   return reply.status(STATUS[err.code]).send(body);
 }
 
@@ -53,6 +62,29 @@ class AuthController {
     try {
       const session = await authProvider.signIn(request.body.email, request.body.password);
       return reply.status(200).send({ session });
+    } catch (err) {
+      return sendAuthError(request, reply, err);
+    }
+  }
+
+  async verifyEmail(request, reply) {
+    const { email, code } = request.body;
+    const key = email.trim().toLowerCase();
+    if (codeFailures.isBlocked(key)) return sendAuthError(request, reply, new authProvider.AuthError('RATE_LIMITED'));
+    try {
+      const session = await authProvider.verifyEmail(email, code);
+      codeFailures.reset(key);
+      return reply.status(200).send({ session });
+    } catch (err) {
+      if (err?.code === 'INVALID_CODE') codeFailures.fail(key);
+      return sendAuthError(request, reply, err);
+    }
+  }
+
+  async resendCode(request, reply) {
+    try {
+      await authProvider.resendSignup(request.body.email);
+      return reply.status(204).send();
     } catch (err) {
       return sendAuthError(request, reply, err);
     }

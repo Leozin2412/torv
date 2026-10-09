@@ -163,3 +163,125 @@ test('rate limit: refresh aguenta 30/min, 31ª é 429', async (t) => {
   }
   assert.equal((await post(app, '/auth/refresh', { refresh_token: 'rt' })).statusCode, 429);
 });
+
+test('login 403 EMAIL_NOT_CONFIRMED com code; INVALID_CREDENTIALS continua 401 sem code', async (t) => {
+  const app = await build(t);
+  t.mock.method(authProvider, 'signIn', async () => { throw new AuthError('EMAIL_NOT_CONFIRMED'); });
+  let res = await post(app, '/auth/login', { email: 'a@b.dev', password: 'pw123456' });
+  assert.equal(res.statusCode, 403);
+  assert.deepEqual(res.json(), { error: 'Email not confirmed', code: 'EMAIL_NOT_CONFIRMED' });
+
+  t.mock.method(authProvider, 'signIn', async () => { throw new AuthError('INVALID_CREDENTIALS'); });
+  res = await post(app, '/auth/login', { email: 'a@b.dev', password: 'wrong' });
+  assert.equal(res.statusCode, 401);
+  assert.deepEqual(res.json(), { error: 'Invalid email or password' });
+});
+
+// E-mail distinto por teste: o contador de falhas por e-mail é por processo.
+test('verify-email 200: devolve sessão e passa email/code ao provedor', async (t) => {
+  const verify = t.mock.method(authProvider, 'verifyEmail', async () => session);
+  const app = await build(t);
+  const res = await post(app, '/auth/verify-email', { email: 'ok1@b.dev', code: '123456' });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { session });
+  assert.deepEqual(verify.mock.calls[0].arguments, ['ok1@b.dev', '123456']);
+});
+
+test('verify-email 400: code curto/longo/não numérico ou e-mail inválido não chega no provedor', async (t) => {
+  const verify = t.mock.method(authProvider, 'verifyEmail', async () => session);
+  const app = await build(t);
+  for (const body of [
+    { email: 'v1@b.dev', code: '12345' },
+    { email: 'v1@b.dev', code: '1234567' },
+    { email: 'v1@b.dev', code: '12345a' },
+    { email: 'v1@b.dev' },
+    { email: 'nope', code: '123456' },
+  ]) {
+    assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 400, JSON.stringify(body));
+  }
+  assert.equal(verify.mock.callCount(), 0);
+});
+
+test('verify-email: INVALID_CODE → 400 com code; RATE_LIMITED do provedor → 429; PROVIDER → 502', async (t) => {
+  const app = await build(t);
+  const body = { email: 'err1@b.dev', code: '123456' };
+  t.mock.method(authProvider, 'verifyEmail', async () => { throw new AuthError('INVALID_CODE'); });
+  let res = await post(app, '/auth/verify-email', body);
+  assert.equal(res.statusCode, 400);
+  assert.deepEqual(res.json(), { error: 'Invalid or expired code', code: 'INVALID_CODE' });
+
+  t.mock.method(authProvider, 'verifyEmail', async () => { throw new AuthError('RATE_LIMITED'); });
+  res = await post(app, '/auth/verify-email', body);
+  assert.equal(res.statusCode, 429);
+  assert.deepEqual(res.json(), { error: 'Too many requests', code: 'RATE_LIMITED' });
+
+  t.mock.method(authProvider, 'verifyEmail', async () => { throw new AuthError('PROVIDER'); });
+  res = await post(app, '/auth/verify-email', body);
+  assert.equal(res.statusCode, 502);
+  assert.deepEqual(Object.keys(res.json()), ['error']);
+});
+
+test('verify-email: 5 falhas por e-mail → 6ª é 429 sem chamar o provedor (e-mail normalizado)', async (t) => {
+  const verify = t.mock.method(authProvider, 'verifyEmail', async () => { throw new AuthError('INVALID_CODE'); });
+  const app = await build(t);
+  for (let i = 0; i < 5; i++) {
+    assert.equal((await post(app, '/auth/verify-email', { email: 'brute@b.dev', code: '000000' })).statusCode, 400);
+  }
+  const res = await post(app, '/auth/verify-email', { email: 'BRUTE@b.dev', code: '111111' });
+  assert.equal(res.statusCode, 429);
+  assert.equal(res.json().code, 'RATE_LIMITED');
+  assert.equal(verify.mock.callCount(), 5);
+  // outro e-mail não é afetado
+  assert.equal((await post(app, '/auth/verify-email', { email: 'other@b.dev', code: '000000' })).statusCode, 400);
+});
+
+test('verify-email: sucesso zera o contador de falhas', async (t) => {
+  const app = await build(t);
+  const body = { email: 'reset@b.dev', code: '000000' };
+  t.mock.method(authProvider, 'verifyEmail', async () => { throw new AuthError('INVALID_CODE'); });
+  for (let i = 0; i < 4; i++) await post(app, '/auth/verify-email', body);
+  t.mock.method(authProvider, 'verifyEmail', async () => session);
+  assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 200);
+  t.mock.method(authProvider, 'verifyEmail', async () => { throw new AuthError('INVALID_CODE'); });
+  for (let i = 0; i < 4; i++) assert.equal((await post(app, '/auth/verify-email', body)).statusCode, 400);
+});
+
+test('resend-code 204 / 400 / RATE_LIMITED 429 / PROVIDER 502', async (t) => {
+  const app = await build(t);
+  const resend = t.mock.method(authProvider, 'resendSignup', async () => {});
+  let res = await post(app, '/auth/resend-code', { email: 'a@b.dev' });
+  assert.equal(res.statusCode, 204);
+  assert.equal(res.body, '');
+  assert.equal(resend.mock.calls[0].arguments[0], 'a@b.dev');
+
+  assert.equal((await post(app, '/auth/resend-code', { email: 'nope' })).statusCode, 400);
+  assert.equal(resend.mock.callCount(), 1);
+
+  t.mock.method(authProvider, 'resendSignup', async () => { throw new AuthError('RATE_LIMITED'); });
+  res = await post(app, '/auth/resend-code', { email: 'a@b.dev' });
+  assert.equal(res.statusCode, 429);
+  assert.equal(res.json().code, 'RATE_LIMITED');
+
+  t.mock.method(authProvider, 'resendSignup', async () => { throw new AuthError('PROVIDER'); });
+  res = await post(app, '/auth/resend-code', { email: 'a@b.dev' });
+  assert.equal(res.statusCode, 502);
+  assert.deepEqual(Object.keys(res.json()), ['error']);
+});
+
+test('rate limit: verify-email 10/min por IP → 11ª é 429', async (t) => {
+  t.mock.method(authProvider, 'verifyEmail', async () => session);
+  const app = await build(t);
+  for (let i = 0; i < 10; i++) {
+    assert.equal((await post(app, '/auth/verify-email', { email: 'ip1@b.dev', code: '123456' })).statusCode, 200);
+  }
+  assert.equal((await post(app, '/auth/verify-email', { email: 'ip1@b.dev', code: '123456' })).statusCode, 429);
+});
+
+test('rate limit: resend-code 5/min por IP → 6ª é 429', async (t) => {
+  t.mock.method(authProvider, 'resendSignup', async () => {});
+  const app = await build(t);
+  for (let i = 0; i < 5; i++) {
+    assert.equal((await post(app, '/auth/resend-code', { email: 'a@b.dev' })).statusCode, 204);
+  }
+  assert.equal((await post(app, '/auth/resend-code', { email: 'a@b.dev' })).statusCode, 429);
+});

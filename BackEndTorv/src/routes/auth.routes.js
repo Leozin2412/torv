@@ -7,7 +7,8 @@ const Session = Type.Object({
   expires_at: Type.Number({ description: 'unix seconds' }),
   user: Type.Object({ id: Type.String(), email: Type.String() }),
 });
-const ErrorBody = Type.Object({ error: Type.String() });
+// code opcional (não Union): Union + coerceTypes do Ajv quebra a serialização.
+const ErrorBody = Type.Object({ error: Type.String(), code: Type.Optional(Type.String()) });
 const ConflictBody = Type.Object({ error: Type.String(), code: Type.Union([Type.Literal('EMAIL_TAKEN'), Type.Literal('USERNAME_TAKEN')]) });
 const errors = (...codes) => Object.fromEntries(codes.map((c) => [c, ErrorBody]));
 
@@ -47,12 +48,35 @@ async function authRoutes(fastify) {
   fastify.post('/login', {
     config: perMinute(10),
     schema: {
-      description: 'Login com e-mail e senha. 401 genérico, não distingue usuário inexistente de senha errada',
+      description: 'Login com e-mail e senha. 401 genérico, não distingue usuário inexistente de senha errada. 403 com code EMAIL_NOT_CONFIRMED só depois da senha certa',
       tags: ['Auth'],
       body: Type.Object({ email: Type.String({ minLength: 1 }), password: Type.String({ minLength: 1 }) }),
-      response: { 200: Type.Object({ session: Session }), ...errors(400, 401, 429, 502) },
+      response: { 200: Type.Object({ session: Session }), ...errors(400, 401, 403, 429, 502) },
     },
   }, authController.login);
+
+  fastify.post('/verify-email', {
+    config: perMinute(10),
+    schema: {
+      description: 'Confirma o e-mail com o código de 6 dígitos e devolve a sessão. 400 com code INVALID_CODE (errado ou expirado); 429 após 5 falhas por e-mail em 15 min',
+      tags: ['Auth'],
+      body: Type.Object({
+        email: Type.String({ format: 'email' }),
+        code: Type.String({ pattern: '^[0-9]{6}$' }),
+      }),
+      response: { 200: Type.Object({ session: Session }), ...errors(400, 429, 502) },
+    },
+  }, authController.verifyEmail);
+
+  fastify.post('/resend-code', {
+    config: perMinute(5),
+    schema: {
+      description: 'Reenvia o código de confirmação. 204 uniforme: não revela se o e-mail existe',
+      tags: ['Auth'],
+      body: Type.Object({ email: Type.String({ format: 'email' }) }),
+      response: { 204: Type.Null(), ...errors(400, 429, 502) },
+    },
+  }, authController.resendCode);
 
   fastify.post('/refresh', {
     schema: {
