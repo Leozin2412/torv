@@ -88,7 +88,9 @@ export default function VerifyEmail() {
             placeholder="000000"
             value={code}
             onChangeText={(text) => setCode(sanitizeCode(text))}
-            keyboardType="numeric"
+            keyboardType="number-pad"
+            returnKeyType="done"
+            onSubmitEditing={handleConfirm}
             maxLength={CODE_LENGTH}
             textContentType="oneTimeCode"
             autoComplete="one-time-code"
@@ -97,8 +99,8 @@ export default function VerifyEmail() {
             accessibilityLabel="Código de confirmação de 6 dígitos"
           />
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          {info ? <Text style={styles.infoText}>{info}</Text> : null}
+          {error ? <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text> : null}
+          {info ? <Text style={styles.infoText} accessibilityRole="alert" accessibilityLiveRegion="polite">{info}</Text> : null}
 
           <Button
             title="Confirmar"
@@ -126,7 +128,7 @@ export default function VerifyEmail() {
 
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.navigate('Login')}
+            onPress={() => navigation.popTo('Login')}
             accessibilityRole="button"
             accessibilityLabel="Voltar ao login"
           >

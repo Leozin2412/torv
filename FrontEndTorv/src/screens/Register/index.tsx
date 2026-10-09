@@ -106,8 +106,9 @@ export default function Register() {
     setLoading(true);
     setRegisterError('');
     try {
+      const cleanEmail = email.trim();
       const confirmationRequired = await register({
-        email,
+        email: cleanEmail,
         password,
         name,
         username,
@@ -119,7 +120,7 @@ export default function Register() {
         goal: goals.join(', '),
       });
       if (confirmationRequired) {
-        navigation.navigate('VerifyEmail', { email, cooldownSeconds: 60 });
+        navigation.navigate('VerifyEmail', { email: cleanEmail, cooldownSeconds: 60 });
       }
     } catch (error: any) {
       const status = error?.response?.status;

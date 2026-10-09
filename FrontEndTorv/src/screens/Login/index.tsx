@@ -30,12 +30,13 @@ export default function Login() {
     }
 
     setLoading(true);
+    const cleanEmail = email.trim();
     try {
-      await login(email, password);
+      await login(cleanEmail, password);
     } catch (error: any) {
       const status = error?.response?.status;
       if (status === 403 && error.response.data?.code === 'EMAIL_NOT_CONFIRMED') {
-        navigation.navigate('VerifyEmail', { email, cooldownSeconds: 0 });
+        navigation.navigate('VerifyEmail', { email: cleanEmail, cooldownSeconds: 0 });
       } else if (status === 401) {
         setLoginError('Email ou senha incorretos.');
       } else if (status === 429) {
