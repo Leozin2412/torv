@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Conceito D: "T" de haltere + chama recortada na haste + pódio (degraus) subindo ao fundo. Tudo dentro da área central (~66%). -->
+  <defs>
+    <!-- a chama fica vazada: deixa ver o degrau que está atrás da haste -->
+    <mask id="flame" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <path fill="#000" transform="translate(512 590) scale(1.0)"
+        d="M 0 -100 C 14 -66 52 -40 52 14 C 52 62 30 100 0 100 C -30 100 -52 62 -52 14 C -52 -10 -40 -30 -26 -48 C -22 -24 -10 -12 2 -10 C -10 -44 -8 -74 0 -100 Z"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#121212"/>
+
+  <!-- pódio: 3 degraus subindo até o topo (verde escuro da marca, discreto) -->
+  <g fill="#5A9E1C" fill-opacity="0.36">
+    <path d="M232 820 L232 626 Q232 602 256 602 L378 602 Q402 602 402 626 L402 820 Z"/>
+    <path d="M422 820 L422 446 Q422 422 446 422 L578 422 Q602 422 602 446 L602 820 Z"/>
+    <path d="M622 820 L622 250 Q622 226 646 226 L768 226 Q792 226 792 250 L792 820 Z"/>
+  </g>
+
+  <!-- T de haltere -->
+  <g fill="#8CC63F">
+    <rect x="280" y="302" width="464" height="56"/>
+    <rect x="262" y="226" width="50" height="208" rx="18"/>
+    <rect x="712" y="226" width="50" height="208" rx="18"/>
+    <rect x="210" y="268" width="40" height="124" rx="16"/>
+    <rect x="774" y="268" width="40" height="124" rx="16"/>
+    <rect x="437" y="330" width="150" height="440" rx="40" mask="url(#flame)"/>
+  </g>
+</svg>
