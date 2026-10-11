@@ -5,7 +5,7 @@ let verifier;
 const loadVerifier = () => (verifier ??= import('jose').then(({ createRemoteJWKSet, jwtVerify }) => ({
   jwtVerify,
   JWKS: createRemoteJWKSet(new URL(`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`)),
-})));
+})).catch((err) => { verifier = undefined; throw err; })); // falha não fica memoizada: a próxima request tenta de novo
 
 const authenticateToken = async (request, reply) => {
   const authHeader = request.headers['authorization'];
