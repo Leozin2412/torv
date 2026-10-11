@@ -1,8 +1,12 @@
 require('dotenv').config();
 const Fastify = require('fastify');
 const { LogController } = Fastify;
+const { IMAGE_MAX_BYTES } = require('./src/lib/imageUpload');
 const fastify = Fastify({
   logger: true,
+  // Vercel termina o TLS e sobrescreve x-forwarded-for: confia só no 1º salto (o peer). Local fica false p/ XFF forjado não furar o rate limit.
+  // Função em vez de `1`: o Fastify 5.12 trata trustProxy numérico como "não confiar em ninguém".
+  trustProxy: process.env.VERCEL ? (_addr, hop) => hop < 1 : false,
   logController: new LogController({ disableRequestLogging: true }),
 });
 
@@ -14,7 +18,10 @@ fastify.addHook('onResponse', (request, reply, done) => {
 fastify.register(require('@fastify/cors'), {
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
 });
-fastify.register(require('@fastify/multipart'));
+// Teto global de upload: a Vercel recusa corpo > 4,5 MB.
+fastify.register(require('@fastify/multipart'), { limits: { fileSize: IMAGE_MAX_BYTES, files: 1 } });
+
+fastify.get('/health', async () => ({ status: 'ok' }));
 
 if (process.env.NODE_ENV !== 'production') {
   fastify.register(require('@fastify/swagger'), {

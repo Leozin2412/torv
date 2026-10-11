@@ -19,7 +19,7 @@ const errors = (...codes) => Object.fromEntries(codes.map((c) => [c, ErrorBody])
 const perMinute = (max) => ({ rateLimit: { max, timeWindow: '1 minute' } });
 
 async function authRoutes(fastify) {
-  // ponytail: chave = request.ip. Atrás de proxy/LB todo mundo vira o IP do proxy; configurar trustProxy no deploy.
+  // ponytail: chave = request.ip. trustProxy (1 salto) está configurado no server.js só quando VERCEL está setado; outro proxy/LB exige ajustar lá.
   // Registrado dentro deste plugin → só vale pras rotas /auth/*. Default 30/min (refresh, logout).
   await fastify.register(require('@fastify/rate-limit'), { max: 30, timeWindow: '1 minute' });
 
