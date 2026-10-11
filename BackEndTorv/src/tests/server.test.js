@@ -51,3 +51,13 @@ test('VERCEL=1: o limite conta por IP do x-forwarded-for', async (t) => {
   const same = await burst(base, () => '198.51.100.7'); // mesmo IP, 11 tentativas
   assert.equal(same.filter((s) => s === 429).length, 1);
 });
+
+test('VERCEL=1: x-forwarded-for forjado com vários valores conta pelo ÚLTIMO item (o que a Vercel escreveu)', async (t) => {
+  const base = await start(t, { VERCEL: '1' });
+  // prefixo muda a cada request, o último valor é fixo → mesmo IP → 11º é barrado
+  const forged = await burst(base, (i) => `203.0.113.${i + 1}, 192.0.2.${i + 1}, 198.51.100.9`);
+  assert.equal(forged.filter((s) => s === 429).length, 1);
+  // último valor muda, prefixo fixo → IPs distintos → nenhum barrado
+  const distinct = await burst(base, (i) => `203.0.113.1, 198.51.100.${i + 20}`);
+  assert.ok(distinct.every((s) => s === 400));
+});

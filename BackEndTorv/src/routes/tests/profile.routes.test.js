@@ -149,3 +149,19 @@ test('POST /profile/upload: banco falha depois de gravar → 500 e a foto anteri
   assert.equal((await upload(app)).statusCode, 500);
   assert.equal(removed.mock.callCount(), 0);
 });
+
+test('POST /profile/upload: 2 arquivos (multipart global files:1) nunca gravam nada', async (t) => {
+  const save = t.mock.method(images, 'saveImage', async () => {});
+  const update = t.mock.method(profileRepository, 'updatePhotoUrl', async () => {});
+  const app = Fastify();
+  app.register(require('@fastify/multipart'), { limits: { fileSize: images.IMAGE_MAX_BYTES, files: 1 } }); // igual ao server.js
+  app.register(require('../profile.routes'), { prefix: '/profile' });
+  t.after(() => app.close());
+  await app.ready();
+  const one = multipart('image/png', PNG);
+  const second = Buffer.from(`------torvtest\r\nContent-Disposition: form-data; name="b"; filename="y"\r\nContent-Type: image/png\r\n\r\n`);
+  const payload = Buffer.concat([one.payload.subarray(0, one.payload.length - '------torvtest--\r\n'.length), second, PNG, Buffer.from('\r\n------torvtest--\r\n')]);
+  const res = await app.inject({ method: 'POST', url: '/profile/upload', payload, headers: one.headers });
+  assert.ok(res.statusCode >= 400, `status ${res.statusCode}`); // hoje 500 (ERR_STREAM_PREMATURE_CLOSE); 4xx seria o ideal
+  assert.equal(save.mock.callCount() + update.mock.callCount(), 0);
+});
