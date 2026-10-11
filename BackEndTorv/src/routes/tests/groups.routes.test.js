@@ -4,14 +4,18 @@ const Fastify = require('fastify');
 
 // O middleware real valida JWT contra o JWKS do Supabase. Aqui todo request é do USER.
 const USER = '11111111-1111-4111-8111-111111111111';
-const authPath = require.resolve('../middlewares/auth.middleware');
+const authPath = require.resolve('../../middlewares/auth.middleware');
 require.cache[authPath] = {
   id: authPath, filename: authPath, loaded: true,
   exports: async (request) => { request.user = { userId: USER }; },
 };
 
-const groupsRepository = require('../repository/groups.repository');
-const images = require('../lib/imageUpload');
+const groupsRepository = require('../../repository/groups.repository');
+const images = require('../../lib/imageUpload');
+
+// publicUrl lê a env na chamada; o resto do app não precisa dela.
+Object.assign(process.env, { SUPABASE_URL: 'https://proj.supabase.co', SUPABASE_SECRET_KEY: 'test-key', SUPABASE_STORAGE_BUCKET: 'torv-photos' });
+const PUB = 'https://proj.supabase.co/storage/v1/object/public/torv-photos';
 
 const GID = '22222222-2222-4222-8222-222222222222';
 const OTHER = '44444444-4444-4444-8444-444444444444';
@@ -26,7 +30,7 @@ const validBody = { name: '  Time  ', visibility: 'PUBLIC', starts_at: '2026-10-
 async function build(t) {
   const app = Fastify();
   app.register(require('@fastify/multipart'));
-  app.register(require('./groups.routes'), { prefix: '/groups' });
+  app.register(require('../groups.routes'), { prefix: '/groups' });
   t.after(() => app.close());
   await app.ready();
   return app;
@@ -154,7 +158,7 @@ test('POST /groups/:id/cover: grava com nome do servidor, troca a capa e apaga a
   assert.doesNotMatch(fileName, /evil/);
   assert.deepEqual(setCover.mock.calls[0].arguments, [GID, fileName]);
   assert.deepEqual(removed.mock.calls[0].arguments, ['group-old.png']);
-  assert.match(res.json().cover_url, new RegExp(`/uploads/${fileName}$`));
+  assert.equal(res.json().cover_url, `${PUB}/${fileName}`);
 });
 
 test('POST /groups/:id/cover: não é imagem, assinatura falsa e arquivo grande são recusados sem gravar', async (t) => {
@@ -168,10 +172,10 @@ test('POST /groups/:id/cover: não é imagem, assinatura falsa e arquivo grande 
   assert.equal((await go('a.pdf', 'application/pdf', PNG)).statusCode, 400);
   assert.equal((await go('a.png', 'image/png', Buffer.from('<?php echo 1;'))).statusCode, 400);
   assert.equal(save.mock.callCount(), 0);
-  // limite: o controller pede 5 MB ao multipart
+  // limite: sem maxBytes explícito, readImage usa o padrão de 4 MB
   const read = t.mock.method(images, 'readImage', async () => ({ error: 'Image is too large', status: 413 }));
   assert.equal((await go('b.png', 'image/png', PNG)).statusCode, 413);
-  assert.deepEqual(read.mock.calls[0].arguments[1], { maxBytes: 5 * 1024 * 1024 });
+  assert.equal(read.mock.calls[0].arguments[1], undefined);
 });
 
 test('GET /groups/:id/ranking: não membro → 404; membro → linhas com posição e "sou eu"', async (t) => {
@@ -186,7 +190,7 @@ test('GET /groups/:id/ranking: não membro → 404; membro → linhas com posiç
   assert.equal(res.statusCode, 200);
   const { ranking } = res.json();
   assert.deepEqual(ranking.map((r) => [r.position, r.is_me]), [[1, false], [2, true]]);
-  assert.match(ranking[0].photo_url, /\/uploads\/ana\.jpg$/);
+  assert.equal(ranking[0].photo_url, `${PUB}/ana.jpg`);
   assert.equal(ranking[1].photo_url, null);
   assert.equal(ranking[0].joined_at, undefined);
 });

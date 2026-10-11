@@ -7,7 +7,7 @@ const profileOf = (request, userId, p) => ({
   user_id: userId,
   name: p?.name ?? '',
   username: p?.username ?? '',
-  photo_url: images.publicUrl(request, p?.photo_url),
+  photo_url: images.publicUrl(p?.photo_url),
 });
 
 async function invite(request, reply) {
@@ -37,7 +37,7 @@ async function listReceived(request, reply) {
   return reply.send({
     invitations: rows.map((r) => ({
       id: r.id,
-      group: { id: r.group.id, name: r.group.name, cover_url: images.publicUrl(request, r.group.cover_url) },
+      group: { id: r.group.id, name: r.group.name, cover_url: images.publicUrl(r.group.cover_url) },
       invited_by: { name: r.creator.user_profiles?.name ?? '', username: r.creator.user_profiles?.username ?? '' },
       created_at: r.created_at.toISOString(),
     })),
@@ -88,7 +88,7 @@ async function joinPreview(request, reply) {
     group: {
       id: group.id,
       name: group.name,
-      cover_url: images.publicUrl(request, group.cover_url),
+      cover_url: images.publicUrl(group.cover_url),
       starts_at: dateOnly(group.starts_at),
       ends_at: dateOnly(group.ends_at),
       tz_offset_min: group.tz_offset_min,

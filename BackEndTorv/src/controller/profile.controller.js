@@ -2,7 +2,7 @@ const profileRepository = require('../repository/profile.repository');
 const { validateProfileUpdate } = require('../lib/profileValidation');
 const { buildSuggestion } = require('../lib/nutritionSuggestion');
 const { ageOn } = require('../lib/nutritionCalculator');
-const { readImage, saveImage } = require('../lib/imageUpload');
+const images = require('../lib/imageUpload');
 
 class ProfileController {
   async getProfile(request, reply) {
@@ -18,10 +18,6 @@ class ProfileController {
       const streaks = user.user_streaks || {};
       const measurement = user.user_measurements?.[0];
 
-      const photoUrl = profile.photo_url
-        ? `${request.protocol}://${request.headers.host}/uploads/${profile.photo_url}`
-        : null;
-
       reply.status(200).send({
         id: user.id,
         email: user.email,
@@ -29,7 +25,7 @@ class ProfileController {
         name: profile.name,
         fitness_level: profile.fitness_level,
         goal: profile.goal,
-        photo_url: photoUrl,
+        photo_url: images.publicUrl(profile.photo_url),
         birth_date: profile.birth_date,
         gender: profile.gender,
         weight_kg: measurement?.weight_kg != null ? Number(measurement.weight_kg) : null,
@@ -58,21 +54,20 @@ class ProfileController {
   async uploadPhoto(request, reply) {
     try {
       const { userId } = request.user;
-      const image = await readImage(request);
+      const image = await images.readImage(request);
       if (image.error) return reply.status(image.status).send({ error: image.error });
 
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       const fileName = `profile-${userId}-${uniqueSuffix}${image.ext}`;
-      await saveImage(fileName, image.buffer);
+      await images.saveImage(fileName, image.buffer);
 
+      const previous = (await profileRepository.getProfileRow(userId))?.photo_url;
       await profileRepository.updatePhotoUrl(userId, fileName);
-      console.log('[uploadPhoto] DB updated with fileName:', fileName);
-
-      const photoUrl = `${request.protocol}://${request.headers.host}/uploads/${fileName}`;
+      await images.deleteImage(previous).catch((err) => request.log.warn(err));
 
       reply.status(200).send({
         message: 'Profile photo updated successfully',
-        photo_url: photoUrl,
+        photo_url: images.publicUrl(fileName),
       });
     } catch (error) {
       request.log.error(error);

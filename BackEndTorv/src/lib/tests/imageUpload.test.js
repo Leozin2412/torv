@@ -1,9 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
-const { hasValidImageSignature, readImage, publicUrl, deleteImage } = require('../imageUpload');
+const { hasValidImageSignature, readImage, publicUrl, deleteImage, saveImage, IMAGE_MAX_BYTES } = require('../imageUpload');
 
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0]);
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0]);
@@ -40,24 +37,86 @@ test('readImage: arquivo maior que o limite (truncado ou erro do multipart) → 
   assert.equal((await readImage(fakeRequest(throwing), { maxBytes: 10 })).status, 413);
 });
 
-test('readImage: repassa maxBytes ao multipart', async () => {
+test('readImage: repassa maxBytes ao multipart; padrão é 4 MB', async () => {
   let seen;
-  await readImage({ file: async (opts) => { seen = opts; return undefined; } }, { maxBytes: 123 });
+  const req = { file: async (opts) => { seen = opts; return undefined; } };
+  await readImage(req, { maxBytes: 123 });
   assert.deepEqual(seen, { limits: { fileSize: 123 } });
+  await readImage(req);
+  assert.equal(IMAGE_MAX_BYTES, 4 * 1024 * 1024);
+  assert.deepEqual(seen, { limits: { fileSize: IMAGE_MAX_BYTES } });
 });
 
-test('publicUrl: monta a URL absoluta ou null', () => {
-  const req = { protocol: 'http', headers: { host: 'localhost:3000' } };
-  assert.equal(publicUrl(req, 'a.jpg'), 'http://localhost:3000/uploads/a.jpg');
-  assert.equal(publicUrl(req, null), null);
+const URL = 'https://proj.supabase.co';
+const KEY = 'sb_secret_SEGREDO';
+const BUCKET = 'torv-photos';
+
+// Env + fetch falsos por teste; nenhuma chamada de rede real.
+function stubStorage(t, respond = () => ({ status: 200 })) {
+  const saved = { ...process.env };
+  Object.assign(process.env, { SUPABASE_URL: URL, SUPABASE_SECRET_KEY: KEY, SUPABASE_STORAGE_BUCKET: BUCKET });
+  const calls = [];
+  const realFetch = global.fetch;
+  global.fetch = async (url, init) => {
+    calls.push({ url, ...init });
+    const { status } = respond();
+    return { ok: status >= 200 && status < 300, status, text: async () => `corpo com ${KEY}` };
+  };
+  t.after(() => { global.fetch = realFetch; process.env = saved; });
+  return calls;
+}
+
+test('saveImage: POST no bucket com chaves e Content-Type da extensão', async (t) => {
+  const calls = stubStorage(t);
+  await saveImage('a b.png', PNG);
+  await saveImage('c.JPG', JPEG);
+  await saveImage('d.webp', WEBP);
+  await saveImage('e.bin', PNG);
+  assert.equal(calls[0].url, `${URL}/storage/v1/object/${BUCKET}/a%20b.png`);
+  assert.equal(calls[0].method, 'POST');
+  assert.equal(calls[0].body, PNG);
+  assert.deepEqual(calls[0].headers, { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'image/png' });
+  assert.deepEqual(calls.slice(1).map((c) => c.headers['Content-Type']), ['image/jpeg', 'image/webp', 'application/octet-stream']);
 });
 
-test('deleteImage: ignora nulo e arquivo ausente, e não sai da pasta de uploads', async () => {
+test('saveImage: não-2xx lança só com o status, sem vazar chave, URL ou corpo', async (t) => {
+  stubStorage(t, () => ({ status: 403 }));
+  await assert.rejects(saveImage('a.png', PNG), (err) => {
+    assert.equal(err.message, 'Image upload failed with status 403');
+    assert.ok(!err.message.includes(KEY) && !err.message.includes(URL) && !err.message.includes('corpo'));
+    return true;
+  });
+});
+
+test('deleteImage: ignora nulo, usa só o basename, 404 é sucesso, outro erro lança', async (t) => {
+  let status = 200;
+  const calls = stubStorage(t, () => ({ status }));
   await deleteImage(null);
-  await deleteImage('nao-existe-xyz.jpg');
-  const outside = path.join(os.tmpdir(), 'torv-outside.txt');
-  fs.writeFileSync(outside, 'x');
-  await deleteImage(`../../../../${outside}`); // basename() descarta o caminho
-  assert.ok(fs.existsSync(outside));
-  fs.rmSync(outside);
+  await deleteImage('');
+  assert.equal(calls.length, 0);
+  await deleteImage('../../etc/x y.jpg');
+  assert.equal(calls[0].url, `${URL}/storage/v1/object/${BUCKET}/x%20y.jpg`);
+  assert.equal(calls[0].method, 'DELETE');
+  assert.deepEqual(calls[0].headers, { apikey: KEY, Authorization: `Bearer ${KEY}` });
+  status = 404;
+  await deleteImage('gone.jpg');
+  status = 500;
+  await assert.rejects(deleteImage('a.jpg'), (err) => err.message === 'Image delete failed with status 500' && !err.message.includes(KEY));
+});
+
+test('env ausente: erro claro na chamada, sem valores', async (t) => {
+  stubStorage(t);
+  delete process.env.SUPABASE_SECRET_KEY;
+  delete process.env.SUPABASE_URL;
+  await assert.rejects(saveImage('a.png', PNG), /Missing storage env: SUPABASE_URL, SUPABASE_SECRET_KEY/);
+  await assert.rejects(deleteImage('a.png'), /Missing storage env/);
+  assert.throws(() => publicUrl('a.png'), /Missing storage env/);
+  assert.equal(publicUrl(null), null); // sem nome nem precisa de env
+});
+
+test('publicUrl: URL pública do bucket ou null', (t) => {
+  stubStorage(t);
+  assert.equal(publicUrl('a.jpg'), `${URL}/storage/v1/object/public/${BUCKET}/a.jpg`);
+  assert.equal(publicUrl(null), null);
+  assert.equal(publicUrl(''), null);
 });

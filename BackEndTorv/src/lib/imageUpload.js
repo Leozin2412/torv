@@ -1,4 +1,3 @@
-const fs = require('fs');
 const path = require('path');
 
 const ALLOWED_IMAGE_TYPES = {
@@ -7,8 +6,10 @@ const ALLOWED_IMAGE_TYPES = {
   'image/webp': '.webp',
 };
 
-// Fotos de perfil e capas de grupo. Ponto único de troca quando o storage migrar.
-const UPLOAD_DIR = path.join(__dirname, '../../profilePhotos');
+const CONTENT_TYPES = Object.fromEntries(Object.entries(ALLOWED_IMAGE_TYPES).map(([type, ext]) => [ext, type]));
+
+// Vercel recusa corpo > 4,5 MB.
+const IMAGE_MAX_BYTES = 4 * 1024 * 1024;
 
 function hasValidImageSignature(buffer, mimetype) {
   if (mimetype === 'image/jpeg') {
@@ -24,8 +25,8 @@ function hasValidImageSignature(buffer, mimetype) {
 }
 
 // Lê o campo de arquivo da request e valida tipo + assinatura. Erros do próprio multipart (não é multipart etc.) sobem.
-async function readImage(request, { maxBytes } = {}) {
-  const data = await request.file(maxBytes ? { limits: { fileSize: maxBytes } } : undefined);
+async function readImage(request, { maxBytes = IMAGE_MAX_BYTES } = {}) {
+  const data = await request.file({ limits: { fileSize: maxBytes } });
   if (!data) return { error: 'No image file provided', status: 400 };
 
   const ext = ALLOWED_IMAGE_TYPES[data.mimetype];
@@ -45,18 +46,41 @@ async function readImage(request, { maxBytes } = {}) {
   return { buffer, ext };
 }
 
-async function saveImage(fileName, buffer) {
-  await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
-  await fs.promises.writeFile(path.join(UPLOAD_DIR, fileName), buffer);
+// Fotos de perfil e capas de grupo no Supabase Storage. Env lida na chamada, não no require.
+// Erros só carregam o status: nunca a chave, a URL nem o corpo da resposta.
+function storage() {
+  const { SUPABASE_URL: url, SUPABASE_SECRET_KEY: key, SUPABASE_STORAGE_BUCKET: bucket } = process.env;
+  const missing = Object.entries({ SUPABASE_URL: url, SUPABASE_SECRET_KEY: key, SUPABASE_STORAGE_BUCKET: bucket })
+    .filter(([, v]) => !v).map(([k]) => k);
+  if (missing.length) throw new Error(`Missing storage env: ${missing.join(', ')}`);
+  return { url, bucket, auth: { apikey: key, Authorization: `Bearer ${key}` } };
 }
 
-// basename(): o nome vem do banco, mas nunca deixa sair da pasta de uploads.
+async function saveImage(fileName, buffer) {
+  const { url, bucket, auth } = storage();
+  const res = await fetch(`${url}/storage/v1/object/${bucket}/${encodeURIComponent(fileName)}`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': CONTENT_TYPES[path.extname(fileName).toLowerCase()] || 'application/octet-stream' },
+    body: buffer,
+  });
+  if (!res.ok) throw new Error(`Image upload failed with status ${res.status}`);
+}
+
+// basename(): o nome vem do banco, mas nunca deixa sair do bucket. 404 = já não existe = ok.
 async function deleteImage(fileName) {
   if (!fileName) return;
-  await fs.promises.rm(path.join(UPLOAD_DIR, path.basename(fileName)), { force: true });
+  const { url, bucket, auth } = storage();
+  const res = await fetch(`${url}/storage/v1/object/${bucket}/${encodeURIComponent(path.basename(fileName))}`, {
+    method: 'DELETE',
+    headers: auth,
+  });
+  if (!res.ok && res.status !== 404) throw new Error(`Image delete failed with status ${res.status}`);
 }
 
-const publicUrl = (request, fileName) =>
-  (fileName ? `${request.protocol}://${request.headers.host}/uploads/${fileName}` : null);
+function publicUrl(fileName) {
+  if (!fileName) return null;
+  const { url, bucket } = storage();
+  return `${url}/storage/v1/object/public/${bucket}/${fileName}`;
+}
 
-module.exports = { ALLOWED_IMAGE_TYPES, hasValidImageSignature, readImage, saveImage, deleteImage, publicUrl };
+module.exports = { ALLOWED_IMAGE_TYPES, IMAGE_MAX_BYTES, hasValidImageSignature, readImage, saveImage, deleteImage, publicUrl };

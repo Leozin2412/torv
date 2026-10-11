@@ -1,5 +1,4 @@
 require('dotenv').config();
-const path = require('path');
 const Fastify = require('fastify');
 const { LogController } = Fastify;
 const fastify = Fastify({
@@ -16,10 +15,6 @@ fastify.register(require('@fastify/cors'), {
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
 });
 fastify.register(require('@fastify/multipart'));
-fastify.register(require('@fastify/static'), {
-  root: path.join(__dirname, 'profilePhotos'),
-  prefix: '/uploads/',
-});
 
 if (process.env.NODE_ENV !== 'production') {
   fastify.register(require('@fastify/swagger'), {

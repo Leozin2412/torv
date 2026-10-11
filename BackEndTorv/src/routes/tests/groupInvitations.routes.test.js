@@ -3,14 +3,18 @@ const assert = require('node:assert/strict');
 const Fastify = require('fastify');
 
 const USER = '11111111-1111-4111-8111-111111111111';
-const authPath = require.resolve('../middlewares/auth.middleware');
+const authPath = require.resolve('../../middlewares/auth.middleware');
 require.cache[authPath] = {
   id: authPath, filename: authPath, loaded: true,
   exports: async (request) => { request.user = { userId: USER }; },
 };
 
-const repo = require('../repository/groupInvitations.repository');
-const { isValidToken } = require('../lib/groupRules');
+const repo = require('../../repository/groupInvitations.repository');
+const { isValidToken } = require('../../lib/groupRules');
+
+// publicUrl lê a env na chamada; o resto do app não precisa dela.
+Object.assign(process.env, { SUPABASE_URL: 'https://proj.supabase.co', SUPABASE_SECRET_KEY: 'test-key', SUPABASE_STORAGE_BUCKET: 'torv-photos' });
+const PUB = 'https://proj.supabase.co/storage/v1/object/public/torv-photos';
 
 const GID = '22222222-2222-4222-8222-222222222222';
 const INV = '55555555-5555-4555-8555-555555555555';
@@ -23,8 +27,8 @@ const dbDate = (s) => new Date(`${s}T00:00:00Z`);
 async function build(t) {
   const app = Fastify();
   app.register(require('@fastify/multipart'));
-  app.register(require('./groups.routes'), { prefix: '/groups' });
-  app.register(require('./groupInvitations.routes'), { prefix: '/groups' });
+  app.register(require('../groups.routes'), { prefix: '/groups' });
+  app.register(require('../groupInvitations.routes'), { prefix: '/groups' });
   t.after(() => app.close());
   await app.ready();
   return app;
@@ -79,7 +83,7 @@ test('GET /groups/:id/requests: não dono → 404; dono recebe pedidos e convite
   const body = res.json();
   assert.deepEqual(body.requests.map((r) => [r.id, r.username]), [['r1', 'ana']]);
   assert.deepEqual(body.invites.map((r) => [r.id, r.username]), [['i1', 'beto']]);
-  assert.match(body.requests[0].photo_url, /\/uploads\/ana\.jpg$/);
+  assert.equal(body.requests[0].photo_url, `${PUB}/ana.jpg`);
   assert.equal(body.invites[0].photo_url, null);
 });
 
@@ -93,7 +97,7 @@ test('GET /groups/invitations/received: convites pendentes com grupo e quem conv
   const res = await call(app, 'GET', '/groups/invitations/received');
   const [inv] = res.json().invitations;
   assert.deepEqual([inv.id, inv.group.id, inv.group.name, inv.invited_by.username], [INV, GID, 'Time', 'ana']);
-  assert.match(inv.group.cover_url, /\/uploads\/group-a\.png$/);
+  assert.equal(inv.group.cover_url, `${PUB}/group-a.png`);
 });
 
 test('POST /groups/invitations/:id/accept e /decline: repassa a ação; terceiros e já resolvidos', async (t) => {

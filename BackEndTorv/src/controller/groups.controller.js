@@ -4,7 +4,6 @@ const images = require('../lib/imageUpload');
 const { dateOnly, toDbDate, checkGroupDates, FAILURES } = require('../lib/groupRules');
 
 const NOT_FOUND = { error: 'Not found' };
-const COVER_MAX_BYTES = 5 * 1024 * 1024;
 const PAGE = 20;
 
 const fail = (reply, code) => {
@@ -20,7 +19,7 @@ function detail(request, { group, member_count, is_member, my_invitation }) {
     id: group.id,
     name: group.name,
     visibility: group.visibility,
-    cover_url: images.publicUrl(request, group.cover_url),
+    cover_url: images.publicUrl(group.cover_url),
     ...periodOf(group),
     member_count,
     is_owner: isOwner,
@@ -55,7 +54,7 @@ async function list(request, reply) {
       id: g.id,
       name: g.name,
       visibility: g.visibility,
-      cover_url: images.publicUrl(request, g.cover_url),
+      cover_url: images.publicUrl(g.cover_url),
       ...periodOf(g),
       member_count: g.member_count,
       is_owner: g.owner_id === request.user.userId,
@@ -72,7 +71,7 @@ async function discover(request, reply) {
     groups: rows.map((g) => ({
       id: g.id,
       name: g.name,
-      cover_url: images.publicUrl(request, g.cover_url),
+      cover_url: images.publicUrl(g.cover_url),
       ...periodOf(g),
       member_count: g.member_count,
     })),
@@ -123,7 +122,7 @@ async function uploadCover(request, reply) {
   const { id } = request.params;
   if (!(await groupsRepository.getOwned(userId, id))) return reply.status(404).send(NOT_FOUND);
 
-  const image = await images.readImage(request, { maxBytes: COVER_MAX_BYTES });
+  const image = await images.readImage(request);
   if (image.error) return reply.status(image.status).send({ error: image.error });
 
   // Nome do servidor: o nome do arquivo enviado nunca entra no caminho.
@@ -131,7 +130,7 @@ async function uploadCover(request, reply) {
   await images.saveImage(fileName, image.buffer);
   const previous = await groupsRepository.setCover(id, fileName);
   await images.deleteImage(previous).catch((err) => request.log.warn(err));
-  return reply.send({ cover_url: images.publicUrl(request, fileName) });
+  return reply.send({ cover_url: images.publicUrl(fileName) });
 }
 
 async function ranking(request, reply) {
@@ -144,7 +143,7 @@ async function ranking(request, reply) {
       user_id: r.user_id,
       name: r.name,
       username: r.username,
-      photo_url: images.publicUrl(request, r.photo_url),
+      photo_url: images.publicUrl(r.photo_url),
       total_points: r.total_points,
       activities_count: r.activities_count,
       is_me: r.user_id === userId,
