@@ -4,14 +4,14 @@ const Fastify = require('fastify');
 
 // O middleware real valida JWT contra o JWKS do Supabase (e quebra sem SUPABASE_URL). Aqui todo request é do USER.
 const USER = '11111111-1111-4111-8111-111111111111';
-const authPath = require.resolve('../middlewares/auth.middleware');
+const authPath = require.resolve('../../middlewares/auth.middleware');
 require.cache[authPath] = {
   id: authPath, filename: authPath, loaded: true,
   exports: async (request) => { request.user = { userId: USER }; },
 };
 
-const workoutRepository = require('../repository/workout.repository');
-const rules = require('../lib/tests/workoutRules');
+const workoutRepository = require('../../repository/workout.repository');
+const rules = require('../../lib/tests/workoutRules');
 
 const ID = '22222222-2222-4222-8222-222222222222';
 const EX = '33333333-3333-4333-8333-333333333333';
@@ -29,7 +29,7 @@ const validRoutine = { name: '  Peito  ', exercises: [{ exercise_id: EX, reps_mi
 
 async function build(t) {
   const app = Fastify();
-  app.register(require('./workout.routes'), { prefix: '/workouts' });
+  app.register(require('../workout.routes'), { prefix: '/workouts' });
   t.after(() => app.close());
   await app.ready();
   return app;

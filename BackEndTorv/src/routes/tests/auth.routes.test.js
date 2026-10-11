@@ -1,8 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Fastify = require('fastify');
-const authProvider = require('../lib/authProvider');
-const profileRepository = require('../repository/profile.repository');
+const authProvider = require('../../lib/authProvider');
+const profileRepository = require('../../repository/profile.repository');
 const { AuthError } = authProvider;
 
 const session = { access_token: 'at', refresh_token: 'rt', expires_at: 2000000000, user: { id: 'u1', email: 'a@b.dev' } };
@@ -15,7 +15,7 @@ const validRegister = {
 async function build(t) {
   t.mock.method(profileRepository, 'usernameExists', async () => false);
   const app = Fastify();
-  app.register(require('./auth.routes'), { prefix: '/auth' });
+  app.register(require('../auth.routes'), { prefix: '/auth' });
   t.after(() => app.close());
   await app.ready();
   return app;

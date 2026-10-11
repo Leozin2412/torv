@@ -36,7 +36,7 @@ async function groupsRoutes(fastify) {
 
   fastify.post('/:id/cover', {
     schema: {
-      description: 'Dono: envia a capa (multipart/form-data, campo "photo", até 5 MB)',
+      description: 'Dono: envia a capa (multipart/form-data, campo "photo", até 4 MB)',
       tags, security, params: IdParams,
       response: { 200: Type.Object({ cover_url: Type.String() }), ...errors(400, 401, 403, 404, 413) },
     },
