@@ -6,7 +6,8 @@ import { getSession, setSession, clearSession, Session } from './session';
 // na rede local, que o celular no Expo Go alcança; sem hostUri fica 127.0.0.1 (web e simulador no PC).
 // EXPO_PUBLIC_API_URL sobrepõe (túnel, outra rede, produção); vazio conta como ausente.
 const devHost = Constants.expoConfig?.hostUri?.split(':')[0];
-const baseURL = process.env.EXPO_PUBLIC_API_URL || `http://${devHost || '127.0.0.1'}:3000`;
+const baseURL="https://torv-tau.vercel.app"
+//const baseURL = process.env.EXPO_PUBLIC_API_URL || `http://${devHost || '127.0.0.1'}:3000`;
 
 // /auth/* goes through here: no interceptors, so a failing refresh can't loop.
 export const authApi = axios.create({ baseURL });

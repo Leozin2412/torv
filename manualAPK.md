@@ -119,8 +119,10 @@ from auth.users;
 
 Se `nao_confirmados` for maior que zero, me avise e decidimos o que fazer com essas contas.
 
-### 1.7 Código ⚙️ (me avise quando 1.3 e 1.4 estiverem prontos)
-Eu faço:
+### 1.7 Código ⚙️ ✅ FEITO em 2026-10-09
+Explicação completa, arquivos e como testar: **`relatorioConfirmacaoEmail.md`**. Falta só você: 1.3, 1.4, 1.5, depois 1.8 e 1.9. 🔍 Se o código certo for recusado no primeiro teste real, troque `type: 'email'` por `type: 'signup'` em `authProvider.verifyEmail`.
+
+O que foi feito:
 - **Backend:**
   - login que distingue "e-mail não confirmado" de "senha errada";
   - rota para verificar o código e outra para reenviar, com rate limit;
@@ -192,9 +194,9 @@ São 9 arquivos em `BackEndTorv/profilePhotos/`. Para **não precisar mexer no b
 1. Painel → **Storage → torv-images → Upload files**.
 2. Envie todos os arquivos de `profilePhotos/` para a raiz do bucket.
 
-Se preferir, eu faço isso por script.
+Se preferir, eu faço isso por script. ⚠️ **Ainda pendente:** sem isso, quem já tem foto/capa recebe 404 (o banco aponta para os nomes antigos). Só apague `BackEndTorv/profilePhotos/` depois de conferir que os 9 arquivos estão no bucket: a pasta está no `.gitignore` e é a única cópia.
 
-### 2.5 Código ⚙️ (me avise quando 2.1 a 2.3 estiverem feitos)
+### 2.5 Código ⚙️ ✅ FEITO em 2026-10-11 (commits 3b0f7ac, dfe7bf4, 94d912c)
 Eu faço:
 - Reescrever `src/lib/imageUpload.js` (gravar, apagar e montar a URL no Storage), com a URL no formato
   `https://<projeto>.supabase.co/storage/v1/object/public/torv-images/<arquivo>`.
@@ -247,7 +249,7 @@ npx prisma migrate status
 npx prisma migrate deploy
 ```
 
-### 3.4 Código ⚙️ (me avise)
+### 3.4 Código ⚙️ ✅ FEITO em 2026-10-11 (commits d9dea15, 16b7e4e, 2f84224; Test e Security PASS)
 Eu faço:
 - `trustProxy` com o número de saltos (sem isso o rate limit enxerga o IP da Vercel e todos os usuários dividem o mesmo limite).
 - Teto de upload e `connection_limit` ajustados.
