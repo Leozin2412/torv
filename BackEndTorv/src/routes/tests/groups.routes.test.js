@@ -228,3 +228,28 @@ test('DELETE /groups/:id/members/:userId: repassa o resultado como HTTP', async 
   remove.mock.mockImplementation(async () => 'not_found');
   assert.equal((await call(app, 'DELETE', `/groups/${GID}/members/${OTHER}`)).statusCode, 404);
 });
+
+test('POST /groups/:id/cover: Storage recusa (403) → 500, capa do banco intocada e nada apagado', async (t) => {
+  t.mock.method(groupsRepository, 'getOwned', async () => baseGroup());
+  t.mock.method(images, 'saveImage', async () => { throw new Error('Image upload failed with status 403'); });
+  const setCover = t.mock.method(groupsRepository, 'setCover', async () => null);
+  const removed = t.mock.method(images, 'deleteImage', async () => {});
+  const app = await build(t);
+  const { payload, headers } = multipart('c.png', 'image/png', PNG);
+  const res = await app.inject({ method: 'POST', url: `/groups/${GID}/cover`, payload, headers });
+  assert.equal(res.statusCode, 500);
+  assert.doesNotMatch(res.body, /test-key|supabase/);
+  assert.equal(setCover.mock.callCount() + removed.mock.callCount(), 0);
+});
+
+test('capa: falha ao apagar a antiga (troca ou exclusão do grupo) só é logada', async (t) => {
+  t.mock.method(groupsRepository, 'getOwned', async () => baseGroup());
+  t.mock.method(images, 'saveImage', async () => {});
+  t.mock.method(groupsRepository, 'setCover', async () => 'group-old.png');
+  t.mock.method(groupsRepository, 'deleteGroup', async () => ({ cover_url: 'group-x.png' }));
+  t.mock.method(images, 'deleteImage', async () => { throw new Error('Image delete failed with status 500'); });
+  const app = await build(t);
+  const { payload, headers } = multipart('c.png', 'image/png', PNG);
+  assert.equal((await app.inject({ method: 'POST', url: `/groups/${GID}/cover`, payload, headers })).statusCode, 200);
+  assert.equal((await call(app, 'DELETE', `/groups/${GID}`)).statusCode, 204);
+});

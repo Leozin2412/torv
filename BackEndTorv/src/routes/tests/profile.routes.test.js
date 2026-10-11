@@ -114,3 +114,38 @@ test('POST /profile/upload: tipo errado e arquivo acima de 4 MB são recusados s
   assert.equal((await upload(app, big)).statusCode, 413);
   assert.equal(save.mock.callCount(), 0);
 });
+
+test('POST /profile/upload: Storage recusa (403) → 500 genérico, banco intocado, nada apagado', async (t) => {
+  t.mock.method(images, 'saveImage', async () => { throw new Error('Image upload failed with status 403'); });
+  const row = t.mock.method(profileRepository, 'getProfileRow', async () => ({ photo_url: 'old.jpg' }));
+  const update = t.mock.method(profileRepository, 'updatePhotoUrl', async () => {});
+  const removed = t.mock.method(images, 'deleteImage', async () => {});
+  const app = await build(t);
+  const res = await upload(app);
+  assert.equal(res.statusCode, 500);
+  assert.deepEqual(res.json(), { error: 'Internal server error uploading photo' });
+  assert.doesNotMatch(res.body, /403|test-key|supabase/);
+  assert.equal(row.mock.callCount() + update.mock.callCount() + removed.mock.callCount(), 0);
+});
+
+test('POST /profile/upload: env do Storage ausente → 500 genérico, banco intocado', async (t) => {
+  const saved = process.env.SUPABASE_SECRET_KEY;
+  delete process.env.SUPABASE_SECRET_KEY;
+  t.after(() => { process.env.SUPABASE_SECRET_KEY = saved; });
+  const update = t.mock.method(profileRepository, 'updatePhotoUrl', async () => {});
+  const app = await build(t);
+  const res = await upload(app);
+  assert.equal(res.statusCode, 500);
+  assert.doesNotMatch(res.body, /SUPABASE/);
+  assert.equal(update.mock.callCount(), 0);
+});
+
+test('POST /profile/upload: banco falha depois de gravar → 500 e a foto anterior NÃO é apagada', async (t) => {
+  t.mock.method(images, 'saveImage', async () => {});
+  t.mock.method(profileRepository, 'getProfileRow', async () => ({ photo_url: 'old.jpg' }));
+  t.mock.method(profileRepository, 'updatePhotoUrl', async () => { throw new Error('db down'); });
+  const removed = t.mock.method(images, 'deleteImage', async () => {});
+  const app = await build(t);
+  assert.equal((await upload(app)).statusCode, 500);
+  assert.equal(removed.mock.callCount(), 0);
+});
