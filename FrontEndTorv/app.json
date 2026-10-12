@@ -30,8 +30,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "6853c6f0-3abc-4554-939d-60265d5256ec"
+        "projectId": "3040185a-5cc5-4657-9476-c23a8f72aa19"
       }
-    }
+    },
+    "owner": "torvapp"
   }
 }

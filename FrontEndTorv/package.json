@@ -24,6 +24,7 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
+    "react-native-ux-cam": "^6.0.25",
     "react-native-web": "^0.21.2",
     "use-latest-callback": "^0.3.4",
     "whatwg-url-minimum": "^0.1.2"
