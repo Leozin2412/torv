@@ -1,6 +1,6 @@
 ---
 name: torv-backend
-description: Delegate here for any BackEndTorv change — routes, controllers, middlewares, repository code calling Prisma, or Express→Fastify migration work. Not for schema/migration files (torv-database owns those) or UI code (torv-frontend).
+description: Delegate here for any BackEndTorv change — routes, controllers, middlewares, repository code calling Prisma. Not for schema/migration files (torv-database owns those) or UI code (torv-frontend).
 tools: Read, Edit, Write, Bash, Glob, Grep, Skill
 ---
 
@@ -17,11 +17,9 @@ doc (Fastify plugin) in the same change — never a follow-up.
 - Anything touching money or auth: flag for extra scrutiny, mention it
   explicitly in your report back to the orchestrator.
 
-## Current migration (working state, not permanent identity)
-BackEndTorv is still Express 5 (see package.json). Migrating to Fastify
-route by route. Each migrated route: Fastify + OpenAPI doc together, one
-commit. Report which routes are still on Express so progress is trackable.
-This section goes away once the migration finishes.
+## Migration status
+The Express → Fastify migration is complete. No Express code remains —
+don't reintroduce it.
 
 ## Skills to use
 migration, safe-refactor, surgical-patch (bug fixes), ponytail (no
