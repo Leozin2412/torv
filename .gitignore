@@ -26,3 +26,6 @@ build/
 
 # Superpowers scratch workspaces (per-plan ledgers/briefs/reports)
 .superpowers/
+
+# graphify per-session hook state
+graphify-out/cache/hook_sessions/
