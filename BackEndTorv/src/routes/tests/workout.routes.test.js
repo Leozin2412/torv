@@ -18,7 +18,7 @@ const EX = '33333333-3333-4333-8333-333333333333';
 const basis = { fitness_level: 'INICIANTE', goals: ['Perder Peso'], gender: 'M' };
 const inputs = { gender: 'Masculino', fitnessLevel: 'INICIANTE', goals: 'Perder Peso', savedBasis: basis };
 const routineRow = {
-  id: ID, name: 'Peito', is_default: false,
+  id: ID, name: 'Peito', is_default: false, activity_type: 'STRENGTH',
   routine_exercises: [{
     id: 'reid', exercise_id: EX, position: 1, reps_min: 8, reps_max: 12, rest_sec: 60,
     exercise: { name: 'Supino', muscle_group: 'Peito' },
@@ -42,8 +42,8 @@ test('GET /routines: gera plano na 1ª vez e monta lista, próximo e sugestão',
   t.mock.method(workoutRepository, 'getGeneratorRules', async () => rules);
   const save = t.mock.method(workoutRepository, 'savePlan', async () => true);
   t.mock.method(workoutRepository, 'listRoutines', async () => [
-    { id: 'a', name: 'Dia 1', is_default: true, routine_exercises: [{ _count: { sets: 3 } }, { _count: { sets: 3 } }] },
-    { id: 'b', name: 'Dia 2', is_default: true, routine_exercises: [{ _count: { sets: 4 } }] },
+    { id: 'a', name: 'Dia 1', is_default: true, activity_type: 'STRENGTH', routine_exercises: [{ _count: { sets: 3 } }, { _count: { sets: 3 } }] },
+    { id: 'b', name: 'Dia 2', is_default: true, activity_type: 'STRENGTH', routine_exercises: [{ _count: { sets: 4 } }] },
   ]);
   t.mock.method(workoutRepository, 'lastRoutineId', async () => 'a');
   const recent = t.mock.method(workoutRepository, 'recentRoutineIds', async () => ['a']);
@@ -56,8 +56,8 @@ test('GET /routines: gera plano na 1ª vez e monta lista, próximo e sugestão',
   assert.ok(Math.abs(Date.now() - 7 * 24 * 3600 * 1000 - since.getTime()) < 5000, 'janela de 7 dias');
   assert.deepEqual(res.json(), {
     routines: [
-      { id: 'a', name: 'Dia 1', is_default: true, exercise_count: 2, set_count: 6, completed_recently: true },
-      { id: 'b', name: 'Dia 2', is_default: true, exercise_count: 1, set_count: 4, completed_recently: false },
+      { id: 'a', name: 'Dia 1', is_default: true, activity_type: 'STRENGTH', exercise_count: 2, set_count: 6, completed_recently: true },
+      { id: 'b', name: 'Dia 2', is_default: true, activity_type: 'STRENGTH', exercise_count: 1, set_count: 4, completed_recently: false },
     ],
     next_routine_id: 'b',
     plan_suggestion: { has_suggestion: false, changed: [] },
@@ -145,16 +145,54 @@ test('POST /routines 400: limites, regras cruzadas e exercício alheio', async (
   assert.equal(create.mock.callCount(), 0);
 });
 
-test('PUT /routines/:id: alheia → 404; própria → 200', async (t) => {
+test('PUT /routines/:id: alheia → 404; própria → 200 com o tipo gravado; trocar o tipo → 400', async (t) => {
   t.mock.method(workoutRepository, 'countVisibleExercises', async () => 1);
-  const update = t.mock.method(workoutRepository, 'updateRoutine', async () => false);
+  const type = t.mock.method(workoutRepository, 'getRoutineType', async () => null);
+  const update = t.mock.method(workoutRepository, 'updateRoutine', async () => true);
   t.mock.method(workoutRepository, 'getRoutine', async () => routineRow);
   const app = await build(t);
   assert.equal((await call(app, 'PUT', `/workouts/routines/${ID}`, validRoutine)).statusCode, 404);
-  update.mock.mockImplementation(async () => true);
+  assert.equal(update.mock.callCount(), 0);
+  type.mock.mockImplementation(async () => 'STRENGTH');
   const res = await call(app, 'PUT', `/workouts/routines/${ID}`, validRoutine);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(update.mock.calls[1].arguments.slice(0, 2), [USER, ID]);
+  assert.deepEqual(update.mock.calls[0].arguments.slice(0, 2), [USER, ID]);
+  assert.equal(update.mock.calls[0].arguments[2].activity_type, 'STRENGTH');
+  const change = await call(app, 'PUT', `/workouts/routines/${ID}`, { ...validRoutine, activity_type: 'RUN' });
+  assert.equal(change.statusCode, 400);
+  assert.deepEqual(change.json(), { error: 'activity_type cannot change' });
+});
+
+test('POST /routines: rotina de corrida só com nome; com exercícios → 400; tipo inválido → 400', async (t) => {
+  const count = t.mock.method(workoutRepository, 'countVisibleExercises', async () => 1);
+  const create = t.mock.method(workoutRepository, 'createRoutine', async () => ID);
+  t.mock.method(workoutRepository, 'getRoutine', async () => ({ id: ID, name: 'Corrida leve', is_default: false, activity_type: 'RUN', routine_exercises: [] }));
+  const app = await build(t);
+  const res = await call(app, 'POST', '/workouts/routines', { name: ' Corrida leve ', activity_type: 'RUN' });
+  assert.equal(res.statusCode, 201);
+  assert.deepEqual(create.mock.calls[0].arguments[1], { name: 'Corrida leve', activity_type: 'RUN', exercises: [] });
+  assert.deepEqual(res.json(), { id: ID, name: 'Corrida leve', is_default: false, activity_type: 'RUN', exercises: [] });
+  assert.equal(count.mock.callCount(), 0);
+  const bad = await call(app, 'POST', '/workouts/routines', { ...validRoutine, activity_type: 'RUN' });
+  assert.equal(bad.statusCode, 400);
+  assert.deepEqual(bad.json(), { error: 'run and walk routines have no exercises' });
+  assert.equal((await call(app, 'POST', '/workouts/routines', { name: 'X', activity_type: 'RIDE' })).statusCode, 400);
+});
+
+test('GET /routines: rotina de corrida vem com o tipo e nunca é a "próxima" nem "concluída"', async (t) => {
+  t.mock.method(workoutRepository, 'getPlanInputs', async () => inputs);
+  t.mock.method(workoutRepository, 'listRoutines', async () => [
+    { id: 'a', name: 'Dia 1', is_default: true, activity_type: 'STRENGTH', routine_exercises: [{ _count: { sets: 3 } }] },
+    { id: 'r', name: 'Corrida', is_default: false, activity_type: 'RUN', routine_exercises: [] },
+    { id: 'b', name: 'Dia 2', is_default: true, activity_type: 'STRENGTH', routine_exercises: [{ _count: { sets: 3 } }] },
+  ]);
+  t.mock.method(workoutRepository, 'lastRoutineId', async () => 'b');
+  t.mock.method(workoutRepository, 'recentRoutineIds', async () => []);
+  const res = await call(await build(t), 'GET', '/workouts/routines');
+  assert.equal(res.json().next_routine_id, 'a'); // depois do Dia 2 volta ao Dia 1, pulando a corrida
+  assert.deepEqual(res.json().routines[1], {
+    id: 'r', name: 'Corrida', is_default: false, activity_type: 'RUN', exercise_count: 0, set_count: 0, completed_recently: false,
+  });
 });
 
 test('DELETE /routines/:id: alheia → 404; própria → 204', async (t) => {

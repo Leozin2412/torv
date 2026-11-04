@@ -9,6 +9,7 @@
 --   20260930200000_workout_module      - módulo de treinos: catálogo + exercícios próprios, rotinas com séries, treinos finalizados (workout_sets)
 --   20261001150000_workout_generator_rules - regras do gerador de treino no banco (type/min_level/catalog_order + workout_template_slots)
 --   20261002120000_loads_welcome       - carga por série (workout_sets.weight_kg) e boas-vindas (user_profiles.welcomed_at)
+--   20261014120000_gps_activities      - importador de GPX: tipo da rotina, tipos de atividade, índice de dedupe e métricas de GPS (activity_gps_data)
 -- CHECKs ficam em "Regras BD.sql"; RLS e índices não-únicos em Gestao_e_Performance.sql.
 -- This file has no runtime effect; it exists for readability/presentation only.
 -- No CREATE DATABASE / USE statement here: Supabase already scopes a project to
@@ -115,20 +116,29 @@ CREATE TABLE group_invitations (
 CREATE TABLE activities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
+    -- 'STRENGTH' | 'RUN' | 'WALK' (CHECK em "Regras BD.sql")
     activity_type VARCHAR(50) NOT NULL,
     title VARCHAR(255),
     start_time TIMESTAMPTZ,
     duration_sec INT,
     calories INT,
     distance_m DECIMAL(10,2),
-    -- Rotina que originou o treino (activity_type = 'STRENGTH'); NULL = treino livre
+    -- Rotina que originou a atividade (STRENGTH, RUN ou WALK); NULL = treino livre
     -- ou rotina apagada depois.
     routine_id UUID
 );
 
+-- Métricas de uma atividade de GPS (RUN/WALK). Os pontos brutos não são guardados: só o
+-- resumo, as parciais e a rota simplificada (até 500 [lat, lon] com 5 casas).
 CREATE TABLE activity_gps_data (
     activity_id UUID PRIMARY KEY,
-    route_json TEXT
+    elapsed_sec INT NOT NULL,
+    elevation_gain_m DECIMAL(7,1),
+    avg_hr SMALLINT,
+    max_hr SMALLINT,
+    avg_cadence SMALLINT,
+    splits JSONB NOT NULL,
+    route JSONB NOT NULL
 );
 
 
@@ -142,6 +152,9 @@ CREATE TABLE workout_routines (
     name VARCHAR(100) NOT NULL,
     is_default BOOLEAN NOT NULL DEFAULT false,
     position INT NOT NULL,
+    -- 'STRENGTH' | 'RUN' | 'WALK' (CHECK em "Regras BD.sql"). Escolhido na criação, não muda.
+    -- Rotina de GPS (RUN/WALK) não tem exercícios.
+    activity_type VARCHAR(10) NOT NULL DEFAULT 'STRENGTH',
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -248,8 +261,9 @@ CREATE UNIQUE INDEX groups_invite_token_key ON groups(invite_token);
 CREATE UNIQUE INDEX exercises_slug_key ON exercises(slug);
 CREATE UNIQUE INDEX exercises_catalog_order_key ON exercises(catalog_order);
 CREATE UNIQUE INDEX routine_exercise_sets_routine_exercise_id_set_number_key ON routine_exercise_sets(routine_exercise_id, set_number);
--- O único parcial activities_strength_user_start_key (idempotência do treino) está
--- em Gestao_e_Performance.sql, passo 2.4; o group_invitations_pending_key, no passo 2.5.
+-- Os únicos parciais activities_strength_user_start_key (idempotência do treino) e
+-- activities_gps_user_start_key (dedupe da importação de GPS) estão em
+-- Gestao_e_Performance.sql, passo 2.4; o group_invitations_pending_key, no passo 2.5.
 
 
 -- Foreign keys

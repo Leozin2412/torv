@@ -218,6 +218,18 @@ export const styles = StyleSheet.create({
     fontFamily: fontFamily.semiBold,
     marginTop: 4,
   },
+  // Calendário de atividade (rola na horizontal só dentro do card)
+  calendarCard: {
+    borderRadius: radius.lg,
+    marginBottom: 24,
+    overflow: 'hidden',
+  },
+  calendarTitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontFamily: fontFamily.semiBold,
+    marginBottom: 12,
+  },
   // Sections
   sectionTitle: {
     fontSize: 18,

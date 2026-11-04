@@ -56,8 +56,10 @@ fastify.register(require('./src/routes/profile.routes'), { prefix: '/profile' })
 fastify.register(require('./src/routes/diet.routes'), { prefix: '/diet' });
 fastify.register(require('./src/routes/workout.routes'), { prefix: '/workouts' });
 fastify.register(require('./src/routes/activities.routes'), { prefix: '/activities' });
+fastify.register(require('./src/routes/gps.routes'), { prefix: '/activities/gps' });
 fastify.register(require('./src/routes/groups.routes'), { prefix: '/groups' });
 fastify.register(require('./src/routes/groupInvitations.routes'), { prefix: '/groups' });
+fastify.register(require('./src/routes/users.routes'), { prefix: '/users' });
 
 fastify.setErrorHandler((err, request, reply) => {
   fastify.log.error(err);

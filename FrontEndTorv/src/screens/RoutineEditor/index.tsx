@@ -9,7 +9,8 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { ExercisePicker } from '../../components/ExercisePicker';
-import { workoutsApi } from '../../services/workouts';
+import { workoutsApi, type RoutineType } from '../../services/workouts';
+import { ACTIVITY_LABELS, activityLabel } from '../../utils/activities';
 import { formatClock } from '../../utils/clock';
 import {
   LIMITS, buildRoutineInput, clampRest, formFromDetail, moveItem, newFormExercise, type FormExercise,
@@ -18,10 +19,18 @@ import type { AppNavigation, AppStackParamList } from '../../routes/types';
 import { colors } from '../../theme/tokens';
 import { styles } from './styles';
 
+const ROUTINE_TYPES: RoutineType[] = ['STRENGTH', 'RUN', 'WALK'];
+const NAME_PLACEHOLDER: Record<RoutineType, string> = {
+  STRENGTH: 'Ex.: Peito e tríceps',
+  RUN: 'Ex.: Corrida leve',
+  WALK: 'Ex.: Caminhada no parque',
+};
+
 export default function RoutineEditor() {
   const navigation = useNavigation<AppNavigation>();
   const { routineId } = useRoute<RouteProp<AppStackParamList, 'RoutineEditor'>>().params ?? {};
   const [name, setName] = useState('');
+  const [type, setType] = useState<RoutineType>('STRENGTH');
   const [items, setItems] = useState<FormExercise[]>([]);
   const [loading, setLoading] = useState(!!routineId);
   const [saving, setSaving] = useState(false);
@@ -34,6 +43,7 @@ export default function RoutineEditor() {
     workoutsApi.getRoutine(routineId)
       .then((d) => {
         setName(d.name);
+        setType(d.activity_type);
         setItems(formFromDetail(d));
       })
       .catch(() => setError('Não foi possível carregar a rotina.'))
@@ -47,7 +57,7 @@ export default function RoutineEditor() {
     setItems((list) => list.map((it) => (it.key === key ? { ...it, ...patch } : it)));
 
   const save = async () => {
-    const result = buildRoutineInput(name, items);
+    const result = buildRoutineInput(name, items, type);
     if ('error' in result) {
       setError(result.error);
       return;
@@ -99,9 +109,33 @@ export default function RoutineEditor() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <Input label="Nome da rotina" value={name} maxLength={LIMITS.name} onChangeText={(v) => { setName(v); if (v.trim()) clearError('Dê um nome para a rotina.', 'O nome pode ter no máximo 100 caracteres.'); }} placeholder="Ex.: Peito e tríceps" />
+          {routineId ? (
+            <Text style={styles.typeTag} accessibilityLabel={`Tipo da rotina: ${activityLabel(type)}`}>{activityLabel(type)}</Text>
+          ) : (
+            <View style={styles.segmented} accessibilityRole="tablist">
+              {ROUTINE_TYPES.map((t) => {
+                const active = type === t;
+                return (
+                  <TouchableOpacity
+                    key={t}
+                    style={[styles.segment, active && styles.segmentActive]}
+                    onPress={() => setType(t)}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: active }}
+                    aria-selected={active} // react-native-web ignora accessibilityState
+                  >
+                    <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{ACTIVITY_LABELS[t]}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
 
-          {items.map((it, index) => (
+          <Input label="Nome da rotina" value={name} maxLength={LIMITS.name} onChangeText={(v) => { setName(v); if (v.trim()) clearError('Dê um nome para a rotina.', 'O nome pode ter no máximo 100 caracteres.'); }} placeholder={NAME_PLACEHOLDER[type]} />
+
+          {type !== 'STRENGTH' && <Text style={styles.typeHint}>Depois é só importar o .gpx de cada treino em Meus treinos.</Text>}
+
+          {type === 'STRENGTH' && items.map((it, index) => (
             <Card key={it.key}>
               <View style={styles.exerciseHeader}>
                 <View style={styles.flex}>
@@ -179,7 +213,7 @@ export default function RoutineEditor() {
             </Card>
           ))}
 
-          {items.length < LIMITS.exercises && (
+          {type === 'STRENGTH' && items.length < LIMITS.exercises && (
             <TouchableOpacity style={styles.addButton} onPress={() => setPickerOpen(true)} accessibilityRole="button">
               <Plus color={colors.brand} size={20} />
               <Text style={styles.addText}>Adicionar exercício</Text>

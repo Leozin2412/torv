@@ -7,12 +7,15 @@ export const MUSCLE_GROUPS = [
   'Posterior de coxa', 'Glúteos', 'Panturrilha', 'Abdômen', 'Lombar', 'Antebraço',
 ] as const;
 
+export type RoutineType = 'STRENGTH' | 'RUN' | 'WALK';
+
 export interface RoutineSummary {
   id: string;
   name: string;
   is_default: boolean;
   exercise_count: number;
   set_count: number;
+  activity_type: RoutineType;
   completed_recently: boolean; // treino feito nos últimos 7 dias → selo "Concluído"
 }
 
@@ -43,11 +46,13 @@ export interface RoutineDetail {
   id: string;
   name: string;
   is_default: boolean;
+  activity_type: RoutineType;
   exercises: RoutineExercise[];
 }
 
 export interface RoutineInput {
   name: string;
+  activity_type?: RoutineType;
   exercises: {
     exercise_id: string;
     reps_min: number;

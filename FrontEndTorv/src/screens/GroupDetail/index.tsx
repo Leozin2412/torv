@@ -166,7 +166,13 @@ export default function GroupDetail() {
             <Text style={styles.sectionTitle}>Ranking</Text>
             {state === 'upcoming' && <Text style={styles.muted}>A competição ainda não começou: todo mundo está com zero.</Text>}
             {ranking.map((r) => (
-              <View key={r.user_id} style={[styles.row, r.is_me && styles.rowMe, r.position <= 3 && styles.rowTop]} accessibilityLabel={`${r.position}º, ${r.name}, ${plural(r.total_points, 'dia', 'dias')}${r.is_me ? ', você' : ''}`}>
+              <TouchableOpacity
+                key={r.user_id}
+                style={[styles.row, r.is_me && styles.rowMe, r.position <= 3 && styles.rowTop]}
+                onPress={() => navigation.navigate('MemberProfile', { userId: r.user_id })}
+                accessibilityRole="button"
+                accessibilityLabel={`${r.position}º, ${r.name}, ${plural(r.total_points, 'dia', 'dias')}${r.is_me ? ', você' : ''}. Abrir perfil`}
+              >
                 <Text style={[styles.position, r.position <= 3 && styles.positionTop]}>{r.position}</Text>
                 {r.photo_url ? (
                   <Image source={{ uri: r.photo_url }} style={styles.avatar} />
@@ -181,7 +187,7 @@ export default function GroupDetail() {
                   <Text style={styles.pointsValue}>{r.total_points}</Text>
                   <Text style={styles.pointsLabel}>{r.total_points === 1 ? 'dia' : 'dias'}</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
             {!group.is_owner && <Button title="Sair do grupo" danger outline onPress={() => setConfirmLeave(true)} />}
           </View>

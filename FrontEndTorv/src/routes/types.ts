@@ -20,6 +20,9 @@ export type AppStackParamList = {
   GroupEditor: { groupId?: string }; // sem groupId: criar
   GroupManage: { groupId: string };
   JoinGroup: { token?: string }; // sem token: digitar o código
+  GpxImport: { routineId: string }; // importar o .gpx numa rotina de corrida/caminhada
+  GpsActivity: { activityId: string }; // resumo de uma atividade de GPS
+  MemberProfile: { userId: string }; // perfil de outro membro (ou o próprio): GET /users/:id/profile
 };
 
 export type AppNavigation = NativeStackNavigationProp<AppStackParamList>;

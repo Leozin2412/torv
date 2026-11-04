@@ -4,7 +4,7 @@
 -- Postgres (Supabase) — documentation copy of what's actually deployed.
 -- Source of truth: BackEndTorv/prisma/migrations/ (init_postgres + supabase_auth_link
 -- + nutrition_targets_basis + lock_down_public_schema + revoke_global_function_execute
--- + workout_module + workout_generator_rules); ver o cabeçalho de "SQL BANCO DE DADOS.sql".
+-- + workout_module + workout_generator_rules + gps_activities); ver o cabeçalho de "SQL BANCO DE DADOS.sql".
 -- This file has no runtime effect; it exists for readability/presentation only.
 -- =======================================================================
 
@@ -159,6 +159,13 @@ CREATE INDEX workout_sets_activity_id_idx ON workout_sets (activity_id);
 CREATE UNIQUE INDEX activities_strength_user_start_key
 ON activities (user_id, start_time)
 WHERE activity_type = 'STRENGTH';
+
+-- Importador de GPX (20261014120000_gps_activities): o equivalente para RUN/WALK.
+-- Uma atividade de GPS por usuário e instante de início; importar o mesmo arquivo de
+-- novo bate neste índice e a API responde 409. Também só no SQL da migration.
+CREATE UNIQUE INDEX activities_gps_user_start_key
+ON activities (user_id, start_time)
+WHERE activity_type <> 'STRENGTH';
 
 -- Passo 2.5: Índices de grupos e competição (20261006120000_groups)
 -- group_rankings_order_idx cobre a leitura do ranking (ordem: pontos, depois atividades);

@@ -30,9 +30,7 @@ const userRow = (profile) => ({
   id: USER,
   email: 'ana@torvtest.dev',
   user_profiles: profile,
-  user_streaks: null,
   user_measurements: [],
-  workout_counts: { total: 0, month: 0 },
 });
 const baseProfile = {
   username: 'ana', name: 'Ana', fitness_level: 'INICIANTE', goal: 'Perder Peso',
@@ -50,6 +48,13 @@ test('GET /profile: welcome_pending = welcomed_at nulo', async (t) => {
   get.mock.mockImplementation(async () => userRow({ ...baseProfile, welcomed_at: new Date() }));
   res = await app.inject({ method: 'GET', url: '/profile' });
   assert.equal(res.json().welcome_pending, false);
+});
+
+test('GET /profile: streak e contagens saíram (o app usa GET /users/:id/profile)', async (t) => {
+  t.mock.method(profileRepository, 'getUserProfile', async () => userRow({ ...baseProfile, welcomed_at: null }));
+  const res = await (await build(t)).inject({ method: 'GET', url: '/profile' });
+  assert.equal(res.statusCode, 200);
+  for (const k of ['streak', 'longest_streak', 'workouts_in_month', 'total_workouts']) assert.equal(k in res.json(), false, k);
 });
 
 test('POST /profile/welcome: 204 e grava para o usuário do token (sem corpo ou com {})', async (t) => {

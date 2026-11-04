@@ -8,6 +8,7 @@
 --   20260925210000_revoke_global_function_execute - tira o EXECUTE global de PUBLIC em functions novas (ver Gestao_e_Performance.sql, passo 1.3)
 --   20260930200000_workout_module      - não mexe em function/trigger; CHECKs do módulo de treinos (ver "Regras (CHECKs)" no fim)
 --   20261001150000_workout_generator_rules - idem: CHECKs de type/min_level/catálogo em exercises e de workout_template_slots
+--   20261014120000_gps_activities      - idem: CHECKs do tipo da rotina/atividade e das métricas de activity_gps_data
 -- This file has no runtime effect; it exists for readability/presentation only.
 
 --UDFs
@@ -309,6 +310,16 @@ ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_rest_before_sec_check CHECK
 
 --Carga por série (20261002120000_loads_welcome)
 ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_weight_kg_check CHECK (weight_kg IS NULL OR weight_kg BETWEEN 0 AND 999.99);
+
+--Importador de GPX (20261014120000_gps_activities)
+-- A dedupe da importação é o índice único parcial activities_gps_user_start_key, em
+-- Gestao_e_Performance.sql, passo 2.4.
+ALTER TABLE workout_routines ADD CONSTRAINT workout_routines_activity_type_check CHECK (activity_type IN ('STRENGTH', 'RUN', 'WALK'));
+ALTER TABLE activities ADD CONSTRAINT activities_activity_type_check CHECK (activity_type IN ('STRENGTH', 'RUN', 'WALK'));
+ALTER TABLE activity_gps_data ADD CONSTRAINT activity_gps_data_elapsed_sec_check CHECK (elapsed_sec > 0);
+ALTER TABLE activity_gps_data ADD CONSTRAINT activity_gps_data_elevation_gain_m_check CHECK (elevation_gain_m IS NULL OR elevation_gain_m >= 0);
+ALTER TABLE activity_gps_data ADD CONSTRAINT activity_gps_data_hr_check CHECK ((avg_hr IS NULL OR avg_hr BETWEEN 20 AND 250) AND (max_hr IS NULL OR max_hr BETWEEN 20 AND 250));
+ALTER TABLE activity_gps_data ADD CONSTRAINT activity_gps_data_avg_cadence_check CHECK (avg_cadence IS NULL OR avg_cadence BETWEEN 1 AND 400);
 
 --Slots do gerador de treino (20261001150000_workout_generator_rules)
 ALTER TABLE workout_template_slots ADD CONSTRAINT workout_template_slots_day_check CHECK (day BETWEEN 1 AND days_per_week);

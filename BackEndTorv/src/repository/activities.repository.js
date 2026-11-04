@@ -13,21 +13,21 @@ class ActivitiesRepository {
       orderBy: { start_time: 'desc' },
       take: limit,
       select: {
-        id: true, activity_type: true, title: true, start_time: true, duration_sec: true,
+        id: true, activity_type: true, title: true, start_time: true, duration_sec: true, distance_m: true,
         _count: { select: { workout_sets: true } },
       },
     });
   }
 
-  // Dias locais distintos (YYYY-MM-DD, mais recente primeiro) com treino STRENGTH antes de `before` (UTC). Local = UTC + tzOffsetMin.
-  // ponytail: LIMIT 1000 dias → streak maior que isso trunca; subir se algum dia importar.
-  async strengthDays(userId, { before, tzOffsetMin }) {
-    const rows = await prisma.$queryRaw`
-      SELECT DISTINCT to_char((start_time AT TIME ZONE 'UTC') + make_interval(mins => ${tzOffsetMin}::int), 'YYYY-MM-DD') AS day
+  // [{ day: 'YYYY-MM-DD', count }] dos dias LOCAIS (UTC + tzOffsetMin) com atividade de QUALQUER tipo antes de `before`
+  // (UTC), em ordem crescente. Sem LIMIT: no máximo uma linha por dia de uso (~365 por ano).
+  async dayCounts(userId, { before, tzOffsetMin }) {
+    return prisma.$queryRaw`
+      SELECT to_char((start_time AT TIME ZONE 'UTC') + make_interval(mins => ${tzOffsetMin}::int), 'YYYY-MM-DD') AS day,
+             COUNT(*)::int AS count
       FROM activities
-      WHERE user_id = ${userId}::uuid AND activity_type = 'STRENGTH' AND start_time < ${before}::timestamptz
-      ORDER BY day DESC LIMIT 1000`;
-    return rows.map((r) => r.day);
+      WHERE user_id = ${userId}::uuid AND start_time IS NOT NULL AND start_time < ${before}::timestamptz
+      GROUP BY 1 ORDER BY 1`;
   }
 
   // Soma de calories (null conta 0) de qualquer tipo em [from, before).

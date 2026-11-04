@@ -38,9 +38,11 @@ export const styles = StyleSheet.create({
   defaultTag: { color: colors.textSecondary, borderColor: colors.border, borderWidth: 1, fontFamily: fontFamily.semiBold, fontSize: 11, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 1, overflow: 'hidden' },
   // Próximo = sólido, Padrão = contorno cinza, Concluído = tinta (estado passado, mais quieto). Borda da cor do fundo: mesma altura das outras.
   doneTag: { color: colors.brand, backgroundColor: colors.brandTint, borderColor: colors.brandTint, borderWidth: 1, fontFamily: fontFamily.semiBold, fontSize: 11, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 1, overflow: 'hidden' },
+  typeTag: { color: colors.brand, borderColor: colors.brand, borderWidth: 1, fontFamily: fontFamily.semiBold, fontSize: 11, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 1, overflow: 'hidden' },
   routineName: { color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 16, lineHeight: 22, marginTop: 6 },
   routineMeta: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13, marginTop: 2 },
   // paddingLeft centraliza o triângulo opticamente.
+  importButton: { width: 48, height: 48, borderRadius: 24, marginRight: 16, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
   playButton: { width: 48, height: 48, borderRadius: 24, marginRight: 16, paddingLeft: 3, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
 
   emptyCard: { alignItems: 'center', gap: 8, paddingVertical: 28 },

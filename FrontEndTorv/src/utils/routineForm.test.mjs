@@ -41,7 +41,7 @@ test('clampRest e moveItem', () => {
 test('buildRoutineInput monta o corpo com nome aparado e cargas numéricas', () => {
   const ex = { ...newFormExercise(supino), weights: ['40,5', '', '42'] };
   assert.deepEqual(buildRoutineInput('  Peito  ', [ex]), {
-    body: { name: 'Peito', exercises: [{ exercise_id: 'e1', reps_min: 8, reps_max: 12, rest_sec: 60, sets: [{ weight_kg: 40.5 }, { weight_kg: null }, { weight_kg: 42 }] }] },
+    body: { name: 'Peito', activity_type: 'STRENGTH', exercises: [{ exercise_id: 'e1', reps_min: 8, reps_max: 12, rest_sec: 60, sets: [{ weight_kg: 40.5 }, { weight_kg: null }, { weight_kg: 42 }] }] },
   });
 });
 
@@ -57,4 +57,10 @@ test('buildRoutineInput: erros de nome, lista e campos', () => {
   for (const w of ['1000', 'abc', '-5']) {
     assert.match(buildRoutineInput('A', [{ ...ex, weights: [w] }]).error, /carga/);
   }
+});
+
+test('buildRoutineInput: rotina de corrida/caminhada vai só com nome e tipo, ignorando a lista', () => {
+  assert.deepEqual(buildRoutineInput('  Corrida leve ', [], 'RUN'), { body: { name: 'Corrida leve', activity_type: 'RUN', exercises: [] } });
+  assert.deepEqual(buildRoutineInput('', [], 'WALK'), { error: 'Dê um nome para a rotina.' });
+  assert.deepEqual(buildRoutineInput('Peito', []), { error: 'Adicione pelo menos um exercício.' });
 });

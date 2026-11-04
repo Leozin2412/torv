@@ -152,7 +152,7 @@ model group_invitations {
 model activities {
   id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id           String             @db.Uuid
-  activity_type     String             @db.VarChar(50)
+  activity_type     String             @db.VarChar(50) // CHECK: 'STRENGTH' | 'RUN' | 'WALK' (só no SQL da migration)
   title             String?            @db.VarChar(255)
   start_time        DateTime?          @db.Timestamptz
   duration_sec      Int?
@@ -165,12 +165,20 @@ model activities {
   activity_gps_data activity_gps_data?
   workout_sets      workout_sets[]
   @@index([user_id, start_time])
-  // + índice único parcial (user_id, start_time) WHERE activity_type = 'STRENGTH', só no SQL da migration
+  // + dois índices únicos parciais (user_id, start_time), só no SQL da migration: um WHERE activity_type = 'STRENGTH' e outro WHERE activity_type <> 'STRENGTH'
 }
 
+// Métricas de uma atividade de GPS (RUN/WALK). Os pontos brutos não são guardados: só o resumo, as parciais e a rota
+// simplificada (até 500 [lat, lon] com 5 casas). CHECKs só no SQL da migration.
 model activity_gps_data {
-  activity_id String     @id @db.Uuid
-  route_json  String?    @db.Text
+  activity_id      String     @id @db.Uuid
+  elapsed_sec      Int
+  elevation_gain_m Decimal?   @db.Decimal(7, 1)
+  avg_hr           Int?       @db.SmallInt
+  max_hr           Int?       @db.SmallInt
+  avg_cadence      Int?       @db.SmallInt
+  splits           Json       @db.JsonB
+  route            Json       @db.JsonB
 
   activity    activities @relation(fields: [activity_id], references: [id], onDelete: Cascade)
 }
@@ -181,6 +189,8 @@ model workout_routines {
   name              String              @db.VarChar(100)
   is_default        Boolean             @default(false)
   position          Int
+  // 'STRENGTH' | 'RUN' | 'WALK' (CHECK só no SQL da migration). Escolhido na criação, não muda. GPS = sem exercícios.
+  activity_type     String              @default("STRENGTH") @db.VarChar(10)
   created_at        DateTime?           @default(now()) @db.Timestamptz
 
   user              users               @relation(fields: [user_id], references: [id], onDelete: Cascade)

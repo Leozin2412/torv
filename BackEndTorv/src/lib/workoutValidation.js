@@ -7,9 +7,15 @@ const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 // um membro fabricaria um treino para cada dia desde que entrou no grupo (backdating) e forjaria o ranking.
 const BACKDATE_WINDOW_MS = 72 * 60 * 60 * 1000;
 
-function checkRoutineBody(body) {
+// storedType: tipo gravado da rotina (PUT) ou null (POST). O tipo é escolhido na criação e não muda.
+function checkRoutineBody(body, storedType = null) {
   if (!body.name.trim()) return 'name must not be blank';
-  const i = body.exercises.findIndex((e) => e.reps_min > e.reps_max);
+  if (storedType && body.activity_type && body.activity_type !== storedType) return 'activity_type cannot change';
+  const type = storedType ?? body.activity_type ?? 'STRENGTH';
+  const exercises = body.exercises ?? [];
+  if (type !== 'STRENGTH') return exercises.length ? 'run and walk routines have no exercises' : null;
+  if (exercises.length === 0) return 'exercises must have at least 1 item';
+  const i = exercises.findIndex((e) => e.reps_min > e.reps_max);
   if (i !== -1) return `exercises[${i}]: reps_min must be <= reps_max`;
   return null;
 }
@@ -29,4 +35,6 @@ function checkSessionBody(body, now = Date.now()) {
   return null;
 }
 
-module.exports = { checkRoutineBody, checkExerciseBody, checkSessionBody };
+module.exports = {
+  checkRoutineBody, checkExerciseBody, checkSessionBody, MIN_SESSION_START, FUTURE_TOLERANCE_MS, BACKDATE_WINDOW_MS,
+};

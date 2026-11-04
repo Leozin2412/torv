@@ -79,4 +79,13 @@ export const styles = StyleSheet.create({
   addText: { color: colors.brand, fontFamily: fontFamily.semiBold, fontSize: 15 },
   error: { color: colors.error, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20, marginBottom: 4 },
   deleteButton: { marginTop: 12 },
+
+  // Tipo da rotina: seletor ao criar, etiqueta fixa ao editar (o tipo não muda depois de criada).
+  segmented: { flexDirection: 'row', padding: 4, marginBottom: 16, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  segment: { flex: 1, minHeight: TOUCH, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, paddingHorizontal: 4 },
+  segmentActive: { backgroundColor: colors.brandTint },
+  segmentText: { color: colors.textSecondary, fontFamily: fontFamily.semiBold, fontSize: 13 },
+  segmentTextActive: { color: colors.brand },
+  typeTag: { alignSelf: 'flex-start', marginBottom: 16, color: colors.brand, backgroundColor: colors.brandTint, fontFamily: fontFamily.semiBold, fontSize: 13, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 4, overflow: 'hidden' },
+  typeHint: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20, marginBottom: 16 },
 });

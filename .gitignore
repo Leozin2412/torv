@@ -29,3 +29,7 @@ build/
 
 # graphify per-session hook state
 graphify-out/cache/hook_sessions/
+graphify-out/cache/last_query_stamp
+
+# Real GPX samples dropped at the repo root (private location data); test fixtures are anonymized copies
+/*.gpx

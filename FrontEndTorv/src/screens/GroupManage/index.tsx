@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import axios from 'axios';
-import { ArrowLeft, Check, X, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, Check, ChevronRight, X, Trash2 } from 'lucide-react-native';
 
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
@@ -131,15 +131,28 @@ export default function GroupManage() {
     );
   }
 
-  const personRow = (p: { id: string; name: string; username: string }, actions: React.ReactNode) => (
-    <View key={p.id} style={styles.personRow}>
-      <View style={styles.personBody}>
+  // Nome e @ abrem o perfil (só membros); as ações ficam IRMÃS do botão, nunca dentro (botão em botão quebra no web).
+  const personRow = (p: { id: string; name: string; username: string }, actions: React.ReactNode, onOpen?: () => void) => {
+    const body = (
+      <>
         <Text style={styles.personName} numberOfLines={1}>{p.name}</Text>
         <Text style={styles.personUser} numberOfLines={1}>@{p.username}</Text>
+      </>
+    );
+    return (
+      <View key={p.id} style={styles.personRow}>
+        {onOpen ? (
+          <TouchableOpacity style={[styles.personBody, styles.personOpen]} onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Ver perfil de ${p.name}`}>
+            <View style={styles.personText}>{body}</View>
+            <ChevronRight color={colors.textSecondary} size={16} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.personBody}>{body}</View>
+        )}
+        {actions}
       </View>
-      {actions}
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -191,7 +204,7 @@ export default function GroupManage() {
             m.is_me ? <Text style={styles.you}>você</Text> : (
               <TouchableOpacity style={styles.iconButton} onPress={() => setConfirm({ kind: 'remove', row: m })} accessibilityRole="button" accessibilityLabel={`Remover ${m.name}`}><Trash2 color={colors.error} size={20} /></TouchableOpacity>
             )
-          )))}
+          ), () => navigation.navigate('MemberProfile', { userId: m.user_id })))}
         </Card>
 
         <Button title="Excluir grupo" danger outline onPress={() => setConfirm({ kind: 'delete' })} />

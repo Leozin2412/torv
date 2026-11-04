@@ -178,12 +178,12 @@ INSERT INTO food_logs (user_id, food_name, calories, logged_date, macros_json) V
 ('A1000000-0000-0000-0000-000000000003', 'Whey Protein', 120, now(), '{"protein":24,"carbs":3,"fat":1}'),
 ('A1000000-0000-0000-0000-000000000004', 'Maçã', 80, now(), '{"protein":0,"carbs":20,"fat":0}');
 
--- Inserindo algumas atividades passadas (para não engatilhar as triggers de teste ainda)
+-- Inserindo algumas atividades passadas (para não engatilhar as triggers de teste ainda).
+-- activity_type só aceita STRENGTH, RUN ou WALK (activities_activity_type_check, em "Regras BD.sql");
+-- só RUN/WALK têm linha em activity_gps_data, que o app cria ao importar um GPX (não semeada aqui).
 INSERT INTO activities (id, user_id, activity_type, title, start_time, duration_sec, calories, distance_m) VALUES
-(gen_random_uuid(), 'A1000000-0000-0000-0000-000000000001', 'Caminhada', 'Caminhada Matinal', now() - interval '1 day', 1920, 180, 3200),
-(gen_random_uuid(), 'A1000000-0000-0000-0000-000000000002', 'Corrida', 'Corrida ao ar livre', now() - interval '1 day', 1692, 312, 5400),
-(gen_random_uuid(), 'A1000000-0000-0000-0000-000000000004', 'Yoga', 'Yoga Flow', now() - interval '1 day', 1800, 150, NULL),
-(gen_random_uuid(), 'A1000000-0000-0000-0000-000000000005', 'Ciclismo', 'Pedalada noturna', now(), 3600, 500, 15000);
+(gen_random_uuid(), 'A1000000-0000-0000-0000-000000000001', 'WALK', 'Caminhada Matinal', now() - interval '1 day', 1920, 180, 3200),
+(gen_random_uuid(), 'A1000000-0000-0000-0000-000000000002', 'RUN', 'Corrida ao ar livre', now() - interval '1 day', 1692, 312, 5400);
 
 -- Treino de musculação finalizado no app: activity_type = 'STRENGTH', title = nome da
 -- rotina, routine_id = rotina usada. Só um STRENGTH por (user_id, start_time)

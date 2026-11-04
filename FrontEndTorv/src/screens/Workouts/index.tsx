@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { Play, Plus, Sparkles, Dumbbell, ChevronRight } from 'lucide-react-native';
+import { Play, Plus, Sparkles, Dumbbell, ChevronRight, Upload } from 'lucide-react-native';
 
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
@@ -10,6 +10,7 @@ import { ConfirmModal } from '../../components/ConfirmModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import { workoutsApi, type RoutineList, type RoutineSummary } from '../../services/workouts';
 import { loadDraft, clearDraft } from '../../utils/workoutDraft';
+import { activityLabel } from '../../utils/activities';
 import type { SessionState } from '../../utils/workoutSession';
 import type { AppNavigation } from '../../routes/types';
 import { colors } from '../../theme/tokens';
@@ -175,14 +176,30 @@ export default function Workouts() {
                       {r.id === data.next_routine_id && <Text style={styles.nextTag}>Próximo</Text>}
                       {r.is_default && <Text style={styles.defaultTag}>Padrão</Text>}
                       {r.completed_recently && <Text style={styles.doneTag}>Concluído</Text>}
+                      {r.activity_type !== 'STRENGTH' && <Text style={styles.typeTag}>{activityLabel(r.activity_type)}</Text>}
                     </View>
                     <Text style={styles.routineName}>{r.name}</Text>
-                    <Text style={styles.routineMeta}>{r.exercise_count} {r.exercise_count === 1 ? 'exercício' : 'exercícios'} · {r.set_count} {r.set_count === 1 ? 'série' : 'séries'}</Text>
+                    <Text style={styles.routineMeta}>
+                      {r.activity_type !== 'STRENGTH'
+                        ? 'Importe o .gpx do seu treino'
+                        : `${r.exercise_count} ${r.exercise_count === 1 ? 'exercício' : 'exercícios'} · ${r.set_count} ${r.set_count === 1 ? 'série' : 'séries'}`}
+                    </Text>
                   </View>
                   {/* Com treino em andamento, só o banner continua/descarta: nada de 2 treinos ao mesmo tempo. */}
-                  {draft && <ChevronRight color={colors.textSecondary} size={20} />}
+                  {draft && r.activity_type === 'STRENGTH' && <ChevronRight color={colors.textSecondary} size={20} />}
                 </TouchableOpacity>
-                {!draft && (
+                {r.activity_type !== 'STRENGTH' && (
+                  // Importar não inicia treino: vale mesmo com um treino de musculação em andamento.
+                  <TouchableOpacity
+                    style={styles.importButton}
+                    onPress={() => navigation.navigate('GpxImport', { routineId: r.id })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Importar GPX em ${r.name}`}
+                  >
+                    <Upload color={colors.background} size={20} />
+                  </TouchableOpacity>
+                )}
+                {r.activity_type === 'STRENGTH' && !draft && (
                   <TouchableOpacity
                     style={styles.playButton}
                     onPress={() => startRoutine(r)}

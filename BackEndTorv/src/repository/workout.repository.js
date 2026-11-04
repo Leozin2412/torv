@@ -2,29 +2,11 @@ const { randomUUID } = require('node:crypto');
 const { Prisma } = require('@prisma/client');
 const prisma = require('../lib/prisma');
 const groupsRepository = require('./groups.repository');
+const { serializePerUser, lockAndCheckDailyCap } = require('./activityWrites');
 
 // Transação interativa + createMany com ids gerados aqui: nested create faria 1 INSERT por linha
 // (~40 idas e voltas até o banco num plano de 5 dias).
 const TX = { timeout: 15000 };
-// Teto de treinos STRENGTH por dia UTC do started_at. O ranking dos grupos desempata por activities_count, e cada POST
-// cria uma atividade: sem teto, repetir POSTs com started_at diferentes no mesmo dia forjaria o desempate.
-const MAX_SESSIONS_PER_DAY = 5;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// Fila por usuário, em memória: cada chamada espera a anterior do mesmo userId (mesmo que ela tenha falhado), roda fn e
-// devolve o resultado ou o erro de fn ao chamador. Sem ela, uma rajada do mesmo usuário abre N transações interativas, todas
-// presas no advisory lock, e esgota o pool (connection_limit=5): as excedentes viram 500 e os outros usuários ficam lentos.
-// A entrada do Map sai quando a chamada é a última da fila, então o Map não cresce.
-// ponytail: fila de 1 processo. Com várias instâncias o advisory lock continua garantindo o teto, mas a rajada volta a
-// segurar conexões; subir para limite por usuário (rate limit) se virar instância múltipla.
-const sessionQueues = new Map();
-function serializePerUser(userId, fn) {
-  const run = (sessionQueues.get(userId) ?? Promise.resolve()).then(fn);
-  const tail = run.then(() => {}, () => {});
-  sessionQueues.set(userId, tail);
-  tail.then(() => { if (sessionQueues.get(userId) === tail) sessionQueues.delete(userId); });
-  return run;
-}
 
 const visibleExercise = (userId) => ({ OR: [{ owner_user_id: null }, { owner_user_id: userId }] });
 
@@ -49,6 +31,7 @@ const routineDetailSelect = {
   id: true,
   name: true,
   is_default: true,
+  activity_type: true,
   routine_exercises: {
     orderBy: { position: 'asc' },
     select: {
@@ -120,7 +103,7 @@ class WorkoutRepository {
     return prisma.workout_routines.findMany({
       where: { user_id: userId },
       orderBy: [{ is_default: 'desc' }, { position: 'asc' }, { created_at: 'asc' }],
-      select: { id: true, name: true, is_default: true, routine_exercises: { select: { _count: { select: { sets: true } } } } },
+      select: { id: true, name: true, is_default: true, activity_type: true, routine_exercises: { select: { _count: { select: { sets: true } } } } },
     });
   }
 
@@ -147,16 +130,22 @@ class WorkoutRepository {
     return prisma.workout_routines.findFirst({ where: { id, user_id: userId }, select: routineDetailSelect });
   }
 
+  // Tipo gravado da rotina do usuário (o PUT valida contra ele); null = não existe ou é de outro usuário.
+  async getRoutineType(userId, id) {
+    const row = await prisma.workout_routines.findFirst({ where: { id, user_id: userId }, select: { activity_type: true } });
+    return row?.activity_type ?? null;
+  }
+
   async countVisibleExercises(userId, ids) {
     return prisma.exercises.count({ where: { id: { in: ids }, ...visibleExercise(userId) } });
   }
 
-  async createRoutine(userId, { name, exercises }) {
+  async createRoutine(userId, { name, activity_type, exercises }) {
     const id = randomUUID();
     await prisma.$transaction(async (tx) => {
       const { _max } = await tx.workout_routines.aggregate({ where: { user_id: userId }, _max: { position: true } });
-      await tx.workout_routines.create({ data: { id, user_id: userId, name, position: (_max.position ?? 0) + 1 } });
-      await insertExercises(tx, [exerciseRows(id, exercises)]);
+      await tx.workout_routines.create({ data: { id, user_id: userId, name, activity_type, position: (_max.position ?? 0) + 1 } });
+      if (exercises.length > 0) await insertExercises(tx, [exerciseRows(id, exercises)]);
     }, TX);
     return id;
   }
@@ -167,7 +156,7 @@ class WorkoutRepository {
       const { count } = await tx.workout_routines.updateMany({ where: { id, user_id: userId }, data: { name } });
       if (count === 0) return false;
       await tx.routine_exercises.deleteMany({ where: { routine_id: id } });
-      await insertExercises(tx, [exerciseRows(id, exercises)]);
+      if (exercises.length > 0) await insertExercises(tx, [exerciseRows(id, exercises)]);
       return true;
     }, TX);
   }
@@ -229,28 +218,19 @@ class WorkoutRepository {
     return row?.id ?? null;
   }
 
-  // Rotina/exercício que não é do usuário (ou foi apagado no meio do treino) não é vinculado nem
+  // Rotina de GPS, rotina/exercício que não é do usuário (ou foi apagado no meio do treino) não é vinculado nem
   // tem o nome exposto: vira "Treino livre" / "Exercício removido".
   async createSession(userId, { routine_id, started_at, duration_sec, sets }) {
     const ids = [...new Set(sets.map((s) => s.exercise_id))];
     const [routine, exercises] = await Promise.all([
-      routine_id ? prisma.workout_routines.findFirst({ where: { id: routine_id, user_id: userId }, select: { id: true, name: true } }) : null,
+      routine_id ? prisma.workout_routines.findFirst({ where: { id: routine_id, user_id: userId, activity_type: 'STRENGTH' }, select: { id: true, name: true } }) : null,
       prisma.exercises.findMany({ where: { id: { in: ids }, ...visibleExercise(userId) }, select: { id: true, name: true } }),
     ]);
     const nameById = new Map(exercises.map((e) => [e.id, e.name]));
 
     return serializePerUser(userId, () => prisma.$transaction(async (tx) => {
-      // Serializa os salvamentos do mesmo usuário até o fim da transação (o lock cai no commit/rollback). Sem ele, POSTs
-      // paralelos contam o mesmo total antes de qualquer insert e furam o teto por dia (READ COMMITTED). userId parametrizado.
-      await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${userId}::text))`);
-      // Contagem na mesma transação do insert, antes dele. A idempotência por started_at exato vem antes, no controller.
-      const dayStart = new Date(Math.floor(started_at.getTime() / DAY_MS) * DAY_MS);
-      const sameDay = await tx.activities.count({
-        where: { user_id: userId, activity_type: 'STRENGTH', start_time: { gte: dayStart, lt: new Date(dayStart.getTime() + DAY_MS) } },
-      });
-      if (sameDay >= MAX_SESSIONS_PER_DAY) {
-        throw Object.assign(new Error('too many sessions on that day'), { code: 'SESSION_DAY_LIMIT' });
-      }
+      // Fila do usuário + lock + teto do dia (todos os tipos). A idempotência por started_at exato vem antes, no controller.
+      await lockAndCheckDailyCap(tx, userId, started_at);
       const activity = await tx.activities.create({
         data: {
           user_id: userId,

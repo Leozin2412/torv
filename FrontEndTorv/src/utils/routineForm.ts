@@ -1,4 +1,4 @@
-import type { Exercise, RoutineDetail, RoutineInput } from '../services/workouts';
+import type { Exercise, RoutineDetail, RoutineInput, RoutineType } from '../services/workouts';
 
 // Estado do editor de rotina (texto cru dos inputs) e conversão pro corpo do POST/PUT /workouts/routines.
 // Mesmos limites do backend.
@@ -61,10 +61,11 @@ export function parseWeight(text: string): number | null {
 
 const parseReps = (text: string) => (/^\d+$/.test(text.trim()) ? Number(text) : NaN);
 
-export function buildRoutineInput(name: string, items: FormExercise[]): { error: string } | { body: RoutineInput } {
+export function buildRoutineInput(name: string, items: FormExercise[], type: RoutineType = 'STRENGTH'): { error: string } | { body: RoutineInput } {
   const trimmed = name.trim();
   if (!trimmed) return { error: 'Dê um nome para a rotina.' };
   if (trimmed.length > LIMITS.name) return { error: 'O nome pode ter no máximo 100 caracteres.' };
+  if (type !== 'STRENGTH') return { body: { name: trimmed, activity_type: type, exercises: [] } };
   if (items.length === 0) return { error: 'Adicione pelo menos um exercício.' };
   if (items.length > LIMITS.exercises) return { error: 'Máximo de 20 exercícios por rotina.' };
 
@@ -77,5 +78,5 @@ export function buildRoutineInput(name: string, items: FormExercise[]): { error:
     if (weights.some((w) => w !== null && !(w >= 0 && w <= LIMITS.weight))) return { error: `${it.name}: carga entre 0 e 999,99 kg.` };
     exercises.push({ exercise_id: it.exercise_id, reps_min: min, reps_max: max, rest_sec: it.rest_sec, sets: weights.map((weight_kg) => ({ weight_kg })) });
   }
-  return { body: { name: trimmed, exercises } };
+  return { body: { name: trimmed, activity_type: 'STRENGTH', exercises } };
 }

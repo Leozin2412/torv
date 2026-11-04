@@ -17,15 +17,22 @@ const MuscleGroup = Type.Union(MUSCLE_GROUPS.map((g) => Type.Literal(g)));
 // (Number: null→0; Null: 0→null); com type ['number','null'] só coage o que não for nenhum dos dois.
 const Weight = Type.Unsafe({ type: ['number', 'null'], minimum: 0, maximum: 999.99 });
 
+// Rotina de musculação (com exercícios) ou de GPS (só nome; cada treino vem de um .gpx importado).
+const ROUTINE_TYPES = ['STRENGTH', 'RUN', 'WALK'];
+const RoutineType = Type.Union(ROUTINE_TYPES.map((t) => Type.Literal(t)));
+
 const RoutineBody = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 100 }),
-  exercises: Type.Array(Type.Object({
+  // Só na criação; no PUT, igual ao gravado ou omitido (checkRoutineBody).
+  activity_type: Type.Optional(RoutineType),
+  // Musculação exige pelo menos 1 (checkRoutineBody); corrida e caminhada, nenhum.
+  exercises: Type.Optional(Type.Array(Type.Object({
     exercise_id: Uuid,
     reps_min: Type.Integer({ minimum: 1, maximum: 100 }),
     reps_max: Type.Integer({ minimum: 1, maximum: 100 }),
     rest_sec: Type.Integer({ minimum: 0, maximum: 600 }),
     sets: Type.Array(Type.Object({ weight_kg: Weight }), { minItems: 1, maxItems: 10 }),
-  }), { minItems: 1, maxItems: 20 }),
+  }), { maxItems: 20 })),
 });
 
 const PlanSuggestion = Type.Object({
@@ -38,6 +45,7 @@ const RoutineList = Type.Object({
     id: Type.String(),
     name: Type.String(),
     is_default: Type.Boolean(),
+    activity_type: Type.String(),
     exercise_count: Type.Integer(),
     set_count: Type.Integer(),
     completed_recently: Type.Boolean(),
@@ -50,6 +58,7 @@ const RoutineDetail = Type.Object({
   id: Type.String(),
   name: Type.String(),
   is_default: Type.Boolean(),
+  activity_type: Type.String(),
   exercises: Type.Array(Type.Object({
     id: Type.String(),
     exercise_id: Type.String(),
@@ -130,5 +139,5 @@ const RoutineWeightsBody = Type.Object({
 module.exports = {
   MUSCLE_GROUPS, errors, IdParams, RoutineBody, RoutineList, RoutineDetail,
   ExerciseBody, Exercise, SessionBody, SessionDetail, SessionEditBody, RoutineWeightsBody,
-  Uuid, UUID_PATTERN,
+  Uuid, UUID_PATTERN, ROUTINE_TYPES,
 };

@@ -11,6 +11,17 @@ test('checkRoutineBody: nome em branco e reps_min > reps_max', () => {
   assert.equal(checkRoutineBody({ name: 'A', exercises: [exercise({ reps_min: 12, reps_max: 12 })] }), null);
 });
 
+test('checkRoutineBody: rotina de GPS sem exercícios, musculação com pelo menos 1, tipo não muda', () => {
+  assert.equal(checkRoutineBody({ name: 'Corrida leve', activity_type: 'RUN' }), null);
+  assert.equal(checkRoutineBody({ name: 'Caminhada', activity_type: 'WALK', exercises: [] }), null);
+  assert.equal(checkRoutineBody({ name: 'Corrida', activity_type: 'RUN', exercises: [exercise()] }), 'run and walk routines have no exercises');
+  assert.equal(checkRoutineBody({ name: 'Peito', exercises: [] }), 'exercises must have at least 1 item');
+  assert.equal(checkRoutineBody({ name: 'Peito' }), 'exercises must have at least 1 item');
+  assert.equal(checkRoutineBody({ name: 'Corrida', activity_type: 'WALK' }, 'RUN'), 'activity_type cannot change');
+  assert.equal(checkRoutineBody({ name: 'Corrida 2' }, 'RUN'), null); // omitido no PUT: vale o gravado
+  assert.equal(checkRoutineBody({ name: 'Peito', exercises: [exercise()] }, 'STRENGTH'), null);
+});
+
 test('checkExerciseBody: nome em branco', () => {
   assert.equal(checkExerciseBody({ name: 'Remada', muscle_group: 'Costas' }), null);
   assert.equal(checkExerciseBody({ name: ' \t ', muscle_group: 'Costas' }), 'name must not be blank');

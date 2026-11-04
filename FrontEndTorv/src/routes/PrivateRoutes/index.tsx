@@ -19,6 +19,9 @@ import GroupDetailScreen from '../../screens/GroupDetail';
 import GroupEditorScreen from '../../screens/GroupEditor';
 import GroupManageScreen from '../../screens/GroupManage';
 import JoinGroupScreen from '../../screens/JoinGroup';
+import MemberProfileScreen from '../../screens/MemberProfile';
+import GpxImportScreen from '../../screens/GpxImport';
+import GpsActivityScreen from '../../screens/GpsActivity';
 import { takePendingJoin } from '../../utils/pendingJoin';
 import type { AppNavigation, AppStackParamList, TabParamList } from '../types';
 
@@ -150,5 +153,8 @@ export const PrivateRoutes = ({ user }: { user: any }) => (
     <Stack.Screen name="GroupEditor" component={GroupEditorScreen} />
     <Stack.Screen name="GroupManage" component={GroupManageScreen} />
     <Stack.Screen name="JoinGroup" component={JoinGroupScreen} />
+    <Stack.Screen name="MemberProfile" component={MemberProfileScreen} />
+    <Stack.Screen name="GpxImport" component={GpxImportScreen} />
+    <Stack.Screen name="GpsActivity" component={GpsActivityScreen} />
   </Stack.Navigator>
 );

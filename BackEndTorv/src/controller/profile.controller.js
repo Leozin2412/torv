@@ -15,7 +15,6 @@ class ProfileController {
       }
 
       const profile = user.user_profiles || {};
-      const streaks = user.user_streaks || {};
       const measurement = user.user_measurements?.[0];
 
       reply.status(200).send({
@@ -31,12 +30,8 @@ class ProfileController {
         weight_kg: measurement?.weight_kg != null ? Number(measurement.weight_kg) : null,
         height_cm: measurement?.height_cm ?? null,
         age: profile.birth_date ? ageOn(profile.birth_date, new Date()) : null,
-        streak: streaks.current_streak || 0,
-        longest_streak: streaks.longest_streak || 0,
-        workouts_in_month: user.workout_counts.month,
         followers: 0,
         following: 0,
-        total_workouts: user.workout_counts.total,
         welcome_pending: profile.welcomed_at == null,
       });
     } catch (error) {

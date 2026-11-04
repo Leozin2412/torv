@@ -1,20 +1,8 @@
 const activitiesRepository = require('../repository/activities.repository');
+const { currentStreak, isCalendarDay, localDayBounds } = require('../lib/activityStats');
+const { activityPage } = require('../lib/activityPage');
 
 const DEFAULT_LIMIT = 20;
-const DAY_MS = 86400000;
-const isoDay = (ms) => new Date(ms).toISOString().slice(0, 10);
-
-// days: dias locais com treino, mais recente primeiro. Viva se treinou em `date` ou ontem; conta dias consecutivos para trás.
-function streakFrom(days, dateMs) {
-  let expected = days[0] === isoDay(dateMs) ? dateMs : dateMs - DAY_MS;
-  let streak = 0;
-  for (const day of days) {
-    if (day !== isoDay(expected)) break;
-    streak += 1;
-    expected -= DAY_MS;
-  }
-  return streak;
-}
 
 class ActivitiesController {
   async listActivities(request, reply) {
@@ -28,35 +16,21 @@ class ActivitiesController {
       }
     }
     const rows = await activitiesRepository.listActivities(request.user.userId, { type, from: fromDate, before: beforeDate, limit });
-    return reply.send({
-      activities: rows.map((a) => ({
-        id: a.id,
-        activity_type: a.activity_type,
-        title: a.title ?? '',
-        start_time: a.start_time.toISOString(),
-        duration_sec: a.duration_sec ?? 0,
-        set_count: a._count.workout_sets,
-      })),
-      // Página cheia: pode haver mais. O cliente manda isto como `before` na próxima chamada.
-      next_before: rows.length === limit ? rows[rows.length - 1].start_time.toISOString() : null,
-    });
+    return reply.send(activityPage(rows, limit));
   }
 
   async getSummary(request, reply) {
     const { date, tz_offset_min: tzOffsetMin } = request.query;
-    const dateMs = Date.parse(`${date}T00:00:00Z`);
-    // pattern aceita 2026-02-31; Date normaliza, então a ida e volta denuncia.
-    if (Number.isNaN(dateMs) || isoDay(dateMs) !== date) {
+    if (!isCalendarDay(date)) {
       return reply.status(400).send({ error: 'querystring/date must be a valid calendar date' });
     }
-    const from = new Date(dateMs - tzOffsetMin * 60000); // meia-noite local em UTC
-    const before = new Date(from.getTime() + DAY_MS);
+    const { from, before } = localDayBounds(date, tzOffsetMin);
     const userId = request.user.userId;
-    const [days, caloriesBurned] = await Promise.all([
-      activitiesRepository.strengthDays(userId, { before, tzOffsetMin }),
+    const [dayCounts, caloriesBurned] = await Promise.all([
+      activitiesRepository.dayCounts(userId, { before, tzOffsetMin }),
       activitiesRepository.caloriesBetween(userId, { from, before }),
     ]);
-    return reply.send({ streak_days: streakFrom(days, dateMs), calories_burned: caloriesBurned });
+    return reply.send({ streak_days: currentStreak(dayCounts.map((r) => r.day), date), calories_burned: caloriesBurned });
   }
 }
 

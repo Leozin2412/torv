@@ -1,7 +1,7 @@
 import api from './api';
 
 // Contrato de GET /activities (spec docs/superpowers/specs/2026-10-01-workout-history-design.md).
-export const ACTIVITY_TYPES = ['STRENGTH'] as const;
+export const ACTIVITY_TYPES = ['STRENGTH', 'RUN', 'WALK'] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
 export interface ActivityItem {
@@ -11,6 +11,7 @@ export interface ActivityItem {
   start_time: string; // ISO
   duration_sec: number;
   set_count: number;
+  distance_m: number | null; // metros; null na musculação (o GPX preenche)
 }
 
 export interface ActivityPage {

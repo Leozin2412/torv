@@ -10,6 +10,7 @@ function routineSummary(r) {
     id: r.id,
     name: r.name,
     is_default: r.is_default,
+    activity_type: r.activity_type,
     exercise_count: r.routine_exercises.length,
     set_count: r.routine_exercises.reduce((n, e) => n + e._count.sets, 0),
   };
@@ -20,6 +21,7 @@ function routineDetail(r) {
     id: r.id,
     name: r.name,
     is_default: r.is_default,
+    activity_type: r.activity_type,
     exercises: r.routine_exercises.map((e) => ({
       id: e.id,
       exercise_id: e.exercise_id,
@@ -44,20 +46,24 @@ async function routinesPayload(userId, inputs) {
     workoutRepository.recentRoutineIds(userId, new Date(Date.now() - RECENT_MS)),
   ]);
   const done = new Set(recent);
+  // "Próximo" gira só entre as rotinas de musculação; corrida e caminhada ficam fora do rodízio.
+  const strength = routines.filter((r) => r.activity_type === 'STRENGTH');
   return {
     routines: routines.map((r) => ({ ...routineSummary(r), completed_recently: done.has(r.id) })),
-    next_routine_id: nextRoutineId(routines, last),
+    next_routine_id: nextRoutineId(strength, last),
     plan_suggestion: planSuggestion(inputs),
   };
 }
 
 // Corpo já passou pelo schema; aqui entram as regras cruzadas e a visibilidade dos exercícios.
-async function prepareRoutine(userId, body) {
-  const error = checkRoutineBody(body);
+// storedType: tipo gravado (PUT) ou null (POST).
+async function prepareRoutine(userId, body, storedType = null) {
+  const error = checkRoutineBody(body, storedType);
   if (error) return { error };
-  const ids = [...new Set(body.exercises.map((e) => e.exercise_id))];
-  if (await workoutRepository.countVisibleExercises(userId, ids) !== ids.length) return { error: 'exercise not found' };
-  return { data: { name: body.name.trim(), exercises: body.exercises } };
+  const exercises = body.exercises ?? [];
+  const ids = [...new Set(exercises.map((e) => e.exercise_id))];
+  if (ids.length && await workoutRepository.countVisibleExercises(userId, ids) !== ids.length) return { error: 'exercise not found' };
+  return { data: { name: body.name.trim(), activity_type: storedType ?? body.activity_type ?? 'STRENGTH', exercises } };
 }
 
 function prepareExercise(body) {
@@ -88,7 +94,9 @@ class WorkoutController {
   async updateRoutine(request, reply) {
     const { userId } = request.user;
     const { id } = request.params;
-    const { error, data } = await prepareRoutine(userId, request.body);
+    const storedType = await workoutRepository.getRoutineType(userId, id);
+    if (!storedType) return reply.status(404).send(NOT_FOUND);
+    const { error, data } = await prepareRoutine(userId, request.body, storedType);
     if (error) return reply.status(400).send({ error });
     if (!await workoutRepository.updateRoutine(userId, id, data)) return reply.status(404).send(NOT_FOUND);
     return reply.send(routineDetail(await workoutRepository.getRoutine(userId, id)));

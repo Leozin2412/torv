@@ -2,27 +2,15 @@ const prisma = require('../lib/prisma');
 
 class ProfileRepository {
   // Queries em paralelo (1 RTT) em vez do include, que o Prisma roda em sequência. Mesmo shape do include.
+  // Streak e contagens saíram: o app lê de GET /users/:id/profile (lib/activityStats).
   async getUserProfile(userId) {
-    const now = new Date();
-    // Mês corrente em UTC: mesmo critério de data do trigger de streak (start_time::date).
-    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const strength = { user_id: userId, activity_type: 'STRENGTH' };
-    const [user, user_profiles, user_streaks, measurement, totalWorkouts, monthWorkouts] = await Promise.all([
+    const [user, user_profiles, measurement] = await Promise.all([
       prisma.users.findUnique({ where: { id: userId } }),
       prisma.user_profiles.findUnique({ where: { user_id: userId } }),
-      prisma.user_streaks.findUnique({ where: { user_id: userId } }),
       prisma.user_measurements.findFirst({ where: { user_id: userId }, orderBy: { recorded_at: 'desc' } }),
-      prisma.activities.count({ where: strength }),
-      prisma.activities.count({ where: { ...strength, start_time: { gte: monthStart } } }),
     ]);
     if (!user) return null;
-    return {
-      ...user,
-      user_profiles,
-      user_streaks,
-      user_measurements: measurement ? [measurement] : [],
-      workout_counts: { total: totalWorkouts, month: monthWorkouts },
-    };
+    return { ...user, user_profiles, user_measurements: measurement ? [measurement] : [] };
   }
 
   // Só a 1ª vez grava: repetir não muda o horário.

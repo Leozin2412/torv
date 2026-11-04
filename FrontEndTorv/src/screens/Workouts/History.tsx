@@ -4,13 +4,14 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Dumbbell, ChevronRight } from 'lucide-react-native';
 
 import { Card } from '../../components/Card';
+import { ActivityIcon } from '../../components/ActivityIcon';
 import { Button } from '../../components/Button';
 import { DatePickerModal } from '../../components/DatePickerModal';
 import { activitiesApi, ACTIVITY_TYPES, type ActivityItem, type ActivityType } from '../../services/activities';
 import { ACTIVITY_LABELS, activityLabel } from '../../utils/activities';
 import { groupByDay, prependNew, type DayGroup } from '../../utils/historyGroups';
 import { PERIOD_PRESETS, periodKey, periodRange, customLabel, type Period } from '../../utils/historyPeriod';
-import { formatClock } from '../../utils/clock';
+import { activityMeta } from '../../utils/activityMeta';
 import { toISODate } from '../../utils/date';
 import { getSessionsVersion } from '../../utils/sessionsVersion';
 import type { AppNavigation } from '../../routes/types';
@@ -19,11 +20,6 @@ import { historyStyles as styles } from './historyStyles';
 
 const PAGE = 20;
 const ALL: Period = { kind: 'all' };
-const pad = (n: number) => String(n).padStart(2, '0');
-const timeOf = (iso: string) => {
-  const d = new Date(iso);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
 // Filtro inteiro (tipo + período) numa string, para comparar com o que está carregado.
 const filterKey = (type: ActivityType | undefined, period: Period) => `${type ?? 'ALL'}|${periodKey(period)}`;
 
@@ -200,38 +196,38 @@ export default function History({ onShowRoutines }: { onShowRoutines: () => void
           const content = (
             <Card style={styles.item}>
               <View style={styles.itemIcon}>
-                <Dumbbell color={colors.brand} size={20} />
+                <ActivityIcon type={item.activity_type} color={colors.brand} size={20} />
               </View>
               <View style={styles.itemInfo}>
                 <Text style={styles.itemTitle} numberOfLines={2}>{title}</Text>
-                <Text style={styles.itemMeta}>
-                  {timeOf(item.start_time)} · {formatClock(item.duration_sec)} · {item.set_count} {item.set_count === 1 ? 'série' : 'séries'}
-                </Text>
+                <Text style={styles.itemMeta}>{activityMeta(item)}</Text>
               </View>
-              {item.activity_type === 'STRENGTH' && <ChevronRight color={colors.textSecondary} size={20} />}
+              <ChevronRight color={colors.textSecondary} size={20} />
             </Card>
           );
-          // Só musculação tem resumo (GET /workouts/sessions/:id).
-          return item.activity_type === 'STRENGTH' ? (
+          const strength = item.activity_type === 'STRENGTH';
+          return (
             <TouchableOpacity
-              onPress={() => navigation.navigate('WorkoutSummary', { sessionId: item.id })}
+              onPress={() => (strength
+                ? navigation.navigate('WorkoutSummary', { sessionId: item.id })
+                : navigation.navigate('GpsActivity', { activityId: item.id }))}
               accessibilityRole="button"
-              accessibilityLabel={`Ver treino ${title}`}
+              accessibilityLabel={`Ver ${strength ? 'treino' : 'atividade'} ${title}`}
             >
               {content}
             </TouchableOpacity>
-          ) : content;
+          );
         }}
         ListEmptyComponent={period.kind === 'all' ? (
           <Card style={styles.empty}>
             <Dumbbell color={colors.textSecondary} size={28} />
-            <Text style={styles.message}>Nenhum treino ainda</Text>
+            <Text style={styles.message}>Nenhuma atividade ainda</Text>
             <Button title="Ver meus treinos" outline onPress={onShowRoutines} />
           </Card>
         ) : (
           <Card style={styles.empty}>
             <Dumbbell color={colors.textSecondary} size={28} />
-            <Text style={styles.message}>Nenhum treino nesse período</Text>
+            <Text style={styles.message}>Nenhuma atividade nesse período</Text>
           </Card>
         )}
         ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.brand} style={styles.footer} /> : null}

@@ -10,20 +10,21 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { SelectCard } from '../../components/SelectCard';
 import { Card } from '../../components/Card';
+import { ActivityIcon } from '../../components/ActivityIcon';
 import { GoalConflictWarning } from '../../components/GoalConflictWarning';
 import { NutritionSuggestionModal, type NutritionSuggestion } from '../../components/NutritionSuggestionModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import { activitiesApi, type ActivityItem } from '../../services/activities';
+import { usersApi, localDayQuery, type MemberProfileData } from '../../services/users';
+import { ActivityHeatmap } from '../../components/ActivityHeatmap';
+import { deltaLabel, plural } from '../../utils/profileStats';
+import { activityMeta } from '../../utils/activityMeta';
+import { activityLabel } from '../../utils/activities';
 import type { AppNavigation } from '../../routes/types';
 import { colors } from '../../theme/tokens';
 import { FITNESS_LEVELS, GOAL_OPTIONS, fitnessLevelLabel } from '../../utils/profileOptions';
 import { styles } from './styles';
-
-const formatDayMonth = (iso: string) => {
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
 
 export default function Profile() {
   const { user, logout } = useContext(AuthContext);
@@ -33,6 +34,7 @@ export default function Profile() {
   const [foodLogs, setFoodLogs] = useState<any[]>([]);
   const [profileData, setProfileData] = useState<any>(null);
   const [sessions, setSessions] = useState<ActivityItem[]>([]);
+  const [stats, setStats] = useState<MemberProfileData | null>(null);
   const [loadingAvatar, setLoadingAvatar] = useState(false);
 
   // Edit States
@@ -57,12 +59,14 @@ export default function Profile() {
     useCallback(() => {
       async function loadData() {
         try {
-          const [dietResponse, profileResponse, recentSessions] = await Promise.all([
+          const [dietResponse, profileResponse, recentSessions, profileStats] = await Promise.all([
             api.get('/diet/summary'),
             api.get('/profile'),
-            activitiesApi.list({ type: 'STRENGTH', limit: 5 }).then((p) => p.activities).catch(() => [] as ActivityItem[]),
+            activitiesApi.list({ limit: 5 }).then((p) => p.activities).catch(() => [] as ActivityItem[]),
+            user?.id ? usersApi.profile(user.id, localDayQuery()).catch(() => null) : Promise.resolve(null),
           ]);
           setSessions(recentSessions);
+          setStats(profileStats);
           if (dietResponse.data && dietResponse.data.logs) {
             const formattedLogs = dietResponse.data.logs.map((log: any) => ({
               id: String(log.id),
@@ -85,7 +89,7 @@ export default function Profile() {
         }
       }
       loadData();
-    }, [])
+    }, [user?.id])
   );
 
   const handlePickImage = async () => {
@@ -284,8 +288,8 @@ export default function Profile() {
             <Text style={styles.statLabel}>seguindo</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{profileData?.total_workouts || 0}</Text>
-            <Text style={styles.statLabel}>treinos</Text>
+            <Text style={styles.statValue}>{stats?.total_activities ?? 0}</Text>
+            <Text style={styles.statLabel}>atividades</Text>
           </View>
         </View>
 
@@ -296,16 +300,25 @@ export default function Profile() {
               <Flame color={colors.textSecondary} size={14} />
               <Text style={styles.gridCardTitle}>Streak</Text>
             </View>
-            <Text style={styles.gridCardValue}>{profileData?.streak || 0}</Text>
-            <Text style={styles.gridCardHighlight}>Recorde: {profileData?.longest_streak || 0} dias</Text>
+            <Text style={styles.gridCardValue}>{stats?.streak.current ?? 0}</Text>
+            <Text style={styles.gridCardHighlight}>Recorde: {plural(stats?.streak.longest ?? 0, 'dia', 'dias')}</Text>
           </Card>
           <Card style={styles.gridCard}>
             <Text style={styles.gridCardTitle}>Este mês</Text>
-            <Text style={styles.gridCardValue}>{profileData?.workouts_in_month || 0}</Text>
-            <Text style={styles.gridCardSubtitle}>Treinos</Text>
-            <Text style={styles.gridCardHighlight}>+0 vs mês passado</Text>
+            <Text style={styles.gridCardValue}>{stats?.month.active_days ?? 0}</Text>
+            <Text style={styles.gridCardSubtitle}>
+              {(stats?.month.active_days ?? 0) === 1 ? 'Dia ativo' : 'Dias ativos'} · {plural(stats?.month.activities ?? 0, 'atividade', 'atividades')}
+            </Text>
+            {stats && <Text style={styles.gridCardHighlight}>{deltaLabel(stats.month.active_days_delta)}</Text>}
           </Card>
         </View>
+
+        {stats && (
+          <Card style={styles.calendarCard}>
+            <Text style={styles.calendarTitle}>Atividade nos últimos 12 meses</Text>
+            <ActivityHeatmap start={stats.calendar.start} end={stats.calendar.end} days={stats.calendar.days} />
+          </Card>
+        )}
 
         {/* Objetivo */}
         <View style={styles.sectionHeaderRow}>
@@ -377,35 +390,43 @@ export default function Profile() {
         <Text style={styles.sectionTitle}>Atividade Física</Text>
 
         {sessions.length > 0 ? (
-          sessions.map((s) => (
-            <TouchableOpacity
-              key={s.id}
-              onPress={() => navigation.navigate('WorkoutSummary', { sessionId: s.id })}
-              accessibilityRole="button"
-              accessibilityLabel={`Ver treino ${s.title}`}
-            >
+          sessions.map((s) => {
+            const strength = s.activity_type === 'STRENGTH';
+            const title = s.title || activityLabel(s.activity_type);
+            const card = (
               <Card style={styles.listCard}>
                 <View style={styles.listCardIconContainer}>
-                  <Dumbbell color={colors.brand} size={22} />
+                  <ActivityIcon type={s.activity_type} color={colors.brand} size={22} />
                 </View>
                 <View style={styles.listCardContent}>
-                  <Text style={styles.listCardTitle}>{s.title}</Text>
-                  <Text style={styles.listCardSubtitle}>
-                    {formatDayMonth(s.start_time)} · {Math.max(1, Math.round(s.duration_sec / 60))} min · {s.set_count} {s.set_count === 1 ? 'série' : 'séries'}
-                  </Text>
+                  <Text style={styles.listCardTitle} numberOfLines={2}>{title}</Text>
+                  <Text style={styles.listCardSubtitle}>{activityMeta(s, { date: true })}</Text>
                 </View>
                 <ChevronRight color={colors.textSecondary} size={20} style={styles.listCardRight} />
               </Card>
-            </TouchableOpacity>
-          ))
+            );
+            // Musculação abre o resumo da sessão; corrida e caminhada, o resumo de GPS.
+            return (
+              <TouchableOpacity
+                key={s.id}
+                onPress={() => (strength
+                  ? navigation.navigate('WorkoutSummary', { sessionId: s.id })
+                  : navigation.navigate('GpsActivity', { activityId: s.id }))}
+                accessibilityRole="button"
+                accessibilityLabel={`Ver ${strength ? 'treino' : 'atividade'} ${title}`}
+              >
+                {card}
+              </TouchableOpacity>
+            );
+          })
         ) : (
           <Card style={styles.listCard}>
             <View style={styles.listCardIconContainer}>
               <Dumbbell color={colors.textSecondary} size={22} />
             </View>
             <View style={styles.listCardContent}>
-              <Text style={styles.listCardTitle}>Nenhum treino ainda</Text>
-              <Text style={styles.listCardSubtitle}>Seus treinos finalizados aparecem aqui.</Text>
+              <Text style={styles.listCardTitle}>Nenhuma atividade ainda</Text>
+              <Text style={styles.listCardSubtitle}>Suas atividades aparecem aqui.</Text>
             </View>
           </Card>
         )}

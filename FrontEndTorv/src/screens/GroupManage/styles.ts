@@ -33,7 +33,9 @@ export const styles = StyleSheet.create({
   },
 
   personRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 52, paddingVertical: 4 },
-  personBody: { flex: 1, minWidth: 0 },
+  personBody: { flex: 1, minWidth: 0, minHeight: 44, justifyContent: 'center' },
+  personOpen: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  personText: { flex: 1, minWidth: 0 },
   personName: { color: colors.text, fontFamily: fontFamily.semiBold, fontSize: 15 },
   personUser: { color: colors.textSecondary, fontFamily: fontFamily.regular, fontSize: 13, marginTop: 1 },
   rowActions: { flexDirection: 'row' },

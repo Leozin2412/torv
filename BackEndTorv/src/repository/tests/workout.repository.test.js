@@ -83,6 +83,15 @@ test('createSession: grava atividade e séries e recalcula o ranking na MESMA tr
   assert.deepEqual(calls.executeRaw[1].values, [USER]);
 });
 
+test('createSession: só vincula rotina de musculação (rotina de GPS vira "Treino livre")', async () => {
+  calls = fresh({ routine: null });
+  await workoutRepository.createSession(USER, { ...session('2026-10-06T12:00:00Z'), routine_id: ROUTINE });
+  assert.deepEqual(calls.findFirst[0].where, { id: ROUTINE, user_id: USER, activity_type: 'STRENGTH' });
+  const [, args] = calls.writes.find(([n]) => n === 'activities.create');
+  assert.equal(args.data.routine_id, null);
+  assert.equal(args.data.title, 'Treino livre');
+});
+
 test('deleteSession: só do dono e só STRENGTH; apagou → recalcula o ranking; não achou → não recalcula', async () => {
   calls = fresh({ deleted: 1 });
   assert.equal(await workoutRepository.deleteSession(USER, ACTIVITY), true);
@@ -136,13 +145,12 @@ const session = (started_at) => ({
 });
 
 // Teto por dia UTC do started_at: protege o ranking dos grupos (activities_count e o 1o desempate).
-test('createSession: conta os STRENGTH do usuario no dia UTC do started_at, ANTES de criar, e o 5o treino do dia passa', async () => {
-  calls = fresh({ dayCount: 4 }); // ja ha 4: o novo e o 5o
+test('createSession: conta as atividades de QUALQUER tipo do usuario no dia UTC do started_at, ANTES de criar, e a 5a passa', async () => {
+  calls = fresh({ dayCount: 4 });
   assert.equal(await workoutRepository.createSession(USER, session('2026-10-06T12:00:00Z')), ACTIVITY);
   assert.equal(calls.counts.length, 1);
   assert.deepEqual(calls.counts[0].where, {
     user_id: USER,
-    activity_type: 'STRENGTH',
     start_time: { gte: new Date('2026-10-06T00:00:00Z'), lt: new Date('2026-10-07T00:00:00Z') },
   });
   assert.deepEqual(calls.writes.map(([n]) => n), ['activities.create', 'workout_sets.createMany']);

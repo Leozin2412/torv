@@ -55,7 +55,7 @@ SELECT current_streak AS "Streak do João ANTES" FROM user_streaks WHERE user_id
 
 -- 2. O João acabou de finalizar um treino no App hoje! (A Trigger é ativada aqui)
 INSERT INTO activities (user_id, activity_type, title, start_time, duration_sec, calories)
-VALUES ('A1000000-0000-0000-0000-000000000001', 'Musculação', 'Treino de Peito & Tríceps', now(), 3300, 420);
+VALUES ('A1000000-0000-0000-0000-000000000001', 'STRENGTH', 'Treino de Peito & Tríceps', now(), 3300, 420);
 
 -- 3. Consultando o estado DEPOIS do treino
 SELECT current_streak AS "Streak do João DEPOIS (Tem que ser 13)" FROM user_streaks WHERE user_id = 'A1000000-0000-0000-0000-000000000001';
