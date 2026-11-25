@@ -484,3 +484,29 @@ test('register: NUL em username → 400 antes de usernameExists e signUp', async
   assert.equal(profileRepository.usernameExists.mock.callCount(), 0);
   assert.equal(signUp.mock.callCount(), 0);
 });
+
+test('register: surrogate solto em name → 400 antes de signUp', async (t) => {
+  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session, userId: UID }));
+  const app = await build(t);
+  const res = await post(app, '/auth/register', { ...validRegister, name: '\ud800' });
+  assert.equal(res.statusCode, 400);
+  assert.equal(signUp.mock.callCount(), 0);
+});
+
+test('register: surrogate solto em username → 400 antes de usernameExists e signUp', async (t) => {
+  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session, userId: UID }));
+  const app = await build(t);
+  const res = await post(app, '/auth/register', { ...validRegister, username: 'a\udc00' });
+  assert.equal(res.statusCode, 400);
+  assert.equal(profileRepository.usernameExists.mock.callCount(), 0);
+  assert.equal(signUp.mock.callCount(), 0);
+});
+
+test('register: par surrogate válido (emoji) no nome não é recusado', async (t) => {
+  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session, userId: UID }));
+  t.mock.method(profileRepository, 'saveSignupProfile', async () => {});
+  const app = await build(t);
+  const res = await post(app, '/auth/register', { ...validRegister, name: 'Ana 💪' });
+  assert.equal(res.statusCode, 201);
+  assert.equal(signUp.mock.callCount(), 1);
+});

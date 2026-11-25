@@ -1,8 +1,8 @@
 const { Type } = require('@sinclair/typebox');
 const authController = require('../controller/auth.controller');
 
-// NUL passa na validação mas o Postgres recusa na gravação (vira 502 só para e-mail novo).
-const NO_NUL = '^[^\\u0000]*$';
+// NUL e surrogate solto passam na validação mas o Postgres/Prisma recusa na gravação (502 só para e-mail novo). Pares válidos (emoji) passam: o ajv compila com flag u.
+const NO_NUL_OR_LONE_SURROGATE = '^[^\\u0000\\ud800-\\udfff]*$';
 // E-mail <= 254 (RFC 5321): sem teto, a chave do limiter e o corpo repassado ao provedor viram vetor de memória/banda.
 const Email = () => Type.String({ format: 'email', maxLength: 254 });
 
@@ -33,8 +33,8 @@ async function authRoutes(fastify) {
       body: Type.Object({
         email: Email(),
         password: Type.String({ minLength: 6, maxLength: 128 }),
-        name: Type.String({ minLength: 1, maxLength: 100, pattern: NO_NUL }),
-        username: Type.Optional(Type.String({ minLength: 1, maxLength: 100, pattern: NO_NUL })),
+        name: Type.String({ minLength: 1, maxLength: 100, pattern: NO_NUL_OR_LONE_SURROGATE }),
+        username: Type.Optional(Type.String({ minLength: 1, maxLength: 100, pattern: NO_NUL_OR_LONE_SURROGATE })),
         birth_date: Type.String({ format: 'date', description: 'YYYY-MM-DD' }),
         weight_kg: Type.Number(),
         height_cm: Type.Number(),
