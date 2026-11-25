@@ -1,6 +1,6 @@
 # Proteção de dados sensíveis (LGPD) — design
 
-Data: 2026-11-25 · Branch: `feature/criptografia-dados-sensiveis` · Status: aguardando aprovação
+Data: 2026-11-25 · Branch: `feature/criptografia-dados-sensiveis` · Status: aprovado pelo desenvolvedor em 2026-11-25 (com o UXCam incluído)
 
 ## Intenção
 O desenvolvedor quer o TORV de acordo com a LGPD ("a questão é a LGPD mesmo e quero estar de acordo").
@@ -26,14 +26,15 @@ cópias em texto puro fora do nosso controle, como os metadados do Supabase Auth
    - `user_measurements.weight_kg`, `user_measurements.height_cm`;
    - `activity_gps_data.avg_hr`, `activity_gps_data.max_hr`, `activity_gps_data.splits`, `activity_gps_data.route`;
    - `nutrition_targets.basis_json` (inteiro).
-4. **Contrato da API inalterado:** mesmas rotas, corpos e respostas. O app não muda.
+4. **Contrato da API inalterado:** mesmas rotas, corpos e respostas.
+5. **UXCam sem dado pessoal nas gravações:** todas as telas gravadas com desfoque (ver H).
 
 ## Fora do escopo
 - **Gênero e data de nascimento** continuam legíveis em `user_profiles` (decisão do desenvolvedor: análises
   futuras; não são dados sensíveis no art. 5º, II da LGPD). Eles saem dos metadados/JWT como todo o perfil.
 - Distância, calorias, durações, elevação, cadência, dieta (`food_logs`, metas) e cargas de treino: ficam
   como estão (o ranking e os totais somam no SQL; não estão na lista).
-- Mascaramento no UXCam do texto exibido nas telas (pendência separada; ver "Para decidir").
+- Política de privacidade e consentimento para o UXCam (texto jurídico, não código).
 - Ferramenta de rotação de chave (só o prefixo de versão agora).
 - Projeto Supabase separado para desenvolvimento.
 
@@ -129,9 +130,19 @@ O e-mail vem de `request.user.email` (claim do token). O resto da resposta não 
   as telas mostram os valores certos. Contas apagadas no fim.
 - Os testes atuais de acesso negado continuam passando.
 
-## Para decidir (desenvolvedor)
-- **UXCam:** grava vídeo das telas e só mascara campos de digitação. Peso, altura e e-mail exibidos como
-  texto aparecem nas gravações enviadas a um terceiro. Proposta: tratar numa feature separada.
+### H. UXCam
+- Hoje: `App.tsx` liga `occludeAllTextFields(true)` e a gravação de vídeo; o texto exibido (peso, e-mail,
+  nomes, fotos, rota desenhada) aparece nas gravações enviadas ao UXCam. O SDK 6.0.25 não tem opção para
+  esconder todo texto exibido, só campos de digitação, a tela inteira ou views marcadas.
+- Decisão (minha): desfoque em **todas** as telas, passando `occlusions: [new UXBlur()]` em
+  `startWithConfiguration`. Continua mantendo `occludeAllTextFields(true)`. O painel segue com nomes de
+  tela, fluxo e toques; nenhuma tela nova vaza por esquecimento.
+- Rejeitadas: marcar cada view sensível com `UXCamOccludedView` (fácil esquecer uma) e esconder só uma
+  lista de telas (quase toda tela mostra nome, foto ou dado de saúde).
+- O comentário de `App.tsx` que pede mascaramento no painel é atualizado.
+- O UXCam continua sem identificar o usuário (nenhum `setUserIdentity`).
+- Verificação: só em aparelho com a chave do UXCam; o desenvolvedor confere no painel que a gravação
+  sai desfocada.
 
 ## Deixado para o construtor
 - Nomes internos dos helpers nos repositórios e o SQL exato da migration.
