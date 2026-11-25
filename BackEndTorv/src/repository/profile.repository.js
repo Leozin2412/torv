@@ -61,7 +61,7 @@ class ProfileRepository {
   }
 
   // Cadastro: o trigger só cria users; perfil, medida cifrada e streak vêm daqui, atômicos.
-  // Reenvio de signup (conta não confirmada) atualiza o perfil e troca a medida em vez de duplicar.
+  // Idempotente (upsert/deleteMany), mas o controller só chama pra conta criada na própria requisição.
   async saveSignupProfile(userId, { weight_kg, height_cm, ...profile }) {
     await prisma.$transaction(async (tx) => {
       await tx.user_profiles.upsert({ where: { user_id: userId }, create: { user_id: userId, ...profile }, update: profile });

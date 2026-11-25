@@ -64,18 +64,16 @@ test('register: P2002 (target null) → deleteUser e 409 USERNAME_TAKEN', async 
   assert.deepEqual(del.mock.calls.map((c) => c.arguments), [[UID]]);
 });
 
-test('register: conta que já tinha perfil (re-signup) nunca é apagada no rollback', async (t) => {
+test('register: conta que já tinha perfil (re-signup) → não grava nem desfaz, 201 igual', async (t) => {
   t.mock.method(authProvider, 'signUp', async () => ({ session: null, userId: UID }));
   const del = t.mock.method(authProvider, 'deleteUser', async () => {});
   const app = await build(t);
   t.mock.method(profileRepository, 'profileExists', async () => true);
-  t.mock.method(profileRepository, 'saveSignupProfile', async () => { throw p2002(); });
-  let res = await post(app, '/auth/register', validRegister);
-  assert.equal(res.statusCode, 409);
-  assert.equal(res.json().code, 'USERNAME_TAKEN');
-  t.mock.method(profileRepository, 'saveSignupProfile', async () => { throw new Error('db down'); });
-  res = await post(app, '/auth/register', validRegister);
-  assert.equal(res.statusCode, 502);
+  const save = t.mock.method(profileRepository, 'saveSignupProfile', async () => {});
+  const res = await post(app, '/auth/register', validRegister);
+  assert.equal(res.statusCode, 201);
+  assert.deepEqual(res.json(), { session: null, confirmation_required: true });
+  assert.equal(save.mock.callCount(), 0);
   assert.equal(del.mock.callCount(), 0);
 });
 
