@@ -13,7 +13,7 @@ function validateProfileUpdate({ username, goal, fitness_level, weight_kg, heigh
     if (goals.length === 0 || goals.some((g) => !GOAL_NAMES.includes(g))) {
       return { error: 'goal must list one or more valid goals' };
     }
-    profileData.goal = goals.join(', ');
+    profileData.goal = [...new Set(goals)].join(', ');
   }
 
   if (fitness_level !== undefined) {
