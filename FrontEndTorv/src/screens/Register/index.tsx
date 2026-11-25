@@ -42,6 +42,8 @@ export default function Register() {
   const [nameError, setNameError] = useState('');
   const [registerError, setRegisterError] = useState('');
   const [emailSuggestion, setEmailSuggestion] = useState<string | null>(null);
+  // Texto da sugestão permanece após fechar: o modal não mostra "null" no fade-out.
+  const [showSuggestion, setShowSuggestion] = useState(false);
 
   const handleDateChange = (text: string) => {
     let clean = text.replace(/\D/g, '');
@@ -86,6 +88,7 @@ export default function Register() {
       const suggestion = suggestEmailDomain(email);
       if (suggestion) {
         setEmailSuggestion(suggestion);
+        setShowSuggestion(true);
         return;
       }
     }
@@ -283,18 +286,18 @@ export default function Register() {
         )}
       </View>
       <ConfirmModal
-        visible={emailSuggestion !== null}
+        visible={showSuggestion}
         title="Confira seu e-mail"
         message={`Você quis dizer ${emailSuggestion}?`}
         confirmLabel="Corrigir"
         cancelLabel="Manter como digitei"
         onConfirm={() => {
           if (emailSuggestion) setEmail(emailSuggestion);
-          setEmailSuggestion(null);
+          setShowSuggestion(false);
           setStep(1);
         }}
         onCancel={() => {
-          setEmailSuggestion(null);
+          setShowSuggestion(false);
           setStep(1);
         }}
       />
