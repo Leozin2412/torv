@@ -7,7 +7,7 @@ const images = require('../lib/imageUpload');
 class ProfileController {
   async getProfile(request, reply) {
     try {
-      const { userId } = request.user;
+      const { userId, email } = request.user;
       const user = await profileRepository.getUserProfile(userId);
 
       if (!user) {
@@ -19,7 +19,7 @@ class ProfileController {
 
       reply.status(200).send({
         id: user.id,
-        email: user.email,
+        email, // do JWT: public.users não guarda mais e-mail
         username: profile.username,
         name: profile.name,
         fitness_level: profile.fitness_level,

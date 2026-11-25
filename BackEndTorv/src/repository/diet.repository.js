@@ -1,4 +1,8 @@
 const prisma = require('../lib/prisma');
+const { encryptField, decryptField } = require('../lib/fieldCrypto');
+
+const ctx = (table, column, userId) => ({ table, column, userId });
+const encBasis = (basis, userId) => encryptField(basis, ctx('nutrition_targets', 'basis_json', userId));
 
 class DietRepository {
   async getDietDataByDate(userId, targetDate) {
@@ -97,20 +101,22 @@ class DietRepository {
       birthDate: profile.birth_date,
       fitnessLevel: profile.fitness_level,
       goals: profile.goal,
-      weightKg: measurement?.weight_kg ?? null,
-      heightCm: measurement?.height_cm ?? null,
+      weightKg: decryptField(measurement?.weight_kg, ctx('user_measurements', 'weight_kg', userId)),
+      heightCm: decryptField(measurement?.height_cm, ctx('user_measurements', 'height_cm', userId)),
     };
   }
 
   async getNutritionTargets(userId) {
-    return await prisma.nutrition_targets.findUnique({ where: { user_id: userId } });
+    const row = await prisma.nutrition_targets.findUnique({ where: { user_id: userId } });
+    return row && { ...row, basis_json: decryptField(row.basis_json, ctx('nutrition_targets', 'basis_json', userId)) };
   }
 
   async updateTargetsBasis(userId, basis) {
+    const basis_json = encBasis(basis, userId);
     return await prisma.nutrition_targets.upsert({
       where: { user_id: userId },
-      update: { basis_json: basis, updated_at: new Date() },
-      create: { user_id: userId, basis_json: basis, updated_at: new Date() },
+      update: { basis_json, updated_at: new Date() },
+      create: { user_id: userId, basis_json, updated_at: new Date() },
     });
   }
 
@@ -120,7 +126,7 @@ class DietRepository {
       protein_g: targets.protein_g,
       carbs_g: targets.carbs_g,
       fat_g: targets.fat_g,
-      basis_json: targets.basis_json ?? null,
+      basis_json: encBasis(targets.basis_json, userId),
       updated_at: new Date(),
     };
     return await prisma.nutrition_targets.upsert({

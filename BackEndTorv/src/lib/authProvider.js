@@ -50,12 +50,17 @@ function toSession(d) {
 
 const isClientError = (status) => status >= 400 && status < 500;
 
-async function signUp(email, password, metadata) {
-  const { status, data } = await call('/signup', { email, password, data: metadata });
-  if (status >= 200 && status < 300) return { session: toSession(data) };
+// Sem metadados: dado de perfil não vai pro Auth (user_metadata fica em auth.users e em todo JWT). userId vem do GoTrue nesta resposta.
+async function signUp(email, password) {
+  const { status, data } = await call('/signup', { email, password });
+  if (status >= 200 && status < 300) {
+    // E-mail já confirmado: o GoTrue responde 200 com usuário falso (identities vazio). Trata como sem userId pra não virar oráculo de existência.
+    if (Array.isArray(data.identities) && data.identities.length === 0) return { session: null, userId: null };
+    return { session: toSession(data), userId: data.user?.id ?? data.id ?? null };
+  }
   // Reenvio < 60 s de conta não confirmada: responde igual a um cadastro novo (sem sessão), pra não virar oráculo de existência.
   // swallowed só pro controller logar (sem e-mail).
-  if (data.error_code === 'over_email_send_rate_limit') return { session: null, swallowed: data.error_code };
+  if (data.error_code === 'over_email_send_rate_limit') return { session: null, userId: null, swallowed: data.error_code };
   if (['user_already_exists', 'email_exists'].includes(data.error_code)) throw new AuthError('EMAIL_TAKEN');
   if (['weak_password', 'email_address_invalid', 'validation_failed'].includes(data.error_code)) throw new AuthError('INVALID_INPUT');
   throw new AuthError('PROVIDER');
@@ -101,4 +106,19 @@ async function signOut(accessToken) {
   if (status >= 300) throw new AuthError('PROVIDER');
 }
 
-module.exports = { AuthError, signUp, signIn, verifyEmail, resendSignup, refresh, signOut };
+// Desfaz um signup cujo perfil não pôde ser gravado. Chave secreta só no header, nunca em log/erro.
+async function deleteUser(userId) {
+  let res;
+  try {
+    const key = process.env.SUPABASE_SECRET_KEY;
+    res = await fetch(`${process.env.SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+      method: 'DELETE',
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+  } catch {
+    throw new AuthError('PROVIDER');
+  }
+  if (res.status !== 200 && res.status !== 404) throw new AuthError('PROVIDER');
+}
+
+module.exports = { AuthError, signUp, deleteUser, signIn, verifyEmail, resendSignup, refresh, signOut };

@@ -36,27 +36,39 @@ class AuthController {
     const age = ageOn(birth_date, new Date());
     if (!(age >= 10 && age <= 120)) return reply.status(400).send({ error: 'birth_date must give an age between 10 and 120' });
 
-    // Sem username o trigger gera um, então só checa quando veio.
-    // ponytail: check-then-signup tem race; duas contas com o mesmo username ao mesmo tempo → a 2ª cai no 502 do trigger (unique). Fechar só se virar problema real.
+    // Pre-check evita criar conta à toa; a corrida entre dois cadastros cai no P2002 do saveSignupProfile (409 + conta desfeita).
     if (username && await profileRepository.usernameExists(username)) {
       return reply.status(409).send({ error: 'Username already taken', code: 'USERNAME_TAKEN' });
     }
 
-    // Chaves = o que o trigger handle_new_user lê de raw_user_meta_data.
-    const metadata = {
-      name,
-      username,
-      birth_date,
-      weight: v.measurement.weight_kg,
-      height: v.measurement.height_cm,
-      gender,
-      fitness_level: v.profileData.fitness_level,
-      goal: v.profileData.goal,
-    };
-
     try {
-      const { session, swallowed } = await authProvider.signUp(email, password, metadata);
+      const { session, userId, swallowed } = await authProvider.signUp(email, password);
       if (swallowed) request.log.warn({ error_code: swallowed }, 'register swallowed provider error');
+      // Sem userId (reenvio engolido): a conta já existe e o perfil foi gravado no 1º cadastro.
+      // Re-signup de conta pendente devolve o mesmo userId: não grava nada (endpoint sem auth; senão qualquer um sobrescreveria o perfil alheio). O perfil do 1º cadastro fica; ajuste depois do login via PUT /profile.
+      if (userId && !(await profileRepository.profileExists(userId))) {
+        try {
+          await profileRepository.saveSignupProfile(userId, {
+            username: username ?? `user_${userId.slice(0, 8)}`,
+            name,
+            birth_date: new Date(birth_date),
+            gender,
+            fitness_level: v.profileData.fitness_level,
+            goal: v.profileData.goal,
+            weight_kg: v.measurement.weight_kg,
+            height_cm: v.measurement.height_cm,
+          });
+        } catch (err) {
+          // Conta criada nesta requisição sem perfil é inutilizável: desfaz o signup. Log só com código, nunca corpo/e-mail/senha/id.
+          await authProvider.deleteUser(userId).catch((e) => request.log.error({ code: e.code }, 'register rollback failed'));
+          // Qualquer P2002 aqui é username: as outras chaves únicas são user_id (upsert) e uuid aleatório. O Prisma manda meta.target null, então não dá pra checar o campo.
+          if (err.code === 'P2002') {
+            return reply.status(409).send({ error: 'Username already taken', code: 'USERNAME_TAKEN' });
+          }
+          request.log.error({ code: err.code }, 'register profile save failed');
+          return sendAuthError(request, reply, new authProvider.AuthError('PROVIDER'));
+        }
+      }
       return reply.status(201).send({ session, confirmation_required: session === null });
     } catch (err) {
       return sendAuthError(request, reply, err);

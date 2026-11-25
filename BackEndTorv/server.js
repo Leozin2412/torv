@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('./src/lib/fieldCrypto').assertKey();
 const Fastify = require('fastify');
 const { LogController } = Fastify;
 const { IMAGE_MAX_BYTES } = require('./src/lib/imageUpload');
