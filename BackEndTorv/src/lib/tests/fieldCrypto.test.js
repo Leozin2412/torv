@@ -63,6 +63,17 @@ test('assertKey: ausente, curta ou inválida → erro que não mostra o valor', 
   }
 });
 
+test('chave com espaço ou quebra de linha nas pontas funciona; 33 bytes continua recusada', (t) => {
+  const saved = process.env.DATA_ENCRYPTION_KEY;
+  t.after(() => { process.env.DATA_ENCRYPTION_KEY = saved; });
+  const c = encryptField(60.5, ctx);
+  process.env.DATA_ENCRYPTION_KEY = ` ${saved}\r\n`;
+  assert.doesNotThrow(() => assertKey());
+  assert.equal(decryptField(c, ctx), 60.5);
+  process.env.DATA_ENCRYPTION_KEY = crypto.randomBytes(33).toString('base64') + '\n';
+  assert.throws(() => assertKey(), /DATA_ENCRYPTION_KEY/);
+});
+
 test('tag truncada e IV de tamanho errado são recusados', () => {
   const [v, iv, tag, ct] = encryptField(60.5, ctx).split('.');
   const cut = (b64, n) => Buffer.from(b64, 'base64url').subarray(0, n).toString('base64url');

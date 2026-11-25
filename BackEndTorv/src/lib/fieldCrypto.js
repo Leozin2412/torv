@@ -5,7 +5,7 @@ const DECRYPT_ERROR = 'falha ao decifrar campo';
 
 // Lida a cada chamada para a troca de env nos testes valer.
 function getKey() {
-  const raw = process.env.DATA_ENCRYPTION_KEY;
+  const raw = process.env.DATA_ENCRYPTION_KEY?.trim(); // colar no Vercel/.env costuma deixar quebra de linha
   const key = raw ? Buffer.from(raw, 'base64') : null;
   if (!key || key.length !== 32 || key.toString('base64') !== raw) throw new Error(KEY_ERROR);
   return key;
