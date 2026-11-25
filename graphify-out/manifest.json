@@ -12,14 +12,14 @@
     "semantic_hash": "88d344e4551db164eee93a830460c079"
   },
   "BackEndTorv/server.js": {
-    "mtime": 1795627555.6388788,
-    "seen": 1795643526.723496,
-    "ast_hash": "3e6babac1d9d6f693ba259b97e557056",
+    "mtime": 1795645903.5959995,
+    "seen": 1795645935.5696082,
+    "ast_hash": "5c2741dd5e20fc0677894105077a4d83",
     "semantic_hash": ""
   },
   "BackEndTorv/src/controller/auth.controller.js": {
-    "mtime": 1795629813.506949,
-    "seen": 1795643526.7235036,
+    "mtime": 1795645903.5959995,
+    "seen": 1795645935.5702062,
     "ast_hash": "c1a74e3b3ffe760e0cc4378f7372ca29",
     "semantic_hash": ""
   },
@@ -30,8 +30,8 @@
     "semantic_hash": ""
   },
   "BackEndTorv/src/controller/profile.controller.js": {
-    "mtime": 1795628394.3481684,
-    "seen": 1795643526.723526,
+    "mtime": 1795645903.5959995,
+    "seen": 1795645935.572677,
     "ast_hash": "d44f5e7abb1d9c65f2741451fda4b74c",
     "semantic_hash": ""
   },
@@ -48,21 +48,21 @@
     "semantic_hash": ""
   },
   "BackEndTorv/src/repository/diet.repository.js": {
-    "mtime": 1795628142.1473646,
-    "seen": 1795643526.7237093,
+    "mtime": 1795645903.6128905,
+    "seen": 1795645935.59085,
     "ast_hash": "61682d5cae5ab903ef85bad75d75bf35",
     "semantic_hash": ""
   },
   "BackEndTorv/src/repository/profile.repository.js": {
-    "mtime": 1795629829.6938243,
-    "seen": 1795643526.723724,
+    "mtime": 1795645903.6188593,
+    "seen": 1795645935.5966108,
     "ast_hash": "67479ed65db7d2b9815f9bdb8775dae0",
     "semantic_hash": ""
   },
   "BackEndTorv/src/routes/auth.routes.js": {
-    "mtime": 1795641609.2465494,
-    "seen": 1795643526.723767,
-    "ast_hash": "e32642f90784d1328d591f9d67bfbac4",
+    "mtime": 1795645903.6188593,
+    "seen": 1795645935.6012936,
+    "ast_hash": "2f7ad5c0158e10f19705d560bea3c3cf",
     "semantic_hash": ""
   },
   "BackEndTorv/src/routes/diet.routes.js": {
@@ -132,9 +132,9 @@
     "semantic_hash": "0e5fa9ee1de7421260d9f6695b5b6683"
   },
   "FrontEndTorv/App.tsx": {
-    "mtime": 1795628588.9225497,
-    "seen": 1795643526.7238607,
-    "ast_hash": "19e74e57f7b3be99606c2256786136ad",
+    "mtime": 1795645903.6285522,
+    "seen": 1795645935.6144948,
+    "ast_hash": "4c471dc3342abc9596a40d2d91eeb0c3",
     "semantic_hash": ""
   },
   "FrontEndTorv/app.json": {
@@ -276,9 +276,9 @@
     "semantic_hash": ""
   },
   "FrontEndTorv/src/screens/Register/index.tsx": {
-    "mtime": 1795626518.6663525,
-    "seen": 1795643526.7241151,
-    "ast_hash": "7acd66076ff613e18f9c5f1e6dcbeada",
+    "mtime": 1795645035.8975844,
+    "seen": 1795645935.6664891,
+    "ast_hash": "16a27d02d8cdbcf421fceb9479c87d6a",
     "semantic_hash": ""
   },
   "FrontEndTorv/src/screens/Register/styles.ts": {
@@ -318,9 +318,9 @@
     "semantic_hash": "bacd65f789bd50dc173aafa4c96a892b"
   },
   "README.md": {
-    "mtime": 1795643471.8296552,
-    "seen": 1795643526.7244523,
-    "ast_hash": "116a3f54b6779e61c313add99b8a76af",
+    "mtime": 1795645903.6285522,
+    "seen": 1795645935.7298567,
+    "ast_hash": "5534ef4f8f287b717f25ff02193ca954",
     "semantic_hash": ""
   },
   "FrontEndTorv/inspiration/Captura de tela 2026-06-04 180802.png": {
@@ -546,14 +546,14 @@
     "semantic_hash": ""
   },
   "BackEndTorv/src/lib/authProvider.js": {
-    "mtime": 1795630137.4794958,
-    "seen": 1795643526.7235858,
+    "mtime": 1795645903.6016078,
+    "seen": 1795645935.5752406,
     "ast_hash": "6c55aeff2fc0f889c2ca8cf3c0e4774e",
     "semantic_hash": ""
   },
   "BackEndTorv/src/lib/fieldCrypto.js": {
-    "mtime": 1795630191.0066054,
-    "seen": 1795643526.7235894,
+    "mtime": 1795645903.6022055,
+    "seen": 1795645935.575245,
     "ast_hash": "a535c92553053ca8b6cf40063a05eafa",
     "semantic_hash": ""
   },
@@ -594,9 +594,9 @@
     "semantic_hash": ""
   },
   "BackEndTorv/src/lib/profileValidation.js": {
-    "mtime": 1795639843.6359825,
-    "seen": 1795643526.7236187,
-    "ast_hash": "a652c768969d5d8eb77ce47175228b82",
+    "mtime": 1795645903.6032395,
+    "seen": 1795645935.5787535,
+    "ast_hash": "01f75a55100816db1547e55f77313930",
     "semantic_hash": ""
   },
   "BackEndTorv/src/lib/tests/activityPage.test.js": {
@@ -618,15 +618,15 @@
     "semantic_hash": ""
   },
   "BackEndTorv/src/lib/tests/authProvider.test.js": {
-    "mtime": 1795630129.8055754,
-    "seen": 1795643526.7236345,
-    "ast_hash": "7354445711180940af3f2d26843d2218",
+    "mtime": 1795645903.6032395,
+    "seen": 1795645935.580467,
+    "ast_hash": "1eb7c4e55139d8a6be495e45c2a8c42f",
     "semantic_hash": ""
   },
   "BackEndTorv/src/lib/tests/fieldCrypto.test.js": {
-    "mtime": 1795630185.7786274,
-    "seen": 1795643526.7236383,
-    "ast_hash": "89671a73d33764157165df9ec3d73a3d",
+    "mtime": 1795645903.6032395,
+    "seen": 1795645935.5804758,
+    "ast_hash": "fb4aa00fcc2ec8a88105c0816e466fdf",
     "semantic_hash": ""
   },
   "BackEndTorv/src/lib/tests/fixtures/run-sample.json": {
@@ -672,9 +672,9 @@
     "semantic_hash": ""
   },
   "BackEndTorv/src/lib/tests/profileValidation.test.js": {
-    "mtime": 1795639830.713505,
-    "seen": 1795643526.7236671,
-    "ast_hash": "670e80633e07b09dadf7d80aa417ed48",
+    "mtime": 1795645903.6118417,
+    "seen": 1795645935.5844173,
+    "ast_hash": "b9468a8d858dbdf458933ce5c6964d87",
     "semantic_hash": ""
   },
   "BackEndTorv/src/lib/tests/workoutGenerator.test.js": {
@@ -738,8 +738,8 @@
     "semantic_hash": ""
   },
   "BackEndTorv/src/repository/gps.repository.js": {
-    "mtime": 1795628142.1473646,
-    "seen": 1795643526.723713,
+    "mtime": 1795645903.6163065,
+    "seen": 1795645935.59086,
     "ast_hash": "3df9d38d99aea6ffee83e14df0e7fd3d",
     "semantic_hash": ""
   },
@@ -762,14 +762,14 @@
     "semantic_hash": ""
   },
   "BackEndTorv/src/repository/tests/diet.repository.test.js": {
-    "mtime": 1795628109.63733,
-    "seen": 1795643526.723731,
-    "ast_hash": "20a3d3b86c5f2422ef77a3e8ac83f4c9",
+    "mtime": 1795645903.6188593,
+    "seen": 1795645935.5971956,
+    "ast_hash": "c0c69c4039d8565f6ff1799f82f051d7",
     "semantic_hash": ""
   },
   "BackEndTorv/src/repository/tests/gps.repository.test.js": {
-    "mtime": 1795628121.1098387,
-    "seen": 1795643526.7237344,
+    "mtime": 1795645903.6188593,
+    "seen": 1795645935.5972044,
     "ast_hash": "042cb4f599233ae917a553cf11d2cfa9",
     "semantic_hash": ""
   },
@@ -780,9 +780,9 @@
     "semantic_hash": ""
   },
   "BackEndTorv/src/repository/tests/profile.repository.test.js": {
-    "mtime": 1795629368.5095024,
-    "seen": 1795643526.7237413,
-    "ast_hash": "c7381c8ee051f3a1b7941e0317025308",
+    "mtime": 1795645903.6188593,
+    "seen": 1795645935.5978303,
+    "ast_hash": "4562cf0a664ca3b33c41f337943c4c6d",
     "semantic_hash": ""
   },
   "BackEndTorv/src/repository/tests/users.repository.test.js": {
@@ -870,9 +870,9 @@
     "semantic_hash": ""
   },
   "BackEndTorv/src/routes/tests/auth.routes.test.js": {
-    "mtime": 1795643471.8220406,
-    "seen": 1795643526.7238097,
-    "ast_hash": "c23e47169d281dda157dfc21cefaabdf",
+    "mtime": 1795645903.6188593,
+    "seen": 1795645935.6079173,
+    "ast_hash": "ed338dce4be0035e1ebf4664772291be",
     "semantic_hash": ""
   },
   "BackEndTorv/src/routes/tests/gps.routes.test.js": {
@@ -894,9 +894,9 @@
     "semantic_hash": ""
   },
   "BackEndTorv/src/routes/tests/profile.routes.test.js": {
-    "mtime": 1795628327.0639033,
-    "seen": 1795643526.7238245,
-    "ast_hash": "176de6c54d640432ec0f9ee8606a8f72",
+    "mtime": 1795645903.6285522,
+    "seen": 1795645935.6097014,
+    "ast_hash": "8efd169dff15dc842786bc5f122c81c9",
     "semantic_hash": ""
   },
   "BackEndTorv/src/routes/tests/users.routes.test.js": {
@@ -936,9 +936,9 @@
     "semantic_hash": ""
   },
   "BackEndTorv/src/tests/server.test.js": {
-    "mtime": 1795627561.5139072,
-    "seen": 1795643526.7238479,
-    "ast_hash": "9f5ab1d41340429cd4c621254cfc6ada",
+    "mtime": 1795645903.6285522,
+    "seen": 1795645935.613195,
+    "ast_hash": "dd1ecea4e157fdff39d32002d4467c47",
     "semantic_hash": ""
   },
   "FrontEndTorv/App.web.tsx": {
@@ -978,9 +978,9 @@
     "semantic_hash": ""
   },
   "FrontEndTorv/src/components/ConfirmModal/index.tsx": {
-    "mtime": 1795626518.6639102,
-    "seen": 1795643526.7239125,
-    "ast_hash": "588208360ebc68b5114fad9aa7925e2c",
+    "mtime": 1795645035.8950858,
+    "seen": 1795645935.6223185,
+    "ast_hash": "63163d878adb01e6e995da6afbbdfb62",
     "semantic_hash": ""
   },
   "FrontEndTorv/src/components/ConfirmModal/styles.ts": {
@@ -1758,9 +1758,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795643471.8296552,
-    "seen": 1795643526.7244332,
-    "ast_hash": "cceb39415aa44ff0a901d1fe4e954ff9",
+    "mtime": 1795645903.6285522,
+    "seen": 1795645935.727513,
+    "ast_hash": "bb8fef4454ba2d9abe7b88d2f45ac04b",
     "semantic_hash": ""
   },
   "FrontEndTorv/README_UXCAM.md": {
@@ -2106,45 +2106,45 @@
     "semantic_hash": ""
   },
   "docs/qa-protecao-dados-sensiveis-2026-11-25-round2.md": {
-    "mtime": 1795629222.7343173,
-    "seen": 1795643526.7246697,
-    "ast_hash": "82cfb19d76de119c4c3e36e280522a21",
+    "mtime": 1795645903.6285522,
+    "seen": 1795645935.7581804,
+    "ast_hash": "678badd67383561e1e6c6d1e85a6b9bf",
     "semantic_hash": ""
   },
   "docs/qa-protecao-dados-sensiveis-2026-11-25-round3.md": {
-    "mtime": 1795629518.1406083,
-    "seen": 1795643526.724673,
-    "ast_hash": "619e0bf59892738a12066d10a7d2bed9",
+    "mtime": 1795645903.6285522,
+    "seen": 1795645935.7581902,
+    "ast_hash": "0dcf00a9e32fe301aee4d3fe2966681e",
     "semantic_hash": ""
   },
   "docs/qa-protecao-dados-sensiveis-2026-11-25-round4.md": {
-    "mtime": 1795629954.980751,
-    "seen": 1795643526.7246764,
-    "ast_hash": "ceb68a9d8a8b04c205596c4bc164618c",
+    "mtime": 1795645903.6415894,
+    "seen": 1795645935.7581975,
+    "ast_hash": "6f9f3ec9eed04af1be6b21c544efb6d0",
     "semantic_hash": ""
   },
   "docs/qa-protecao-dados-sensiveis-2026-11-25-round5.md": {
-    "mtime": 1795630422.548511,
-    "seen": 1795643526.7246797,
-    "ast_hash": "b80d099a14e510270cd7f17ecf7030f8",
+    "mtime": 1795645903.6415894,
+    "seen": 1795645935.7582045,
+    "ast_hash": "a1fc5653796ad3e0d59853ff7a335653",
     "semantic_hash": ""
   },
   "docs/qa-protecao-dados-sensiveis-2026-11-25-round6.md": {
-    "mtime": 1795641456.5848243,
-    "seen": 1795643526.7246828,
-    "ast_hash": "fd17496108683d1f451e7cdda54593a1",
+    "mtime": 1795645903.6442142,
+    "seen": 1795645935.7582111,
+    "ast_hash": "e5f7f575301ece7d9731e8c2c3ae98e7",
     "semantic_hash": ""
   },
   "docs/qa-protecao-dados-sensiveis-2026-11-25-round7.md": {
-    "mtime": 1795642103.765594,
-    "seen": 1795643526.724686,
-    "ast_hash": "4429bbebdfa61fd891d679c314d9aab7",
+    "mtime": 1795645903.6442142,
+    "seen": 1795645935.7582173,
+    "ast_hash": "2049a24bd62aa5315a0fc592207b0eb9",
     "semantic_hash": ""
   },
   "docs/qa-protecao-dados-sensiveis-2026-11-25.md": {
-    "mtime": 1795629086.5792675,
-    "seen": 1795643526.724689,
-    "ast_hash": "f640bd8ac2157850dc6c6dd60f7bc11f",
+    "mtime": 1795645903.6442142,
+    "seen": 1795645935.7582233,
+    "ast_hash": "7088efe5f1a277f81407ad928cb7eda4",
     "semantic_hash": ""
   },
   "docs/qa-retroactive-date-filter-2026-09-18-round2.md": {
@@ -2412,33 +2412,33 @@
     "semantic_hash": ""
   },
   "docs/security-protecao-dados-sensiveis-2026-11-25-round2.md": {
-    "mtime": 1795629548.46535,
-    "seen": 1795643526.7248385,
-    "ast_hash": "d9efbdcc071cc910675ec0a8c280b14e",
+    "mtime": 1795645903.6477468,
+    "seen": 1795645935.785582,
+    "ast_hash": "8db6474fcc7f5887909f85160970a802",
     "semantic_hash": ""
   },
   "docs/security-protecao-dados-sensiveis-2026-11-25-round3.md": {
-    "mtime": 1795630473.3853393,
-    "seen": 1795643526.7248418,
-    "ast_hash": "38eff2b9ff1951781f2909b98002282b",
+    "mtime": 1795645903.6495345,
+    "seen": 1795645935.7855942,
+    "ast_hash": "3f3d09215309319a6031ef5d6cdbdde9",
     "semantic_hash": ""
   },
   "docs/security-protecao-dados-sensiveis-2026-11-25-round4.md": {
-    "mtime": 1795641550.9599369,
-    "seen": 1795643526.7248454,
-    "ast_hash": "00aab85750547f1eb2f5f4e582bb6053",
+    "mtime": 1795645903.6495345,
+    "seen": 1795645935.7856016,
+    "ast_hash": "b8f9dc98aeb737f55686582d2f9c7032",
     "semantic_hash": ""
   },
   "docs/security-protecao-dados-sensiveis-2026-11-25-round5.md": {
-    "mtime": 1795642151.009148,
-    "seen": 1795643526.7248483,
-    "ast_hash": "923d121e921a65bbae8bae2a569d9ed3",
+    "mtime": 1795645903.6495345,
+    "seen": 1795645935.7856097,
+    "ast_hash": "db510a36f361461d79f0eb7e7b4d511e",
     "semantic_hash": ""
   },
   "docs/security-protecao-dados-sensiveis-2026-11-25.md": {
-    "mtime": 1795629310.849341,
-    "seen": 1795643526.7248516,
-    "ast_hash": "38fdd2aa9a2ce02febd7917ebe899618",
+    "mtime": 1795645903.6495345,
+    "seen": 1795645935.7856176,
+    "ast_hash": "3e0811a75ad461f415e9b35655ae0b6f",
     "semantic_hash": ""
   },
   "docs/security-storage-photos-2026-10-11.md": {
@@ -2574,9 +2574,9 @@
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-25-protecao-dados-sensiveis.md": {
-    "mtime": 1795643471.8693054,
-    "seen": 1795643526.7249274,
-    "ast_hash": "aac829884e44b36bbabccb99f6d0d510",
+    "mtime": 1795645903.6495345,
+    "seen": 1795645935.8044589,
+    "ast_hash": "454d0240a7dea78cba72b14d235b22e0",
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-09-15-postgres-fastify-migration-design.md": {
@@ -2652,9 +2652,9 @@
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-11-25-protecao-dados-sensiveis-design.md": {
-    "mtime": 1795643471.8401444,
-    "seen": 1795643526.7249703,
-    "ast_hash": "f40483fb29431d245bd1794993c52646",
+    "mtime": 1795645903.6495345,
+    "seen": 1795645935.8114152,
+    "ast_hash": "ccd72dca863bc4c6ab4704645e1db77c",
     "semantic_hash": ""
   },
   "manualAPK.md": {
@@ -2771,15 +2771,69 @@
     "ast_hash": "e29ed57505d5e2ba90b7d47b7ad4e955",
     "semantic_hash": ""
   },
+  "FrontEndTorv/src/utils/emailTypo.test.mjs": {
+    "mtime": 1795645035.9009085,
+    "seen": 1795645935.6848736,
+    "ast_hash": "fc21d933588b1d8ab37926180c05d59d",
+    "semantic_hash": ""
+  },
+  "FrontEndTorv/src/utils/emailTypo.ts": {
+    "mtime": 1795645035.9009085,
+    "seen": 1795645935.684883,
+    "ast_hash": "95d307040b97b78ada819d8801a9c1b4",
+    "semantic_hash": ""
+  },
+  "docs/qa-alerta-dominio-email-2026-11-25-round2.md": {
+    "mtime": 1795645035.907739,
+    "seen": 1795645935.7321236,
+    "ast_hash": "162e200308e0692f37d19ed568b633ac",
+    "semantic_hash": ""
+  },
+  "docs/qa-alerta-dominio-email-2026-11-25.md": {
+    "mtime": 1795645035.912073,
+    "seen": 1795645935.7321346,
+    "ast_hash": "04fb2c57eb2bdb9b1680e16b143906c8",
+    "semantic_hash": ""
+  },
+  "docs/security-alerta-dominio-email-2026-11-25-round2.md": {
+    "mtime": 1795645035.9131286,
+    "seen": 1795645935.7716534,
+    "ast_hash": "a1894978bbd4b68d4632b5c8ea1943ef",
+    "semantic_hash": ""
+  },
+  "docs/security-alerta-dominio-email-2026-11-25.md": {
+    "mtime": 1795645035.9131286,
+    "seen": 1795645935.7716632,
+    "ast_hash": "d1543442221d654781cc6395af531b1f",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-11-25-alerta-dominio-email.md": {
+    "mtime": 1795645035.9131286,
+    "seen": 1795645935.804447,
+    "ast_hash": "d91ccdce6533aacecf4b45d1e77def66",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-11-25-alerta-dominio-email-design.md": {
+    "mtime": 1795645035.9131286,
+    "seen": 1795645935.811406,
+    "ast_hash": "46966c24b38ca26fc2ce44518dc28156",
+    "semantic_hash": ""
+  },
+  "revisar-2026-11-25-protecao-dados-sensiveis.md": {
+    "mtime": 1795643626.4367454,
+    "seen": 1795645935.8132527,
+    "ast_hash": "03bc8dba124966cd2dc4bc3c2314e5e3",
+    "semantic_hash": ""
+  },
   "BackEndTorv/package-lock.json": {
-    "mtime": 1795531513.1212244,
-    "seen": 1795643526.7250934,
-    "ast_hash": "f9cf6851614ece6c8d9f544a5ba1d254",
+    "mtime": 1795644252.3032815,
+    "seen": 1795645935.8335826,
+    "ast_hash": "3fb92cf31fe3468e0cce7584be683696",
     "semantic_hash": ""
   },
   "FrontEndTorv/package-lock.json": {
-    "mtime": 1795531513.2597058,
-    "seen": 1795643526.725097,
+    "mtime": 1795644292.3931477,
+    "seen": 1795645935.8335943,
     "ast_hash": "fa8bfe7b32c741e1a0b8ef756f71c4d7",
     "semantic_hash": ""
   }
