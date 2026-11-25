@@ -39,7 +39,7 @@ export function suggestEmailDomain(email: string): string | null {
     // Descarte por tamanho evita calcular a matriz para entradas enormes.
     if (Math.abs(candidate.length - domain.length) > 2) continue;
     const dist = osaDistance(domain, candidate);
-    if (dist >= 1 && dist < bestDist) {
+    if (dist < bestDist) {
       best = candidate;
       bestDist = dist;
     }
