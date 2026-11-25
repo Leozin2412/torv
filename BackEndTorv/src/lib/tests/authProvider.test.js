@@ -57,6 +57,13 @@ test('signUp: sem access_token (confirmação de e-mail) → sessão null e user
   assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456'), { session: null, userId: 'u1' });
 });
 
+test('signUp: 200 com identities vazio (usuário falso de e-mail já confirmado) → userId null', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => json(200, { id: 'fake', email: 'a@b.dev', identities: [] }));
+  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456'), { session: null, userId: null });
+  t.mock.method(globalThis, 'fetch', async () => json(200, { id: 'real', email: 'a@b.dev', identities: [{ id: 'i' }] }));
+  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456'), { session: null, userId: 'real' });
+});
+
 test('deleteUser: DELETE admin com a chave secreta; 200 e 404 ok', async (t) => {
   process.env.SUPABASE_SECRET_KEY = 'sk_test';
   const fetch = t.mock.method(globalThis, 'fetch', async () => json(200, {}));

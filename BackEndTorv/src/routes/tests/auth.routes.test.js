@@ -96,6 +96,17 @@ test('register: outro erro → deleteUser e 502; deleteUser falhando ainda dá 5
   for (const secret of [UID, 'a@b.dev', 'pw123456', 'secret-detail']) assert.ok(!logged.includes(secret), secret);
 });
 
+test('register: usuário falso do GoTrue (e-mail confirmado) → 201 igual, sem gravar nem apagar', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ id: UID, identities: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+  const save = t.mock.method(profileRepository, 'saveSignupProfile', async () => {});
+  const del = t.mock.method(authProvider, 'deleteUser', async () => {});
+  const app = await build(t);
+  const res = await post(app, '/auth/register', validRegister);
+  assert.equal(res.statusCode, 201);
+  assert.deepEqual(res.json(), { session: null, confirmation_required: true });
+  assert.equal(save.mock.callCount() + del.mock.callCount(), 0);
+});
+
 test('register swallowed (sem userId) → não grava perfil e 201', async (t) => {
   t.mock.method(authProvider, 'signUp', async () => ({ session: null, userId: null, swallowed: 'over_email_send_rate_limit' }));
   const save = t.mock.method(profileRepository, 'saveSignupProfile', async () => {});

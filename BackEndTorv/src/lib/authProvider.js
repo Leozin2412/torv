@@ -53,7 +53,11 @@ const isClientError = (status) => status >= 400 && status < 500;
 // Sem metadados: dado de perfil não vai pro Auth (user_metadata fica em auth.users e em todo JWT). userId vem do GoTrue nesta resposta.
 async function signUp(email, password) {
   const { status, data } = await call('/signup', { email, password });
-  if (status >= 200 && status < 300) return { session: toSession(data), userId: data.user?.id ?? data.id ?? null };
+  if (status >= 200 && status < 300) {
+    // E-mail já confirmado: o GoTrue responde 200 com usuário falso (identities vazio). Trata como sem userId pra não virar oráculo de existência.
+    if (Array.isArray(data.identities) && data.identities.length === 0) return { session: null, userId: null };
+    return { session: toSession(data), userId: data.user?.id ?? data.id ?? null };
+  }
   // Reenvio < 60 s de conta não confirmada: responde igual a um cadastro novo (sem sessão), pra não virar oráculo de existência.
   // swallowed só pro controller logar (sem e-mail).
   if (data.error_code === 'over_email_send_rate_limit') return { session: null, userId: null, swallowed: data.error_code };
