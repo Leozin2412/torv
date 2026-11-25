@@ -36,7 +36,7 @@ model user_profiles {
   username      String    @unique @db.VarChar(100)
   name          String    @db.VarChar(100)
   fitness_level String?   @db.VarChar(50)
-  goal          String?   @db.VarChar(100)
+  goal          String?   @db.VarChar(255)
   photo_url     String?   @db.VarChar(500)
   birth_date    DateTime? @db.Date
   gender        String?   @db.VarChar(50)
