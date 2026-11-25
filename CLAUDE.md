@@ -42,7 +42,7 @@ TORV is split into two isolated directories: `FrontEndTorv` and `BackEndTorv`.
 * **Prisma Rule:** Use Postgres-native types and attributes (`@db.Uuid`, `@db.VarChar(n)`, `@db.Timestamptz`, etc.). Schema and migration changes belong to the Torv Database recruit.
 
 ### 🔑 Environment variables
-`BackEndTorv/.env` (gitignored): `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET`, optional `PORT`.
+`BackEndTorv/.env` (gitignored): `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET`, `DATA_ENCRYPTION_KEY` (32 bytes base64, required at boot; losing it loses the encrypted data), optional `PORT`.
 `FrontEndTorv/.env` (gitignored): `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_UXCAM_KEY`.
 Never commit real values.
 

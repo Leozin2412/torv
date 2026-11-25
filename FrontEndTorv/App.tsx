@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import RNUxcam from 'react-native-ux-cam';
+import RNUxcam, { OcclusionType } from 'react-native-ux-cam';
 import AppRoot from './src/AppRoot';
 import { navigationRef } from './src/routes';
 
@@ -13,13 +13,13 @@ export default function App() {
   useEffect(() => {
     if (!uxcamAppKey) return;
 
-    // Proteção básica dos campos digitados. Ainda é preciso mascarar
-    // os dados pessoais/de saúde exibidos nas demais telas no UXCam.
+    // Todas as telas são gravadas desfocadas (LGPD); campos digitados ocultos.
     RNUxcam.occludeAllTextFields(true);
     RNUxcam.optIntoVideoRecording();
     RNUxcam.startWithConfiguration({
       userAppKey: uxcamAppKey,
       enableAutomaticScreenNameTagging: false,
+      occlusions: [{ type: OcclusionType.Blur }],
     });
 
     // O Torv usa React Navigation (não usa Expo Router).

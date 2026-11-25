@@ -13,7 +13,7 @@ const freePort = () => new Promise((resolve) => {
 async function start(t, env) {
   const port = await freePort();
   const child = spawn(process.execPath, [path.join(__dirname, '../../server.js')], {
-    env: { ...process.env, VERCEL: '', ...env, PORT: String(port) },
+    env: { ...process.env, DATA_ENCRYPTION_KEY: require('node:crypto').randomBytes(32).toString('base64'), VERCEL: '', ...env, PORT: String(port) },
     stdio: ['ignore', 'pipe', 'ignore'],
   });
   t.after(() => child.kill());

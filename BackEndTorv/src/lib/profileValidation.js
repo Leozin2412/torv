@@ -1,6 +1,7 @@
 const { GOAL_NAMES, ACTIVITY_FACTORS } = require('./nutritionCalculator');
 
-// Faixas iguais aos CHECK de user_measurements.
+// As colunas de medida são cifradas (sem CHECK no banco): estas faixas (20–300 kg, 50–250 cm) só existem aqui.
+// Peso com 2 casas e altura inteira, como as colunas antigas (Decimal(5,2) e Int).
 function validateProfileUpdate({ username, goal, fitness_level, weight_kg, height_cm } = {}) {
   const profileData = {};
   const measurement = {};
@@ -12,7 +13,7 @@ function validateProfileUpdate({ username, goal, fitness_level, weight_kg, heigh
     if (goals.length === 0 || goals.some((g) => !GOAL_NAMES.includes(g))) {
       return { error: 'goal must list one or more valid goals' };
     }
-    profileData.goal = goals.join(', ');
+    profileData.goal = [...new Set(goals)].join(', ');
   }
 
   if (fitness_level !== undefined) {
@@ -23,7 +24,7 @@ function validateProfileUpdate({ username, goal, fitness_level, weight_kg, heigh
   if (weight_kg !== undefined) {
     const w = Number(weight_kg);
     if (!(w >= 20 && w <= 300)) return { error: 'weight_kg must be between 20 and 300' };
-    measurement.weight_kg = w;
+    measurement.weight_kg = Number(w.toFixed(2));
   }
 
   if (height_cm !== undefined) {

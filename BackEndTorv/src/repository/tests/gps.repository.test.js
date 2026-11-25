@@ -1,5 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+
+process.env.DATA_ENCRYPTION_KEY = crypto.randomBytes(32).toString('base64');
+const { encryptField, decryptField } = require('../../lib/fieldCrypto');
 
 // Prisma falso: registra a ordem das chamadas (lock, contagem, inserts, recálculo) do teste em andamento.
 let calls = null;
@@ -61,10 +65,39 @@ test('createGpsActivity: lock → teto (todos os tipos) → atividade → métri
     duration_sec: 2877, distance_m: 8671.66, calories: 726,
   });
   const [, gps] = calls.writes.find(([n]) => n === 'gps.create');
-  assert.deepEqual(gps.data, {
-    activity_id: ACTIVITY, elapsed_sec: 2882, elevation_gain_m: 38.3, avg_hr: 151, max_hr: 169, avg_cadence: 175,
-    splits: metrics.splits, route: metrics.route,
-  });
+  const dec = (column) => decryptField(gps.data[column], { table: 'activity_gps_data', column, userId: USER });
+  for (const c of ['avg_hr', 'max_hr', 'splits', 'route']) assert.match(gps.data[c], /^v1\./, c);
+  assert.deepEqual({ avg_hr: dec('avg_hr'), max_hr: dec('max_hr'), splits: dec('splits'), route: dec('route') },
+    { avg_hr: 151, max_hr: 169, splits: metrics.splits, route: metrics.route });
+  const { avg_hr, max_hr, splits, route, ...plain } = gps.data;
+  assert.deepEqual(plain, { activity_id: ACTIVITY, elapsed_sec: 2882, elevation_gain_m: 38.3, avg_cadence: 175 });
+});
+
+test('createGpsActivity: avg_hr/max_hr nulos continuam null', async () => {
+  calls = fresh();
+  await repo.createGpsActivity(USER, { ...input, metrics: { ...metrics, avg_hr: null, max_hr: null } });
+  const [, gps] = calls.writes.find(([n]) => n === 'gps.create');
+  assert.equal(gps.data.avg_hr, null);
+  assert.equal(gps.data.max_hr, null);
+});
+
+const encG = (v, column, userId = USER) => encryptField(v, { table: 'activity_gps_data', column, userId });
+const gpsRow = (userId = USER) => ({
+  id: ACTIVITY, title: 'Corrida',
+  activity_gps_data: { elapsed_sec: 1, avg_cadence: 2, avg_hr: encG(151, 'avg_hr', userId), max_hr: encG(null, 'max_hr', userId), splits: encG(metrics.splits, 'splits', userId), route: encG(metrics.route, 'route', userId) },
+});
+
+test('getGpsActivity: devolve os valores originais decifrados', async () => {
+  calls = fresh({ activity: gpsRow() });
+  const a = await repo.getGpsActivity(USER, ACTIVITY);
+  assert.deepEqual(a.activity_gps_data, { elapsed_sec: 1, avg_cadence: 2, avg_hr: 151, max_hr: null, splits: metrics.splits, route: metrics.route });
+  calls = fresh({ activity: null });
+  assert.equal(await repo.getGpsActivity(USER, ACTIVITY), null);
+});
+
+test('getGpsActivity: cifra de outro dono lança', async () => {
+  calls = fresh({ activity: gpsRow('99999999-9999-4999-8999-999999999999') });
+  await assert.rejects(repo.getGpsActivity(USER, ACTIVITY), /falha ao decifrar campo/);
 });
 
 test('createGpsActivity: 6a atividade do dia (de qualquer tipo) → SESSION_DAY_LIMIT, nada gravado nem recalculado', async () => {

@@ -62,9 +62,17 @@ PUBLISHABLE_KEY="<chave publishable/anon>"
 SUPABASE_SECRET_KEY="<chave secreta - nunca expor no front-end>"
 SUPABASE_STORAGE_BUCKET="<nome do bucket de fotos>"
 
+# Criptografia de campos sensíveis (obrigatória: o servidor não sobe sem ela)
+DATA_ENCRYPTION_KEY="<32 bytes em base64>"
+
 # Opcional
 PORT=3000
 ```
+
+**`DATA_ENCRYPTION_KEY`** cifra no backend (AES-256-GCM) peso, altura, frequência cardíaca, splits e rota do GPS e a base de cálculo da dieta antes de gravar no banco.
+- Gere com `openssl rand -base64 32` (ou `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`) e guarde num gerenciador de senhas.
+- Use chaves diferentes para Production e Preview na Vercel.
+- **Perder a chave = perder para sempre os dados cifrados.** Nunca faça commit nem cole a chave em chat.
 
 **`FrontEndTorv/.env`**
 ```env
@@ -80,6 +88,16 @@ Para aplicar as migrations no banco:
 cd BackEndTorv
 npx prisma migrate deploy
 ```
+
+Para testes que criam usuários, use o Supabase local (Supabase CLI + Docker), nunca a produção:
+
+```bash
+supabase start   # sobe Postgres (54322), Auth e Mailpit (54324)
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres   npx prisma migrate deploy
+supabase stop    # ao terminar
+```
+
+Deixe a confirmação de e-mail ligada no Supabase local, como na produção.
 
 ### 4. Executando o projeto
 

@@ -44,17 +44,44 @@ test('signIn: 5xx e falha de rede → PROVIDER', async (t) => {
   await rejectsCode(authProvider.signIn('a@b.dev', 'x'), 'PROVIDER');
 });
 
-test('signUp: envia metadata em data e devolve sessão quando auto-confirma', async (t) => {
+test('signUp: corpo só com e-mail e senha; devolve sessão e userId quando auto-confirma', async (t) => {
   const fetch = t.mock.method(globalThis, 'fetch', async () => json(200, gotrueSession));
-  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456', { name: 'x' }), { session });
+  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456'), { session, userId: 'u1' });
   const [url, init] = fetch.mock.calls[0].arguments;
   assert.equal(url, 'https://proj.supabase.co/auth/v1/signup');
-  assert.deepEqual(JSON.parse(init.body), { email: 'a@b.dev', password: 'pw123456', data: { name: 'x' } });
+  assert.deepEqual(JSON.parse(init.body), { email: 'a@b.dev', password: 'pw123456' });
 });
 
-test('signUp: sem access_token (confirmação de e-mail) → null', async (t) => {
+test('signUp: sem access_token (confirmação de e-mail) → sessão null e userId do topo', async (t) => {
   t.mock.method(globalThis, 'fetch', async () => json(200, { id: 'u1', email: 'a@b.dev' }));
-  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456', {}), { session: null });
+  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456'), { session: null, userId: 'u1' });
+});
+
+test('signUp: 200 com identities vazio (usuário falso de e-mail já confirmado) → userId null', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => json(200, { id: 'fake', email: 'a@b.dev', identities: [] }));
+  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456'), { session: null, userId: null });
+  t.mock.method(globalThis, 'fetch', async () => json(200, { id: 'real', email: 'a@b.dev', identities: [{ id: 'i' }] }));
+  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456'), { session: null, userId: 'real' });
+});
+
+test('deleteUser: DELETE admin com a chave secreta; 200 e 404 ok', async (t) => {
+  process.env.SUPABASE_SECRET_KEY = 'sk_test';
+  const fetch = t.mock.method(globalThis, 'fetch', async () => json(200, {}));
+  await authProvider.deleteUser('u/1');
+  const [url, init] = fetch.mock.calls[0].arguments;
+  assert.equal(url, 'https://proj.supabase.co/auth/v1/admin/users/u%2F1');
+  assert.equal(init.method, 'DELETE');
+  assert.equal(init.headers.apikey, 'sk_test');
+  assert.equal(init.headers.Authorization, 'Bearer sk_test');
+  t.mock.method(globalThis, 'fetch', async () => json(404, {}));
+  await authProvider.deleteUser('u1');
+});
+
+test('deleteUser: 500 e falha de rede → PROVIDER sem vazar detalhe', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => json(500, { msg: 'secret-provider-detail' }));
+  await rejectsCode(authProvider.deleteUser('u1'), 'PROVIDER');
+  t.mock.method(globalThis, 'fetch', async () => { throw new TypeError('fetch failed'); });
+  await rejectsCode(authProvider.deleteUser('u1'), 'PROVIDER');
 });
 
 test('signUp: e-mail já cadastrado → EMAIL_TAKEN; senha fraca → INVALID_INPUT', async (t) => {
@@ -140,7 +167,7 @@ test('resendSignup: 429/over_email_send_rate_limit é engolido e devolve o sinal
 
 test('signUp: over_email_send_rate_limit → sessão null + swallowed (uniforme com cadastro novo); over_request_rate_limit continua erro', async (t) => {
   t.mock.method(globalThis, 'fetch', async () => json(429, { error_code: 'over_email_send_rate_limit' }));
-  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456', {}), { session: null, swallowed: 'over_email_send_rate_limit' });
+  assert.deepEqual(await authProvider.signUp('a@b.dev', 'pw123456', {}), { session: null, userId: null, swallowed: 'over_email_send_rate_limit' });
   t.mock.method(globalThis, 'fetch', async () => json(429, { error_code: 'over_request_rate_limit' }));
   await rejectsCode(authProvider.signUp('a@b.dev', 'pw123456', {}), 'PROVIDER');
 });
