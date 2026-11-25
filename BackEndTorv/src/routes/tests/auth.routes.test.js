@@ -24,7 +24,8 @@ async function build(t) {
 const post = (app, url, payload, headers) => app.inject({ method: 'POST', url, payload, headers });
 
 const UID = 'abcdef12-1111-4111-8111-111111111111';
-const p2002 = (target) => Object.assign(new Error('unique'), { code: 'P2002', meta: { target } });
+// Forma real do Prisma 6 neste caso: target vem null.
+const p2002 = () => Object.assign(new Error('unique'), { code: 'P2002', meta: { modelName: 'user_profiles', target: null } });
 
 test('register 201: signUp só com e-mail/senha; perfil gravado pelo backend', async (t) => {
   const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session, userId: UID }));
@@ -51,17 +52,15 @@ test('register sem username → user_ + 8 primeiros chars do userId', async (t) 
   assert.equal(save.mock.calls[0].arguments[1].username, 'user_abcdef12');
 });
 
-test('register: P2002 em username → deleteUser e 409 USERNAME_TAKEN (array e string)', async (t) => {
+test('register: P2002 (target null) → deleteUser e 409 USERNAME_TAKEN', async (t) => {
   t.mock.method(authProvider, 'signUp', async () => ({ session, userId: UID }));
   const del = t.mock.method(authProvider, 'deleteUser', async () => {});
   const app = await build(t);
-  for (const target of [['username'], 'user_profiles_username_key']) {
-    t.mock.method(profileRepository, 'saveSignupProfile', async () => { throw p2002(target); });
-    const res = await post(app, '/auth/register', validRegister);
-    assert.equal(res.statusCode, 409);
-    assert.equal(res.json().code, 'USERNAME_TAKEN');
-  }
-  assert.deepEqual(del.mock.calls.map((c) => c.arguments), [[UID], [UID]]);
+  t.mock.method(profileRepository, 'saveSignupProfile', async () => { throw p2002(); });
+  const res = await post(app, '/auth/register', validRegister);
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.json().code, 'USERNAME_TAKEN');
+  assert.deepEqual(del.mock.calls.map((c) => c.arguments), [[UID]]);
 });
 
 test('register: outro erro → deleteUser e 502; deleteUser falhando ainda dá 502 e loga só o código', async (t) => {

@@ -60,8 +60,8 @@ class AuthController {
         } catch (err) {
           // Conta sem perfil é inutilizável: desfaz o signup. Log só com código, nunca corpo/e-mail/senha/id.
           await authProvider.deleteUser(userId).catch((e) => request.log.error({ code: e.code }, 'register rollback failed'));
-          const target = err.meta?.target;
-          if (err.code === 'P2002' && [].concat(target ?? []).join(',').includes('username')) {
+          // Qualquer P2002 aqui é username: as outras chaves únicas são user_id (upsert) e uuid aleatório. O Prisma manda meta.target null, então não dá pra checar o campo.
+          if (err.code === 'P2002') {
             return reply.status(409).send({ error: 'Username already taken', code: 'USERNAME_TAKEN' });
           }
           request.log.error({ code: err.code }, 'register profile save failed');
