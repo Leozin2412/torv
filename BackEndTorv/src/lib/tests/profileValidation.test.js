@@ -25,6 +25,7 @@ test('peso e altura dentro das faixas viram measurement', () => {
   const r = validateProfileUpdate({ weight_kg: 72.5, height_cm: 180 });
   assert.deepEqual(r, { profileData: {}, measurement: { weight_kg: 72.5, height_cm: 180 } });
   assert.deepEqual(validateProfileUpdate({ weight_kg: 70 }).measurement, { weight_kg: 70 });
+  assert.equal(validateProfileUpdate({ weight_kg: 70.129 }).measurement.weight_kg, 70.13);
 });
 
 test('peso/altura fora da faixa ou altura não inteira → erro', () => {
