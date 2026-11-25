@@ -9,9 +9,11 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { SelectCard } from '../../components/SelectCard';
 import { AuthContext } from '../../contexts/AuthContext';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { GoalConflictWarning } from '../../components/GoalConflictWarning';
 import { colors } from '../../theme/tokens';
 import type { AuthNavigation } from '../../routes/types';
+import { suggestEmailDomain } from '../../utils/emailTypo';
 import { FITNESS_LEVELS, GOAL_OPTIONS } from '../../utils/profileOptions';
 import { styles } from './styles';
 
@@ -39,6 +41,7 @@ export default function Register() {
   const [passwordError, setPasswordError] = useState('');
   const [nameError, setNameError] = useState('');
   const [registerError, setRegisterError] = useState('');
+  const [emailSuggestion, setEmailSuggestion] = useState<string | null>(null);
 
   const handleDateChange = (text: string) => {
     let clean = text.replace(/\D/g, '');
@@ -78,7 +81,14 @@ export default function Register() {
   };
 
   const handleNext = () => {
-    if (step === 0 && !validateStep0()) return;
+    if (step === 0) {
+      if (!validateStep0()) return;
+      const suggestion = suggestEmailDomain(email);
+      if (suggestion) {
+        setEmailSuggestion(suggestion);
+        return;
+      }
+    }
     if (step === 1 && !validateStep1()) return;
     if (step === 2 && (!weight || !height)) return;
     if (step === 3 && !gender) return;
@@ -272,6 +282,22 @@ export default function Register() {
           <Button title="Continuar" onPress={handleRegister} loading={loading} style={styles.navButton} />
         )}
       </View>
+      <ConfirmModal
+        visible={emailSuggestion !== null}
+        title="Confira seu e-mail"
+        message={`Você quis dizer ${emailSuggestion}?`}
+        confirmLabel="Corrigir"
+        cancelLabel="Manter como digitei"
+        onConfirm={() => {
+          if (emailSuggestion) setEmail(emailSuggestion);
+          setEmailSuggestion(null);
+          setStep(1);
+        }}
+        onCancel={() => {
+          setEmailSuggestion(null);
+          setStep(1);
+        }}
+      />
     </KeyboardAvoidingView>
     </SafeAreaView>
   );

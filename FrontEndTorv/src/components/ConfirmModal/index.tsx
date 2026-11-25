@@ -9,20 +9,21 @@ interface Props {
   title: string;
   message: string;
   confirmLabel: string;
+  cancelLabel?: string;
   danger?: boolean;
   loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export const ConfirmModal: React.FC<Props> = ({ visible, title, message, confirmLabel, danger, loading, onConfirm, onCancel }) => (
+export const ConfirmModal: React.FC<Props> = ({ visible, title, message, confirmLabel, cancelLabel = 'Cancelar', danger, loading, onConfirm, onCancel }) => (
   <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
     <View style={styles.overlay}>
       <View style={styles.content} accessibilityRole="alert">
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.message}>{message}</Text>
         <Button title={confirmLabel} danger={danger} loading={loading} onPress={onConfirm} />
-        <Button title="Cancelar" outline onPress={onCancel} disabled={loading} />
+        <Button title={cancelLabel} outline onPress={onCancel} disabled={loading} />
       </View>
     </View>
   </Modal>
