@@ -46,6 +46,8 @@ class AuthController {
       if (swallowed) request.log.warn({ error_code: swallowed }, 'register swallowed provider error');
       // Sem userId (reenvio engolido): a conta já existe e o perfil foi gravado no 1º cadastro.
       if (userId) {
+        // Re-signup de conta pendente devolve o mesmo userId: só desfaz o que esta requisição criou.
+        const existed = await profileRepository.profileExists(userId);
         try {
           await profileRepository.saveSignupProfile(userId, {
             username: username ?? `user_${userId.slice(0, 8)}`,
@@ -58,8 +60,8 @@ class AuthController {
             height_cm: v.measurement.height_cm,
           });
         } catch (err) {
-          // Conta sem perfil é inutilizável: desfaz o signup. Log só com código, nunca corpo/e-mail/senha/id.
-          await authProvider.deleteUser(userId).catch((e) => request.log.error({ code: e.code }, 'register rollback failed'));
+          // Conta nova sem perfil é inutilizável: desfaz o signup. Log só com código, nunca corpo/e-mail/senha/id.
+          if (!existed) await authProvider.deleteUser(userId).catch((e) => request.log.error({ code: e.code }, 'register rollback failed'));
           // Qualquer P2002 aqui é username: as outras chaves únicas são user_id (upsert) e uuid aleatório. O Prisma manda meta.target null, então não dá pra checar o campo.
           if (err.code === 'P2002') {
             return reply.status(409).send({ error: 'Username already taken', code: 'USERNAME_TAKEN' });

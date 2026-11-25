@@ -45,6 +45,10 @@ class ProfileRepository {
     return (await prisma.user_profiles.count({ where: { username } })) > 0;
   }
 
+  async profileExists(userId) {
+    return (await prisma.user_profiles.findUnique({ where: { user_id: userId }, select: { user_id: true } })) !== null;
+  }
+
   async getProfileRow(userId) {
     return await prisma.user_profiles.findUnique({ where: { user_id: userId } });
   }

@@ -63,6 +63,15 @@ test('cifra de outro dono: leitura lança', async () => {
   await assert.rejects(repo.getUserProfile(USER), /falha ao decifrar campo/);
 });
 
+test('profileExists: true com perfil, false sem', async () => {
+  const orig = fakePrisma.user_profiles.findUnique;
+  fakePrisma.user_profiles.findUnique = async (a) => { assert.deepEqual(a, { where: { user_id: USER }, select: { user_id: true } }); return { user_id: USER }; };
+  assert.equal(await repo.profileExists(USER), true);
+  fakePrisma.user_profiles.findUnique = async () => null;
+  assert.equal(await repo.profileExists(USER), false);
+  fakePrisma.user_profiles.findUnique = orig;
+});
+
 const signup = { username: 'ana', name: 'Ana', birth_date: new Date('1995-04-10'), gender: 'Feminino', fitness_level: 'INICIANTE', goal: 'Perder Peso', weight_kg: 60.5, height_cm: 165 };
 
 test('saveSignupProfile: ordem na transação e medida cifrada', async () => {
