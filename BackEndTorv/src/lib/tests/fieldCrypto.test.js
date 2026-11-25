@@ -62,3 +62,11 @@ test('assertKey: ausente, curta ou inválida → erro que não mostra o valor', 
     assert.throws(() => assertKey(), (err) => /DATA_ENCRYPTION_KEY/.test(err.message) && (!bad || !err.message.includes(bad)));
   }
 });
+
+test('tag truncada e IV de tamanho errado são recusados', () => {
+  const [v, iv, tag, ct] = encryptField(60.5, ctx).split('.');
+  const cut = (b64, n) => Buffer.from(b64, 'base64url').subarray(0, n).toString('base64url');
+  for (const bad of [[v, iv, cut(tag, 4), ct], [v, iv, cut(tag, 15), ct], [v, cut(iv, 8), tag, ct], [v, iv + 'AAAA', tag, ct]]) {
+    assert.throws(() => decryptField(bad.join('.'), ctx), /^Error: falha ao decifrar campo$/);
+  }
+});

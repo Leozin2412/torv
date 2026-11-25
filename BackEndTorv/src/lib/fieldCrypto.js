@@ -16,7 +16,7 @@ const aad = ({ table, column, userId }) => Buffer.from(`${table}.${column}:${use
 function encryptField(value, ctx) {
   if (value === null || value === undefined) return null;
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', getKey(), iv);
+  const cipher = crypto.createCipheriv('aes-256-gcm', getKey(), iv, { authTagLength: 16 });
   cipher.setAAD(aad(ctx));
   const ct = Buffer.concat([cipher.update(JSON.stringify(value), 'utf8'), cipher.final()]);
   return ['v1', iv, cipher.getAuthTag(), ct].map((p) => (typeof p === 'string' ? p : p.toString('base64url'))).join('.');
@@ -28,7 +28,8 @@ function decryptField(text, ctx) {
     const parts = String(text).split('.');
     if (parts.length !== 4 || parts[0] !== 'v1') throw new Error();
     const [, iv, tag, ct] = parts.map((p, i) => (i ? Buffer.from(p, 'base64url') : p));
-    const decipher = crypto.createDecipheriv('aes-256-gcm', getKey(), iv);
+    if (iv.length !== 12 || tag.length !== 16) throw new Error();
+    const decipher = crypto.createDecipheriv('aes-256-gcm', getKey(), iv, { authTagLength: 16 });
     decipher.setAAD(aad(ctx));
     decipher.setAuthTag(tag);
     return JSON.parse(Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8'));
