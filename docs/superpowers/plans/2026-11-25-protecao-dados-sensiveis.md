@@ -33,7 +33,7 @@
 1. **Valor cifrado corrompido ou chave trocada** (alguém mexeu no banco; chave errada no `.env`): a rota responde 500 genérico, sem cifra, valor ou `user_id` no corpo e no log. Coberto em `fieldCrypto.test.js` (mensagem do erro) e no teste de rota de `GET /profile` com decifração falhando (Task 4).
 2. **Campos opcionais nulos** (medida sem altura; GPX sem frequência cardíaca): continuam `null` de ponta a ponta, nunca a string `"null"` cifrada. Coberto em `fieldCrypto.test.js` e nos testes de repositório de medida e GPS (Task 4).
 3. **Peso com casa decimal** (`60.5`): volta como número `60.5`, não string nem `Decimal`, e a conta de calorias usa o mesmo valor. Coberto no teste de `getCalcInputs` (Task 4).
-4. **Cadastro refeito de conta não confirmada com dados diferentes:** o perfil é atualizado e fica **uma** medida só. Coberto no teste de `saveSignupProfile` (Task 5).
+4. **Cadastro refeito de conta não confirmada com dados diferentes:** nada é gravado (perfil e medida da primeira tentativa ficam) e a resposta é o mesmo 201. Coberto no teste de rota de `/auth/register` (Task 9; antes, Task 5 atualizava o perfil).
 5. **Username tomado entre o pre-check e a gravação:** a conta no Auth é apagada e a resposta é 409 `USERNAME_TAKEN`. Coberto no teste de rota (Task 5).
 
 ---
@@ -409,10 +409,11 @@ Cada passo só com autorização explícita do responsável.
 
 - [ ] **Chave:** o desenvolvedor gera a chave na máquina dele, guarda no gerenciador de senhas e cadastra `DATA_ENCRYPTION_KEY` na Vercel (Production e Preview).
 - [ ] **Reconectar à produção:** `supabase stop` (o Supabase local para); o desenvolvedor troca o `BackEndTorv/.env` pelos valores de produção, incluindo a mesma `DATA_ENCRYPTION_KEY`. Nenhum valor passa pelo chat.
-- [ ] **Migration em produção:** `cd BackEndTorv && npx prisma migrate deploy` com o `.env` de produção → `20261125120000_protect_sensitive_data` aplicada. Conferir pelo MCP só os tipos das colunas (sem dados).
+- [ ] **Antes da migration:** conferir que `DATA_ENCRYPTION_KEY` está na Vercel (Production e Preview) e, por consulta só de leitura, que `user_measurements`, `activity_gps_data` e `nutrition_targets` estão vazias (senão a trava da migration aborta) e que nenhum `raw_user_meta_data` antigo guarda peso, altura ou nascimento.
+- [ ] **Migration em produção:** `cd BackEndTorv && npx prisma migrate deploy` com o `.env` de produção → `20261125120000_protect_sensitive_data` e `20261125140000_widen_user_profiles_goal` aplicadas. Conferir pelo MCP só os tipos das colunas (sem dados).
 - [ ] **Backend local na produção:** reiniciar o Furnace; Expo no smartphone (rede local) → o desenvolvedor cria a conta real, preenche perfil, dieta e importa um GPX. Conferir no banco que as colunas estão em `v1.` (só o prefixo, sem decifrar).
 - [ ] **UXCam:** no próximo APK com a chave do UXCam, o desenvolvedor confere no painel que a gravação sai desfocada. Até lá, fica em "Não verificado".
-- [ ] **Deploy na Vercel:** merge do PR pelo responsável. Entre a migration e o deploy, o cadastro pela Vercel antiga quebra (o trigger não cria mais o perfil); como ninguém usa o app, a janela é aceita.
+- [ ] **Deploy na Vercel:** merge do PR pelo responsável. Entre a migration e o deploy, **todo o backend antigo da Vercel quebra**, não só o cadastro: `GET /profile` lê `users.email` (removida) e medidas, GPS e dieta gravam número/JSON em colunas agora `text`. A ordem inversa também quebra (backend novo em schema antigo falha todo cadastro). Rodar a migration e fazer o deploy em seguida; como ninguém usa o app, a janela curta é aceita.
 - [ ] Relatório de tempo em `~/Downloads/tempo-torv-protecao-dados-sensiveis.html`.
 
 ---

@@ -98,10 +98,12 @@ Controllers e libs continuam recebendo números, arrays e objetos, como hoje:
   (com confirmação de e-mail o GoTrue responde o usuário sem sessão).
 - Depois do signup, o backend grava numa transação: `user_profiles` (upsert: username, nome, nascimento,
   gênero, nível, objetivo), a medida cifrada (substitui a anterior, se houver) e `user_streaks` (upsert).
-  Reenvio de cadastro de conta não confirmada atualiza os dados; conta confirmada já recebe 409 antes.
+  Só grava quando a conta foi criada na própria requisição (ainda sem perfil). Reenvio de cadastro de conta
+  não confirmada não grava nada e responde o mesmo 201 (decisão da rodada de segurança: quem conhece um
+  e-mail pendente não troca os dados dele); conta confirmada também responde 201, sem gravar.
 - Sem `username`, o backend gera `user_<8 primeiros caracteres do id>`. Hoje o trigger usa o começo do
   e-mail, que fica visível para outros membros.
-- Falha ao gravar o perfil → o backend apaga a conta no Auth (API admin com a chave secreta) e o cadastro
+- Falha ao gravar o perfil → o backend apaga a conta no Auth (só a criada na própria requisição) (API admin com a chave secreta) e o cadastro
   pode ser refeito. Nunca é uma conta confirmada: essa recebe 409 do GoTrue antes. O Supabase local precisa
   da confirmação de e-mail ligada, como a produção. Username duplicado nessa hora → 409
   `USERNAME_TAKEN` (fecha a corrida de hoje); outra falha → 502.

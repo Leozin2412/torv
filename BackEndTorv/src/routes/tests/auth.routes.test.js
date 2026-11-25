@@ -171,7 +171,7 @@ test('register 409 USERNAME_TAKEN: username já existe → não chama o provedor
   assert.equal(signUp.mock.callCount(), 0);
 });
 
-test('register sem username pula o pre-check (trigger gera um)', async (t) => {
+test('register sem username pula o pre-check (backend gera user_<id>)', async (t) => {
   const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session }));
   const app = await build(t);
   const exists = t.mock.method(profileRepository, 'usernameExists', async () => true);
