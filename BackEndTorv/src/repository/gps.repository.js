@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { encryptField, decryptField } = require('../lib/fieldCrypto');
 const groupsRepository = require('./groups.repository');
 const { serializePerUser, lockAndCheckDailyCap } = require('./activityWrites');
 
@@ -11,6 +12,10 @@ const DETAIL_SELECT = {
     select: { elapsed_sec: true, elevation_gain_m: true, avg_hr: true, max_hr: true, avg_cadence: true, splits: true, route: true },
   },
 };
+
+const ctx = (column, userId) => ({ table: 'activity_gps_data', column, userId });
+const GPS_ENCRYPTED = ['avg_hr', 'max_hr', 'splits', 'route'];
+const mapGps = (g, fn) => Object.fromEntries(GPS_ENCRYPTED.map((c) => [c, fn(g[c], c)]));
 
 class GpsRepository {
   // Rotina de corrida ou caminhada do usuário; null = não existe, é de outro usuário ou é de musculação.
@@ -52,11 +57,8 @@ class GpsRepository {
           activity_id: activity.id,
           elapsed_sec: metrics.elapsed_sec,
           elevation_gain_m: metrics.elevation_gain_m,
-          avg_hr: metrics.avg_hr,
-          max_hr: metrics.max_hr,
+          ...mapGps(metrics, (v, c) => encryptField(v, ctx(c, userId))),
           avg_cadence: metrics.avg_cadence,
-          splits: metrics.splits,
-          route: metrics.route,
         },
       });
       await groupsRepository.recomputeRanking(tx, userId);
@@ -64,8 +66,10 @@ class GpsRepository {
     }, TX));
   }
 
-  getGpsActivity(userId, id) {
-    return prisma.activities.findFirst({ where: { id, user_id: userId, ...GPS }, select: DETAIL_SELECT });
+  async getGpsActivity(userId, id) {
+    const a = await prisma.activities.findFirst({ where: { id, user_id: userId, ...GPS }, select: DETAIL_SELECT });
+    if (!a?.activity_gps_data) return a;
+    return { ...a, activity_gps_data: { ...a.activity_gps_data, ...mapGps(a.activity_gps_data, (v, c) => decryptField(v, ctx(c, userId))) } };
   }
 
   // Renomear não muda a data: o ranking não muda.

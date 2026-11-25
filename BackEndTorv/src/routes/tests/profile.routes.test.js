@@ -57,6 +57,14 @@ test('GET /profile: streak e contagens saíram (o app usa GET /users/:id/profile
   for (const k of ['streak', 'longest_streak', 'workouts_in_month', 'total_workouts']) assert.equal(k in res.json(), false, k);
 });
 
+test('GET /profile: falha ao decifrar → 500 genérico, sem cifra nem id do usuário', async (t) => {
+  t.mock.method(profileRepository, 'getUserProfile', async () => { throw new Error('falha ao decifrar campo'); });
+  const res = await (await build(t)).inject({ method: 'GET', url: '/profile' });
+  assert.equal(res.statusCode, 500);
+  assert.doesNotMatch(res.body, /v1\./);
+  assert.ok(!res.body.includes(USER));
+});
+
 test('POST /profile/welcome: 204 e grava para o usuário do token (sem corpo ou com {})', async (t) => {
   const mark = t.mock.method(profileRepository, 'markWelcomed', async () => {});
   const app = await build(t);

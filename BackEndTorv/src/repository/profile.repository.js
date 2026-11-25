@@ -1,4 +1,13 @@
 const prisma = require('../lib/prisma');
+const { encryptField, decryptField } = require('../lib/fieldCrypto');
+
+const ctx = (column, userId) => ({ table: 'user_measurements', column, userId });
+// Linha cifrada → números; o AAD amarra ao dono (userId do where).
+const decryptMeasurement = (m, userId) => m && {
+  ...m,
+  weight_kg: decryptField(m.weight_kg, ctx('weight_kg', userId)),
+  height_cm: decryptField(m.height_cm, ctx('height_cm', userId)),
+};
 
 class ProfileRepository {
   // Queries em paralelo (1 RTT) em vez do include, que o Prisma roda em sequência. Mesmo shape do include.
@@ -10,7 +19,7 @@ class ProfileRepository {
       prisma.user_measurements.findFirst({ where: { user_id: userId }, orderBy: { recorded_at: 'desc' } }),
     ]);
     if (!user) return null;
-    return { ...user, user_profiles, user_measurements: measurement ? [measurement] : [] };
+    return { ...user, user_profiles, user_measurements: measurement ? [decryptMeasurement(measurement, userId)] : [] };
   }
 
   // Só a 1ª vez grava: repetir não muda o horário.
@@ -41,15 +50,15 @@ class ProfileRepository {
   }
 
   async getLatestMeasurement(userId) {
-    return await prisma.user_measurements.findFirst({
+    return decryptMeasurement(await prisma.user_measurements.findFirst({
       where: { user_id: userId },
       orderBy: { recorded_at: 'desc' },
-    });
+    }), userId);
   }
 
   async addMeasurement(userId, { weight_kg, height_cm }) {
     return await prisma.user_measurements.create({
-      data: { user_id: userId, weight_kg, height_cm },
+      data: { user_id: userId, weight_kg: encryptField(weight_kg, ctx('weight_kg', userId)), height_cm: encryptField(height_cm, ctx('height_cm', userId)) },
     });
   }
 }
