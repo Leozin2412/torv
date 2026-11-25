@@ -1,5 +1,13 @@
 -- LGPD (spec, secao C): campos sensiveis passam a guardar texto cifrado pela aplicacao (AES-GCM), entao o tipo vira text; email so existe no Supabase Auth.
--- Tabelas vazias na hora da troca: USING NULL e seguro.
+-- A troca de tipo usa USING NULL: o bloco abaixo garante que as tabelas estao vazias e aborta se houver dado.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM user_measurements)
+     OR EXISTS (SELECT 1 FROM activity_gps_data)
+     OR EXISTS (SELECT 1 FROM nutrition_targets) THEN
+    RAISE EXCEPTION 'Migration protect_sensitive_data assume user_measurements, activity_gps_data e nutrition_targets vazias; nao rode com dados (USING NULL apagaria os valores).';
+  END IF;
+END $$;
 
 ALTER TABLE user_measurements
   DROP CONSTRAINT user_measurements_weight_kg_check,
