@@ -114,7 +114,7 @@ Fora de produção, a documentação interativa (Swagger UI) fica em `http://loc
 
 A navegação fica em `FrontEndTorv/src/routes`, separada em rotas públicas e privadas. O componente `Routes` (`routes/index.tsx`) lê o estado `signed` do `AuthContext` e escolhe qual conjunto renderizar:
 
-- `routes/PublicRoutes` (Stack): `Login`, `Register` e `VerifyEmail`. Aparecem quando não há sessão.
+- `routes/PublicRoutes` (Stack): `Login`, `Register` e `VerifyEmail`. Aparecem quando não há sessão. No primeiro passo do `Register`, se o domínio do e-mail parece um domínio popular com erro de digitação (ex.: `gmial.com`), um aviso sugere a correção, sem bloquear o cadastro (`utils/emailTypo.ts`).
 - `routes/PrivateRoutes`: abas `Home`, `Workouts`, `MyDiet`, `Groups` e `Profile`, mais as telas em pilha `RoutineEditor`, `WorkoutSession`, `WorkoutSummary`, `WorkoutEdit`, `GroupDetail`, `GroupEditor`, `GroupManage` e `JoinGroup`. Só ficam acessíveis com o usuário logado.
 
 Ao fazer logout ou quando a sessão expira, `signed` volta para `false` e o app volta para o login. Links de convite (`torv://join/<código>`) abrem a tela `JoinGroup`; se o usuário não estiver logado, o convite fica guardado até o login.
