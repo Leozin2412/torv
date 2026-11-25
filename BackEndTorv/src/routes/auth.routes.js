@@ -1,6 +1,8 @@
 const { Type } = require('@sinclair/typebox');
 const authController = require('../controller/auth.controller');
 
+// NUL passa na validação mas o Postgres recusa na gravação (vira 502 só para e-mail novo).
+const NO_NUL = '^[^\\u0000]*$';
 // E-mail <= 254 (RFC 5321): sem teto, a chave do limiter e o corpo repassado ao provedor viram vetor de memória/banda.
 const Email = () => Type.String({ format: 'email', maxLength: 254 });
 
@@ -31,8 +33,8 @@ async function authRoutes(fastify) {
       body: Type.Object({
         email: Email(),
         password: Type.String({ minLength: 6, maxLength: 128 }),
-        name: Type.String({ minLength: 1, maxLength: 100 }),
-        username: Type.Optional(Type.String({ minLength: 1, maxLength: 100 })),
+        name: Type.String({ minLength: 1, maxLength: 100, pattern: NO_NUL }),
+        username: Type.Optional(Type.String({ minLength: 1, maxLength: 100, pattern: NO_NUL })),
         birth_date: Type.String({ format: 'date', description: 'YYYY-MM-DD' }),
         weight_kg: Type.Number(),
         height_cm: Type.Number(),

@@ -467,3 +467,20 @@ test('rate limit: resend-code 5/min por IP → 6ª é 429', async (t) => {
   }
   assert.equal((await post(app, '/auth/resend-code', { email: 'ratelimit9@b.dev' })).statusCode, 429);
 });
+
+test('register: NUL em name → 400 antes de signUp', async (t) => {
+  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session, userId: UID }));
+  const app = await build(t);
+  const res = await post(app, '/auth/register', { ...validRegister, name: 'a\u0000b' });
+  assert.equal(res.statusCode, 400);
+  assert.equal(signUp.mock.callCount(), 0);
+});
+
+test('register: NUL em username → 400 antes de usernameExists e signUp', async (t) => {
+  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session, userId: UID }));
+  const app = await build(t);
+  const res = await post(app, '/auth/register', { ...validRegister, username: 'a\u0000b' });
+  assert.equal(res.statusCode, 400);
+  assert.equal(profileRepository.usernameExists.mock.callCount(), 0);
+  assert.equal(signUp.mock.callCount(), 0);
+});
