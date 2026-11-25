@@ -56,6 +56,19 @@ class ProfileRepository {
     }), userId);
   }
 
+  // Cadastro: o trigger só cria users; perfil, medida cifrada e streak vêm daqui, atômicos.
+  // Reenvio de signup (conta não confirmada) atualiza o perfil e troca a medida em vez de duplicar.
+  async saveSignupProfile(userId, { weight_kg, height_cm, ...profile }) {
+    await prisma.$transaction(async (tx) => {
+      await tx.user_profiles.upsert({ where: { user_id: userId }, create: { user_id: userId, ...profile }, update: profile });
+      await tx.user_measurements.deleteMany({ where: { user_id: userId } });
+      await tx.user_measurements.create({
+        data: { user_id: userId, weight_kg: encryptField(weight_kg, ctx('weight_kg', userId)), height_cm: encryptField(height_cm, ctx('height_cm', userId)) },
+      });
+      await tx.user_streaks.upsert({ where: { user_id: userId }, create: { user_id: userId, current_streak: 0, longest_streak: 0 }, update: {} });
+    });
+  }
+
   async addMeasurement(userId, { weight_kg, height_cm }) {
     return await prisma.user_measurements.create({
       data: { user_id: userId, weight_kg: encryptField(weight_kg, ctx('weight_kg', userId)), height_cm: encryptField(height_cm, ctx('height_cm', userId)) },

@@ -11,13 +11,21 @@ const enc = (v, column, userId = USER) => encryptField(v, { table: 'user_measure
 
 let rows;
 let created;
+let calls = [];
+const upserts = {};
 const fakePrisma = {
+  $transaction: async (fn) => { calls.push('tx:start'); const r = await fn(fakePrisma); calls.push('tx:end'); return r; },
   users: { findUnique: async () => ({ id: USER }) },
-  user_profiles: { findUnique: async () => ({ user_id: USER }) },
+  user_profiles: {
+    findUnique: async () => ({ user_id: USER }),
+    upsert: async (args) => { calls.push('profile.upsert'); upserts.profile = args; return {}; },
+  },
   user_measurements: {
     findFirst: async () => rows.measurement,
-    create: async (args) => { created = args; return {}; },
+    create: async (args) => { calls.push('measurement.create'); created = args; return {}; },
+    deleteMany: async (args) => { calls.push('measurement.deleteMany'); upserts.deleted = args; return {}; },
   },
+  user_streaks: { upsert: async (args) => { calls.push('streak.upsert'); upserts.streak = args; return {}; } },
 };
 const prismaPath = require.resolve('../../lib/prisma');
 require.cache[prismaPath] = { id: prismaPath, filename: prismaPath, loaded: true, exports: fakePrisma };
@@ -53,4 +61,31 @@ test('cifra de outro dono: leitura lança', async () => {
   rows = { measurement: stored(OTHER) };
   await assert.rejects(repo.getLatestMeasurement(USER), /falha ao decifrar campo/);
   await assert.rejects(repo.getUserProfile(USER), /falha ao decifrar campo/);
+});
+
+const signup = { username: 'ana', name: 'Ana', birth_date: new Date('1995-04-10'), gender: 'Feminino', fitness_level: 'INICIANTE', goal: 'Perder Peso', weight_kg: 60.5, height_cm: 165 };
+
+test('saveSignupProfile: ordem na transação e medida cifrada', async () => {
+  calls = [];
+  await repo.saveSignupProfile(USER, signup);
+  assert.deepEqual(calls, ['tx:start', 'profile.upsert', 'measurement.deleteMany', 'measurement.create', 'streak.upsert', 'tx:end']);
+  assert.deepEqual(upserts.profile.where, { user_id: USER });
+  assert.equal(upserts.profile.create.user_id, USER);
+  assert.equal(upserts.profile.create.username, 'ana');
+  assert.equal(upserts.profile.update.user_id, undefined);
+  assert.deepEqual(upserts.deleted, { where: { user_id: USER } });
+  assert.match(created.data.weight_kg, /^v1\./);
+  assert.match(created.data.height_cm, /^v1\./);
+  assert.deepEqual(upserts.streak, { where: { user_id: USER }, create: { user_id: USER, current_streak: 0, longest_streak: 0 }, update: {} });
+});
+
+test('saveSignupProfile: repetir com outro peso grava só o novo', async () => {
+  const store = [];
+  fakePrisma.user_measurements.deleteMany = async () => { store.length = 0; return {}; };
+  fakePrisma.user_measurements.create = async ({ data }) => { store.push(data); return {}; };
+  await repo.saveSignupProfile(USER, { ...signup, weight_kg: 60 });
+  await repo.saveSignupProfile(USER, { ...signup, weight_kg: 70 });
+  assert.equal(store.length, 1);
+  rows = { measurement: store[0] };
+  assert.equal((await repo.getLatestMeasurement(USER)).weight_kg, 70);
 });

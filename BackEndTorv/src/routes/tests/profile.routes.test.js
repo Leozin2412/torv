@@ -7,7 +7,7 @@ const USER = '11111111-1111-4111-8111-111111111111';
 const authPath = require.resolve('../../middlewares/auth.middleware');
 require.cache[authPath] = {
   id: authPath, filename: authPath, loaded: true,
-  exports: async (request) => { request.user = { userId: USER }; },
+  exports: async (request) => { request.user = { userId: USER, email: 'ana@torvtest.dev' }; },
 };
 
 const profileRepository = require('../../repository/profile.repository');
@@ -28,7 +28,6 @@ async function build(t) {
 
 const userRow = (profile) => ({
   id: USER,
-  email: 'ana@torvtest.dev',
   user_profiles: profile,
   user_measurements: [],
 });
@@ -36,6 +35,12 @@ const baseProfile = {
   username: 'ana', name: 'Ana', fitness_level: 'INICIANTE', goal: 'Perder Peso',
   photo_url: null, birth_date: null, gender: 'Feminino',
 };
+
+test('GET /profile: e-mail vem do token, não da linha do banco', async (t) => {
+  t.mock.method(profileRepository, 'getUserProfile', async () => userRow({ ...baseProfile, welcomed_at: null }));
+  const res = await (await build(t)).inject({ method: 'GET', url: '/profile' });
+  assert.equal(res.json().email, 'ana@torvtest.dev');
+});
 
 test('GET /profile: welcome_pending = welcomed_at nulo', async (t) => {
   const get = t.mock.method(profileRepository, 'getUserProfile', async () => userRow({ ...baseProfile, welcomed_at: null }));

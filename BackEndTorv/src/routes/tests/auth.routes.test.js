@@ -23,19 +23,72 @@ async function build(t) {
 
 const post = (app, url, payload, headers) => app.inject({ method: 'POST', url, payload, headers });
 
-test('register 201: mapeia metadata pro que handle_new_user lê', async (t) => {
-  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session }));
+const UID = 'abcdef12-1111-4111-8111-111111111111';
+const p2002 = (target) => Object.assign(new Error('unique'), { code: 'P2002', meta: { target } });
+
+test('register 201: signUp só com e-mail/senha; perfil gravado pelo backend', async (t) => {
+  const signUp = t.mock.method(authProvider, 'signUp', async () => ({ session, userId: UID }));
+  const save = t.mock.method(profileRepository, 'saveSignupProfile', async () => {});
   const app = await build(t);
   const res = await post(app, '/auth/register', validRegister);
   assert.equal(res.statusCode, 201);
   assert.deepEqual(res.json(), { session, confirmation_required: false });
-  const [email, password, data] = signUp.mock.calls[0].arguments;
-  assert.equal(email, 'a@b.dev');
-  assert.equal(password, 'pw123456');
+  assert.deepEqual(signUp.mock.calls[0].arguments, ['a@b.dev', 'pw123456']);
+  const [userId, data] = save.mock.calls[0].arguments;
+  assert.equal(userId, UID);
   assert.deepEqual(data, {
-    name: 'Ana Silva', username: 'ana', birth_date: '1995-04-10', weight: 60.5, height: 165,
-    gender: 'Feminino', fitness_level: 'INICIANTE', goal: 'Perder Peso, Criar uma Rotina',
+    username: 'ana', name: 'Ana Silva', birth_date: new Date('1995-04-10'), gender: 'Feminino',
+    fitness_level: 'INICIANTE', goal: 'Perder Peso, Criar uma Rotina', weight_kg: 60.5, height_cm: 165,
   });
+});
+
+test('register sem username → user_ + 8 primeiros chars do userId', async (t) => {
+  t.mock.method(authProvider, 'signUp', async () => ({ session, userId: UID }));
+  const save = t.mock.method(profileRepository, 'saveSignupProfile', async () => {});
+  const app = await build(t);
+  const { username, ...noUsername } = validRegister;
+  assert.equal((await post(app, '/auth/register', noUsername)).statusCode, 201);
+  assert.equal(save.mock.calls[0].arguments[1].username, 'user_abcdef12');
+});
+
+test('register: P2002 em username → deleteUser e 409 USERNAME_TAKEN (array e string)', async (t) => {
+  t.mock.method(authProvider, 'signUp', async () => ({ session, userId: UID }));
+  const del = t.mock.method(authProvider, 'deleteUser', async () => {});
+  const app = await build(t);
+  for (const target of [['username'], 'user_profiles_username_key']) {
+    t.mock.method(profileRepository, 'saveSignupProfile', async () => { throw p2002(target); });
+    const res = await post(app, '/auth/register', validRegister);
+    assert.equal(res.statusCode, 409);
+    assert.equal(res.json().code, 'USERNAME_TAKEN');
+  }
+  assert.deepEqual(del.mock.calls.map((c) => c.arguments), [[UID], [UID]]);
+});
+
+test('register: outro erro → deleteUser e 502; deleteUser falhando ainda dá 502 e loga só o código', async (t) => {
+  t.mock.method(authProvider, 'signUp', async () => ({ session, userId: UID }));
+  t.mock.method(profileRepository, 'saveSignupProfile', async () => { throw new Error('db down secret-detail'); });
+  const del = t.mock.method(authProvider, 'deleteUser', async () => {});
+  const app = await build(t);
+  let res = await post(app, '/auth/register', validRegister);
+  assert.equal(res.statusCode, 502);
+  assert.deepEqual(Object.keys(res.json()), ['error']);
+  assert.equal(del.mock.calls[0].arguments[0], UID);
+
+  t.mock.method(authProvider, 'deleteUser', async () => { throw new AuthError('PROVIDER'); });
+  const logError = t.mock.method(app.log, 'error', () => {});
+  res = await post(app, '/auth/register', validRegister);
+  assert.equal(res.statusCode, 502);
+  const logged = JSON.stringify(logError.mock.calls.map((c) => c.arguments));
+  assert.match(logged, /PROVIDER/);
+  for (const secret of [UID, 'a@b.dev', 'pw123456', 'secret-detail']) assert.ok(!logged.includes(secret), secret);
+});
+
+test('register swallowed (sem userId) → não grava perfil e 201', async (t) => {
+  t.mock.method(authProvider, 'signUp', async () => ({ session: null, userId: null, swallowed: 'over_email_send_rate_limit' }));
+  const save = t.mock.method(profileRepository, 'saveSignupProfile', async () => {});
+  const app = await build(t);
+  assert.equal((await post(app, '/auth/register', validRegister)).statusCode, 201);
+  assert.equal(save.mock.callCount(), 0);
 });
 
 test('register 201 sem sessão → confirmation_required', async (t) => {
@@ -102,7 +155,6 @@ test('register sem username pula o pre-check (trigger gera um)', async (t) => {
   const res = await post(app, '/auth/register', noUsername);
   assert.equal(res.statusCode, 201);
   assert.equal(exists.mock.callCount(), 0);
-  assert.equal(signUp.mock.calls[0].arguments[2].username, undefined);
 });
 
 test('login 200 / 401 genérico / 400', async (t) => {

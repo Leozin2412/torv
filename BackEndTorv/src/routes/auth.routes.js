@@ -26,7 +26,7 @@ async function authRoutes(fastify) {
   fastify.post('/register', {
     config: perMinute(10),
     schema: {
-      description: 'Cria conta no provedor de auth; o trigger handle_new_user cria users/perfil/medida/streak',
+      description: 'Cria conta no provedor de auth (só e-mail e senha, sem metadados); em seguida o backend grava perfil, medida (cifrada) e streak. Se a gravação falhar, a conta é desfeita (409 USERNAME_TAKEN ou 502)',
       tags: ['Auth'],
       body: Type.Object({
         email: Email(),
